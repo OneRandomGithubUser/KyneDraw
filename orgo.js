@@ -5,6 +5,7 @@ var atoms = []; // list of the atom ID and then its two coordinates and then its
 var nextID = 0; // next atom ID
 var bondType = 1;
 var element = "C";
+var reagents = "";
 var bondMode = true;
 var bonds = []; // list of the bond type and then the two atoms, named by their ID, and then the bond angle
 var network = []; // list of one atom ID, then alternating between a bond type and the second atom ID and then the bond angle
@@ -20,7 +21,7 @@ const destinationDistance = 5;
 var mousePressed = false;
 var id1 = 0;
 var selectedBox = 0;
-const minWidth = 980;
+const minWidth = 1920;
 const minHeight = 210;
 let windowHeight = 0;
 let windowLength = 0;
@@ -89,45 +90,19 @@ function draw() {
       selectedBox = 19; // m-CPBA
     } else if (mouseX < 1440 && mouseX > 1340) {
       selectedBox = 20; // OsO₄, H₂O
-    }
+    } else if (mouseX < 1560 && mouseX > 1460) {
+      selectedBox = 21;
+    } else if (mouseX < 1680 && mouseX > 1580) {
+      selectedBox = 22;
+    } else if (mouseX < 1800 && mouseX > 1700) {
+      selectedBox = 23;
+    } else if (mouseX < 1920 && mouseX > 1820) {
+      selectedBox = 24;
+    } // TODO: fix the comments above
   }
-  if (bondType === 1 && bondMode) {fill(205);}
-  if (selectedBox === 1) {    
-    stroke(255);
-    rect(20,20,100,100);
-    stroke(0);
-  } else {
-    rect(20,20,100,100);
-  }
-  fill(230);
-  line(70-Math.cos(toRadians(30))*bondLength/2,70-Math.sin(toRadians(30))*bondLength/2,70+Math.cos(toRadians(30))*bondLength/2,70+Math.sin(toRadians(30))*bondLength/2);
-
-  // bondButton(20,20,1);
-
-  if (bondType === 2 && bondMode) {fill(205);}
-  if (selectedBox === 2) {
-    stroke(255);
-    rect(140,20,100,100);
-    stroke(0);
-  } else {
-    rect(140,20,100,100);
-  }
-  fill(230);
-  line(190-Math.cos(toRadians(30))*bondLength/2,70-Math.sin(toRadians(30))*bondLength/2,190+Math.cos(toRadians(30))*bondLength/2,70+Math.sin(toRadians(30))*bondLength/2);
-  lineOffset(190-Math.cos(toRadians(30))*bondLength/2,70-Math.sin(toRadians(30))*bondLength/2,190+Math.cos(toRadians(30))*bondLength/2,70+Math.sin(toRadians(30))*bondLength/2,330,5);
-
-  if (bondType === 3 && bondMode) {fill(205);}
-  if (selectedBox === 3) {
-    stroke(255);
-    rect(260,20,100,100);
-    stroke(0);
-  } else {
-    rect(260,20,100,100);
-  }
-  fill(230);
-  line(310-Math.cos(toRadians(30))*bondLength/2,70-Math.sin(toRadians(30))*bondLength/2,310+Math.cos(toRadians(30))*bondLength/2,70+Math.sin(toRadians(30))*bondLength/2);
-  lineOffset(310-Math.cos(toRadians(30))*bondLength/2,70-Math.sin(toRadians(30))*bondLength/2,310+Math.cos(toRadians(30))*bondLength/2,70+Math.sin(toRadians(30))*bondLength/2,330,5);
-  lineOffset(310-Math.cos(toRadians(30))*bondLength/2,70-Math.sin(toRadians(30))*bondLength/2,310+Math.cos(toRadians(30))*bondLength/2,70+Math.sin(toRadians(30))*bondLength/2,330,-5);
+  bondButton(20,20,1);
+  bondButton(140,20,2);
+  bondButton(260,20,3);
 
   if (angleSnap) {
     fill(205);
@@ -161,75 +136,11 @@ function draw() {
   text("FREEFORM ANGLES",140,windowHeight-70,100,50);
   fill(230);
 
-  if (element === "C" && !bondMode) {fill(205);}
-  if (selectedBox === 6) {    
-    stroke(255);
-    rect(380,20,100,100);
-    stroke(0);
-  } else {
-    rect(380,20,100,100);
-  }
-  fill(0);
-  textAlign(CENTER);
-  textSize(48);
-  text("C",380,20,100,100);
-  fill(230);
-
-  if (element === "O" && !bondMode) {fill(205);}
-  if (selectedBox === 7) {    
-    stroke(255);
-    rect(500,20,100,100);
-    stroke(0);
-  } else {
-    rect(500,20,100,100);
-  }
-  fill(0);
-  textAlign(CENTER);
-  textSize(48);
-  text("O",500,20,100,100);
-  fill(230);
-
-  if (element === "N" && !bondMode) {fill(205);}
-  if (selectedBox === 8) {    
-    stroke(255);
-    rect(620,20,100,100);
-    stroke(0);
-  } else {
-    rect(620,20,100,100);
-  }
-  fill(0);
-  textAlign(CENTER);
-  textSize(48);
-  text("N",620,20,100,100);
-  fill(230);
-
-  if (element === "Br" && !bondMode) {fill(205);}
-  if (selectedBox === 9) {    
-    stroke(255);
-    rect(740,20,100,100);
-    stroke(0);
-  } else {
-    rect(740,20,100,100);
-  }
-  fill(0);
-  textAlign(CENTER);
-  textSize(48);
-  text("Br",740,20,100,100);
-  fill(230);
-
-  if (element === "Cl" && !bondMode) {fill(205);}
-  if (selectedBox === 10) {    
-    stroke(255);
-    rect(860,20,100,100);
-    stroke(0);
-  } else {
-    rect(860,20,100,100);
-  }
-  fill(0);
-  textAlign(CENTER);
-  textSize(48);
-  text("Cl",860,20,100,100);
-  fill(230);
+  atomButton(380,20,"C",6);
+  atomButton(500,20,"O",7);
+  atomButton(620,20,"N",8);
+  atomButton(740,20,"Br",9);
+  atomButton(860,20,"Cl",10);
 
   if (selectedBox === 11) {
     stroke(255);
@@ -244,6 +155,20 @@ function draw() {
   text("SNAP ANGLES",260,windowHeight-70,100,50);
   fill(230);
   
+  reactionButton(260,windowHeight-70,"POCl₃",11);
+  reactionButton(380,windowHeight-70,"KOH",12);
+  reactionButton(500,windowHeight-70,"HBr",13);
+  reactionButton(620,windowHeight-70,"HBr, H₂O₂",14);
+  reactionButton(740,windowHeight-70,"Br₂",15);
+  reactionButton(860,windowHeight-70,"Br₂, H₂O",16);
+  reactionButton(980,windowHeight-70,"H₂, Pd",17);
+  reactionButton(1100,windowHeight-70,"Hg(OAc)₂,H₂O,BH₄",18);
+  reactionButton(1220,windowHeight-70,"BH₃",19);
+  reactionButton(1340,windowHeight-70,"NaBH₄",20);
+  reactionButton(1460,windowHeight-70,"Swern",21);
+  reactionButton(1580,windowHeight-70,"PBr₃",22);
+  reactionButton(1700,windowHeight-70,"SOCl₂",23);
+  reactionButton(1820,windowHeight-70,"TsCl",24);
 
   // render preexisting bonds
   for (let i = 0; i < bonds.length; i++) {
@@ -292,12 +217,10 @@ function draw() {
   if (selectedAtom.length !== 0 && !mousePressed && bondMode) { // selectedAtom is previously defined in cyan selection dot area
     let currentBondSectors = []; // ranges from 0 to 11 for each 30 degree sector
     let currentBondAngles = [];
-    for (let i = 0; i < network.length; i++) {
-      let currentBond = network[i];
-      if (currentBond[0] === selectedAtom[0]) {
-        currentBondAngles.push(currentBond[3]);
-        currentBondSectors.push(Math.floor(currentBond[3]/30)); // TODO: change if network structure changes
-      }
+    let currentNetwork = network[selectedAtom[0]];
+    for (let i = 3; i < currentNetwork.length; i+=3) {
+      currentBondAngles.push(currentNetwork[i]);
+      currentBondSectors.push(Math.floor(currentNetwork[i]/30));
     }
     switch (currentBondSectors.length) {
       case 1:
@@ -466,7 +389,11 @@ function mouseClicked() {
         if (selectedAtom.length !== 0) {
           id1 = selectedAtom[0];
         }
-        network.push([id1, bondType, nextID+1, (360+bondAngle)%360]); // TEMPORARY, CANNOT SUPPORT DELETION
+        if (network.length<=id1) {
+          network.push([id1, bondType, nextID+1, (360+bondAngle)%360]); // TEMPORARY, CANNOT SUPPORT DELETION
+        } else {
+          network[id1].push(bondType, nextID+1, (360+bondAngle)%360);
+        }
         if (selectedAtom.length === 0) {
           atoms.push([id1, previewX1, previewY1, "C"]); // TODO: add support for changing element of new atoms
           nextID++;
@@ -476,7 +403,12 @@ function mouseClicked() {
         if (destinationAtom.length !== 0) {
           id2 = destinationAtom[0];
         }
-        network.push([id2, bondType, id1, (540+bondAngle)%360]); // TEMPORARY, CANNOT SUPPORT DELETION
+        if (network.length<=id2) {
+          network.push([id2, bondType, id1, (360+bondAngle)%360]); // TEMPORARY, CANNOT SUPPORT DELETION
+        } else {
+          network[id2].push(bondType, id1, (360+bondAngle)%360);
+        }
+        console.log(network);
         if (destinationAtom.length === 0) {
           atoms.push([id2, previewX2, previewY2, "C"]);
           nextID++;
@@ -507,7 +439,7 @@ function mouseReleased() {
 }
 
 function toRadians (angle) {
-  return angle * (Math.PI/180); // 360-angle because it's stupid to go clockwise instead of counterclockwise when measuring an angle
+  return angle * (Math.PI/180);
 }
 
 function toDegrees (angle) {
@@ -536,6 +468,39 @@ function bondButton (x,y,bonds) {
     }
   }
 }
+
+function atomButton (x,y,atom,box) {
+  if (element === atom && !bondMode) {fill(205);}
+  if (selectedBox === box) {    
+    stroke(255);
+    rect(x,y,100,100);
+    stroke(0);
+  } else {
+    rect(x,y,100,100);
+  }
+  fill(0);
+  textAlign(CENTER);
+  textSize(48);
+  text(atom,x,y,100,100);
+  fill(230);
+}
+
+
+function reactionButton (x,y,reaction,box) {
+  if (selectedBox === box) {
+    stroke(255);
+    rect(x,y,100,50);
+    stroke(0);
+  } else {
+    rect(x,y,100,50);
+  }
+  fill(0);
+  textAlign(CENTER);
+  textSize(16);
+  text(reaction,x,y,100,50);
+  fill(230);
+}
+
 
 function findBondAngle (x1,y1,x2,y2) {
   let ans = toDegrees(Math.atan(-(y2-y1)/(x2-x1)));
