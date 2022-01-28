@@ -192,7 +192,7 @@ function draw() {
   for (let i = 0; i < atoms.length; i++) {   
     let currentAtom = atoms[i];
     if (currentAtom === -1) {continue;}
-    if (currentAtom[3] !== "C") {
+    if (currentAtom[3] !== "C" && currentAtom[0] !== -1) {
       circle(currentAtom[1],currentAtom[2],20);
       fill(0);
       text(currentAtom[3],currentAtom[1]-10,currentAtom[2]-10,20,30);
@@ -355,9 +355,9 @@ function mouseClicked() {
       element = "Cl"
       bondMode = false;
       break;
-    case 11:
+/*    case 11:
       for (let i = 0; i < atoms.length; i++) {
-        if (atoms[i][3] === "O" && network[i].length === 4 && network[i][2] === 1) {
+        if (atoms[i][3] === "O" && network[i].length === 4 && network[i][1] === 1) {
           network[i][0] = -1;
           atoms[i][0] = -1;
           for (let j = 0; j < bonds.length; j++) {
@@ -366,10 +366,10 @@ function mouseClicked() {
           }
         }
       }
-      break;
+      break;*/
     case 20:
       for (let i = 0; i < atoms.length; i++) {
-        if (atoms[i][3] === "O" && network[i].length === 4 && network[i][2] === 2) {
+        if (atoms[i][3] === "O" && network[i].length === 4 && network[i][1] === 2) {
           network[i][2] = 1;
           for (let j = 0; j < bonds.length; j++) {
             if (bonds[j][1] === i || bonds[j][2] === i) {bonds[j][0]=1;}
@@ -379,7 +379,7 @@ function mouseClicked() {
       break;
     case 21:
       for (let i = 0; i < atoms.length; i++) {
-        if (atoms[i][3] === "O" && network[i].length === 4 && network[i][2] === 1) {
+        if (atoms[i][3] === "O" && network[i].length === 4 && network[i][1] === 1) {
           network[i][2] = 2;
           for (let j = 0; j < bonds.length; j++) {
             if (bonds[j][1] === i || bonds[j][2] === i) {bonds[j][0]=2;}
@@ -389,17 +389,17 @@ function mouseClicked() {
       break;
     case 22:
       for (let i = 0; i < atoms.length; i++) {
-        if (atoms[i][3] === "O" && network[i].length === 4 && network[i][2] === 1) {atoms[i][3] = "Br";}
+        if (atoms[i][3] === "O" && network[i].length === 4 && network[i][1] === 1) {atoms[i][3] = "Br";}
       }
       break;
     case 23:
       for (let i = 0; i < atoms.length; i++) {
-        if (atoms[i][3] === "O" && network[i].length === 4 && network[i][2] === 1) {atoms[i][3] = "Cl";}
+        if (atoms[i][3] === "O" && network[i].length === 4 && network[i][1] === 1) {atoms[i][3] = "Cl";}
       }
       break;
     case 24:
       for (let i = 0; i < atoms.length; i++) {
-        if (atoms[i][3] === "O" && network[i].length === 4 && network[i][2] === 1) {atoms[i][3] = "Ts";}
+        if (atoms[i][3] === "O" && network[i].length === 4 && network[i][1] === 1) {atoms[i][3] = "Ts";}
       }
       break;
     case 0: // when no box is selected
@@ -528,20 +528,50 @@ function findBondAngle (x1,y1,x2,y2) {
   return ans;
 }
 
-function
-
+function makeNewBond(a,t) { // a for atom and t for type (of bond)
     let currentBondSectors = []; // ranges from 0 to 11 for each 30 degree sector
     let currentBondAngles = [];
-    let currentNetwork = network[selectedAtom[0]];
+    let currentNetwork = network[a[0]];
     for (let i = 3; i < currentNetwork.length; i+=3) {
       currentBondAngles.push(currentNetwork[i]);
       currentBondSectors.push(Math.floor(currentNetwork[i]/30));
     }
-    bondAngle = makeNewBond(currentBondSectors,currentBondAngles);
-    previewX1 = selectedAtom[1];
-    previewY1 = selectedAtom[2];
-    previewX2 = selectedAtom[1] + Math.cos(toRadians(360-bondAngle))*bondLength;
-    previewY2 = selectedAtom[2] + Math.sin(toRadians(360-bondAngle))*bondLength;
+    let ba = makeNewBond(currentBondSectors,currentBondAngles);
+    let tempX1 = a[1];
+    let tempY1 = a[2];
+    let tempX2 = a[1] + Math.cos(toRadians(360-ba))*bondLength;
+    let tempY2 = a[2] + Math.sin(toRadians(360-ba))*bondLength;
+        if (ba === -1) {return false;} // -1 means invalid bond
+        let id1 = nextID;
+        if (selectedAtom.length !== 0) {
+          id1 = a[0];
+        }
+        if (network.length<=id1) {
+          network.push([id1, t, nextID+1, (360+ba)%360]); // TEMPORARY, CANNOT SUPPORT DELETION
+        } else {
+          network[id1].push(t, nextID+1, (360+ba)%360);
+        }
+        if (selectedAtom.length === 0) {
+          atoms.push([id1, tempX1, tempY1, "C"]); // TODO: add support for changing element of new atoms
+          nextID++;
+        }
+
+        let id2 = nextID;
+        if (destinationAtom.length !== 0) {
+          id2 = destinationAtom[0];
+        }
+        if (network.length<=id2) {
+          network.push([id2, t, id1, (180+ba)%360]); // TEMPORARY, CANNOT SUPPORT DELETION
+        } else {
+          network[id2].push(t, id1, (180+ba)%360);
+        }
+        if (destinationAtom.length === 0) {
+          atoms.push([id2, tempX2, tempY2, "C"]);
+          nextID++;
+        }
+        bonds.push([t, id1, id2, ba]);
+return;
+}
 
 function calculateBondAngle (bseclist,banglelist) {
     switch (bseclist.length) {
