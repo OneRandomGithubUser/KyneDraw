@@ -382,6 +382,41 @@ function mouseClicked() {
       element = "Cl"
       bondMode = false;
       break;
+    case 20:
+      for (let i = 0; i < atoms.length; i++) {
+        if (atoms[i][3] === "O" && network[i].length === 4 && network[i][2] === 2) {
+          network[i][2] = 1;
+          for (let j = 0; j < bonds.length; j++) {
+            if (bonds[j][1] === i || bonds[j][2] === i) {bonds[j][0]=1;}
+          }
+        }
+      }
+      break;
+    case 21:
+      for (let i = 0; i < atoms.length; i++) {
+        if (atoms[i][3] === "O" && network[i].length === 4 && network[i][2] === 1) {
+          network[i][2] = 2;
+          for (let j = 0; j < bonds.length; j++) {
+            if (bonds[j][1] === i || bonds[j][2] === i) {bonds[j][0]=2;}
+          }
+        }
+      }
+      break;
+    case 22:
+      for (let i = 0; i < atoms.length; i++) {
+        if (atoms[i][3] === "O" && network[i].length === 4) {atoms[i][3] = "Br";}
+      }
+      break;
+    case 23:
+      for (let i = 0; i < atoms.length; i++) {
+        if (atoms[i][3] === "O" && network[i].length === 4) {atoms[i][3] = "Cl";}
+      }
+      break;
+    case 24:
+      for (let i = 0; i < atoms.length; i++) {
+        if (atoms[i][3] === "O" && network[i].length === 4) {atoms[i][3] = "Ts";}
+      }
+      break;
     default: // when no box is selected
       if (bondMode) {
         if (bondAngle === -1) {return false;} // -1 means invalid bond
