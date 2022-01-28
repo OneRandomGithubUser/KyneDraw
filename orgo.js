@@ -155,6 +155,7 @@ function draw() {
   text("SNAP ANGLES",260,windowHeight-70,100,50);
   fill(230);
   
+/*
   reactionButton(260,windowHeight-70,"POCl₃",11);
   reactionButton(380,windowHeight-70,"KOH",12);
   reactionButton(500,windowHeight-70,"HBr",13);
@@ -163,7 +164,7 @@ function draw() {
   reactionButton(860,windowHeight-70,"Br₂, H₂O",16);
   reactionButton(980,windowHeight-70,"H₂, Pd",17);
   reactionButton(1100,windowHeight-70,"Hg(OAc)₂,H₂O,BH₄",18);
-  reactionButton(1220,windowHeight-70,"BH₃",19);
+  reactionButton(1220,windowHeight-70,"BH₃",19);*/
   reactionButton(1340,windowHeight-70,"NaBH₄",20);
   reactionButton(1460,windowHeight-70,"Swern",21);
   reactionButton(1580,windowHeight-70,"PBr₃",22);
@@ -316,6 +317,7 @@ function draw() {
 }
 
 function mouseClicked() {
+console.log(selectedBox);
   switch (selectedBox) {
     case 1:
       bondType = selectedBox;
@@ -370,7 +372,7 @@ function mouseClicked() {
     case 20:
       for (let i = 0; i < atoms.length; i++) {
         if (atoms[i][3] === "O" && network[i].length === 4 && network[i][1] === 2) {
-          network[i][2] = 1;
+          network[i][1] = 1;
           for (let j = 0; j < bonds.length; j++) {
             if (bonds[j][1] === i || bonds[j][2] === i) {bonds[j][0]=1;}
           }
@@ -380,7 +382,7 @@ function mouseClicked() {
     case 21:
       for (let i = 0; i < atoms.length; i++) {
         if (atoms[i][3] === "O" && network[i].length === 4 && network[i][1] === 1) {
-          network[i][2] = 2;
+          network[i][1] = 2;
           for (let j = 0; j < bonds.length; j++) {
             if (bonds[j][1] === i || bonds[j][2] === i) {bonds[j][0]=2;}
           }
