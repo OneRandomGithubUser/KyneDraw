@@ -1,2 +1,0 @@
-# KyneDraw
- Organic Chemistry

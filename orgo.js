@@ -1,3 +1,4 @@
+// Written by Joseph. github.com/OneRandomGithubUser
 const bondLength = 50;
 var bondAngle = 0;
 var atoms = []; // list of the atom ID and then its two coordinates
