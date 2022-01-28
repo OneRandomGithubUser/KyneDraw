@@ -173,6 +173,8 @@ function draw() {
   // render preexisting bonds
   for (let i = 0; i < bonds.length; i++) {
     let currentBond = bonds[i];
+    if (currentBond[1] === -1) {continue;}
+    if (currentBond[2] === -1) {continue;}
     let atom1 = atoms[currentBond[1]];
     let atom2 = atoms[currentBond[2]];
     line(atom1[1], atom1[2], atom2[1], atom2[2]);
@@ -187,8 +189,9 @@ function draw() {
   stroke(255);
   textAlign(CENTER);
   textSize(22);
-  for (let i = 0; i < atoms.length; i++) {
+  for (let i = 0; i < atoms.length; i++) {   
     let currentAtom = atoms[i];
+    if (currentAtom === -1) {continue;}
     if (currentAtom[3] !== "C") {
       circle(currentAtom[1],currentAtom[2],20);
       fill(0);
@@ -222,37 +225,7 @@ function draw() {
       currentBondAngles.push(currentNetwork[i]);
       currentBondSectors.push(Math.floor(currentNetwork[i]/30));
     }
-    switch (currentBondSectors.length) {
-      case 1:
-        let answer = (currentBondSectors[0]*30+120)%360
-        let alternate = (currentBondSectors[0]*30+240)%360
-        if (Math.min(alternate%180,180-(alternate%180)) < Math.min(answer%180,180-(answer%180))) {answer = alternate;}
-        bondAngle = answer;
-        break;
-      case 2:
-        if (Math.abs(currentBondAngles[0] - currentBondAngles[1]) > 180) {
-          bondAngle = (Math.floor((currentBondAngles[0]+currentBondAngles[1])/2))%360;
-        } else {
-          bondAngle = (Math.floor((currentBondAngles[0]+currentBondAngles[1])/2)+180)%360;
-        }
-        break;
-      case 3:
-        if (!currentBondSectors.includes(8) && !currentBondSectors.includes(9)) {
-          bondAngle = 240;
-        } else if (!currentBondSectors.includes(2) && !currentBondSectors.includes(3)) {
-          bondAngle = 60;
-        } else {
-          for (let i = 1; i < 11; i++) {
-            if (!currentBondSectors.includes(i)) {
-              bondAngle = i*30;
-              break;
-            }
-          }
-        }
-        break;
-      default:
-        bondAngle=-1;
-    }
+    bondAngle = calculateBondAngle(currentBondSectors,currentBondAngles);
     previewX1 = selectedAtom[1];
     previewY1 = selectedAtom[2];
     previewX2 = selectedAtom[1] + Math.cos(toRadians(360-bondAngle))*bondLength;
@@ -382,6 +355,18 @@ function mouseClicked() {
       element = "Cl"
       bondMode = false;
       break;
+    case 11:
+      for (let i = 0; i < atoms.length; i++) {
+        if (atoms[i][3] === "O" && network[i].length === 4 && network[i][2] === 1) {
+          network[i][0] = -1;
+          atoms[i][0] = -1;
+          for (let j = 0; j < bonds.length; j++) {
+            if (bonds[j][1] === i) {bonds[j][1]=-1;}
+            if (bonds[j][2] === i) {bonds[j][2]=-1;}
+          }
+        }
+      }
+      break;
     case 20:
       for (let i = 0; i < atoms.length; i++) {
         if (atoms[i][3] === "O" && network[i].length === 4 && network[i][2] === 2) {
@@ -404,20 +389,20 @@ function mouseClicked() {
       break;
     case 22:
       for (let i = 0; i < atoms.length; i++) {
-        if (atoms[i][3] === "O" && network[i].length === 4) {atoms[i][3] = "Br";}
+        if (atoms[i][3] === "O" && network[i].length === 4 && network[i][2] === 1) {atoms[i][3] = "Br";}
       }
       break;
     case 23:
       for (let i = 0; i < atoms.length; i++) {
-        if (atoms[i][3] === "O" && network[i].length === 4) {atoms[i][3] = "Cl";}
+        if (atoms[i][3] === "O" && network[i].length === 4 && network[i][2] === 1) {atoms[i][3] = "Cl";}
       }
       break;
     case 24:
       for (let i = 0; i < atoms.length; i++) {
-        if (atoms[i][3] === "O" && network[i].length === 4) {atoms[i][3] = "Ts";}
+        if (atoms[i][3] === "O" && network[i].length === 4 && network[i][2] === 1) {atoms[i][3] = "Ts";}
       }
       break;
-    default: // when no box is selected
+    case 0: // when no box is selected
       if (bondMode) {
         if (bondAngle === -1) {return false;} // -1 means invalid bond
         let id1 = nextID;
@@ -443,7 +428,6 @@ function mouseClicked() {
         } else {
           network[id2].push(bondType, id1, (180+bondAngle)%360);
         }
-        console.log(network);
         if (destinationAtom.length === 0) {
           atoms.push([id2, previewX2, previewY2, "C"]);
           nextID++;
@@ -543,3 +527,52 @@ function findBondAngle (x1,y1,x2,y2) {
   if (-(y2-y1) < 0) {ans = (180+ans)%360;}
   return ans;
 }
+
+function
+
+    let currentBondSectors = []; // ranges from 0 to 11 for each 30 degree sector
+    let currentBondAngles = [];
+    let currentNetwork = network[selectedAtom[0]];
+    for (let i = 3; i < currentNetwork.length; i+=3) {
+      currentBondAngles.push(currentNetwork[i]);
+      currentBondSectors.push(Math.floor(currentNetwork[i]/30));
+    }
+    bondAngle = makeNewBond(currentBondSectors,currentBondAngles);
+    previewX1 = selectedAtom[1];
+    previewY1 = selectedAtom[2];
+    previewX2 = selectedAtom[1] + Math.cos(toRadians(360-bondAngle))*bondLength;
+    previewY2 = selectedAtom[2] + Math.sin(toRadians(360-bondAngle))*bondLength;
+
+function calculateBondAngle (bseclist,banglelist) {
+    switch (bseclist.length) {
+      case 1:
+        let answer = (bseclist[0]*30+120)%360
+        let alternate = (bseclist[0]*30+240)%360
+        if (Math.min(alternate%180,180-(alternate%180)) < Math.min(answer%180,180-(answer%180))) {answer = alternate;}
+        return answer;
+        break;
+      case 2:
+        if (Math.abs(banglelist[0] - banglelist[1]) > 180) {
+          return (Math.floor((banglelist[0]+banglelist[1])/2))%360;
+        } else {
+          return (Math.floor((banglelist[0]+banglelist[1])/2)+180)%360;
+        }
+        break;
+      case 3:
+        if (!bseclist.includes(8) && !bseclist.includes(9)) {
+          return 240;
+        } else if (!bseclist.includes(2) && !bseclist.includes(3)) {
+          return 60;
+        } else {
+          for (let i = 1; i < 11; i++) {
+            if (!bseclist.includes(i)) {
+              return i*30;
+              break;
+            }
+          }
+        }
+        break;
+      default:
+        return -1;
+    }
+  }
