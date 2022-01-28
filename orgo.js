@@ -149,11 +149,6 @@ function draw() {
   } else {
     rect(260,windowHeight-70,100,50);
   }
-  fill(0);
-  textAlign(CENTER);
-  textSize(16);
-  text("SNAP ANGLES",260,windowHeight-70,100,50);
-  fill(230);
   
 /*
   reactionButton(260,windowHeight-70,"POCl₃",11);
@@ -391,7 +386,7 @@ console.log(selectedBox);
       break;
     case 22:
       for (let i = 0; i < atoms.length; i++) {
-        if (atoms[i][3] === "O" && network[i].length === 4 && network[i][1] === 1) {atoms[i][3] = "Br";}
+        if (atoms[i][3] === "O" && network[i].length === 4 && network[i][1] === 1 && atoms[network[i][2]][3] == "C") {atoms[i][3] = "Br";}
       }
       break;
     case 23:
@@ -530,7 +525,7 @@ function findBondAngle (x1,y1,x2,y2) {
   return ans;
 }
 
-function makeNewBond(a,t) { // a for atom and t for type (of bond)
+/*function makeNewBond(a,t) { // a for atom and t for type (of bond)
     let currentBondSectors = []; // ranges from 0 to 11 for each 30 degree sector
     let currentBondAngles = [];
     let currentNetwork = network[a[0]];
@@ -573,7 +568,7 @@ function makeNewBond(a,t) { // a for atom and t for type (of bond)
         }
         bonds.push([t, id1, id2, ba]);
 return;
-}
+}*/
 
 function calculateBondAngle (bseclist,banglelist) {
     switch (bseclist.length) {
