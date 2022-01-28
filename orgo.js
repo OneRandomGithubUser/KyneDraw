@@ -142,8 +142,8 @@ function draw() {
   atomButton(740,20,"Br",9);
   atomButton(860,20,"Cl",10);
   
-/*
   reactionButton(260,windowHeight-70,"POCl₃",11);
+/*
   reactionButton(380,windowHeight-70,"KOH",12);
   reactionButton(500,windowHeight-70,"HBr",13);
   reactionButton(620,windowHeight-70,"HBr, H₂O₂",14);
@@ -300,11 +300,9 @@ function draw() {
       cachedMouseY = mouseY;
     }
   }
-  console.log("active");
 }
 
 function mouseClicked() {
-console.log(selectedBox);
   switch (selectedBox) {
     case 1:
       bondType = selectedBox;
@@ -344,21 +342,34 @@ console.log(selectedBox);
       element = "Cl"
       bondMode = false;
       break;
-/*    case 11:
+    case 11:
       for (let i = 0; i < atoms.length; i++) {
-        if (atoms[i][3] === "O" && network[i].length === 4 && network[i][1] === 1) {
+        if (atoms[i][3] === "O" && network[i].length === 4 && network[i][1] === 1 && atoms[network[i][2]][3] === "C") { // TODO: make this compatible with deletion
+          let adjacentAtom = network[network[i][2]]; // carbon atom that the oxygen is attached to
+          var temp = []; // atom that is currently the most substituted
+          var temp2 = 0; // index of the most substituted atom within the adjacentAtom's network
+/*          for (let j = 2; j < adjacentAtom.length; j++) { // loop through indicies of atoms attached to the adjacent atom
+            if (j === i) {continue;} // don't look at the original atom twice
+            if (adjacentAtom.length>temp.length && adjacentAtom.length < 3*4+1) {
+              temp = network[j];
+              temp2 = j;
+            } // get most substituted atom that has less than 4 bonds
+          }
+console.log(temp);*/
+          if (temp === []) {break;} // methanol
+          network[network[i][2]][temp2-1]++;
           network[i][0] = -1;
           atoms[i][0] = -1;
           for (let j = 0; j < bonds.length; j++) {
-            if (bonds[j][1] === i) {bonds[j][1]=-1;}
-            if (bonds[j][2] === i) {bonds[j][2]=-1;}
+            if (bonds[j][1] === i) {bonds[j][1]=-1;} // remove OH
+            if (bonds[j][2] === i) {bonds[j][2]=-1;} // remove OH
           }
         }
       }
-      break;*/
+      break;
     case 20:
       for (let i = 0; i < atoms.length; i++) {
-        if (atoms[i][3] === "O" && network[i].length === 4 && network[i][1] === 2) {
+        if (atoms[i][3] === "O" && network[i].length === 4 && network[i][1] === 2 && network[network[i][2]][3] === "C") {
           network[i][1] = 1;
           for (let j = 0; j < bonds.length; j++) {
             if (bonds[j][1] === i || bonds[j][2] === i) {bonds[j][0]=1;}
@@ -368,7 +379,7 @@ console.log(selectedBox);
       break;
     case 21:
       for (let i = 0; i < atoms.length; i++) {
-        if (atoms[i][3] === "O" && network[i].length === 4 && network[i][1] === 1) {
+        if (atoms[i][3] === "O" && network[i].length === 4 && network[i][1] === 1 && network[network[i][2]][3] === "C") {
           network[i][1] = 2;
           for (let j = 0; j < bonds.length; j++) {
             if (bonds[j][1] === i || bonds[j][2] === i) {bonds[j][0]=2;}
@@ -383,12 +394,12 @@ console.log(selectedBox);
       break;
     case 23:
       for (let i = 0; i < atoms.length; i++) {
-        if (atoms[i][3] === "O" && network[i].length === 4 && network[i][1] === 1) {atoms[i][3] = "Cl";}
+        if (atoms[i][3] === "O" && network[i].length === 4 && network[i][1] === 1 && network[network[i][2]][3] === "C") {atoms[i][3] = "Cl";}
       }
       break;
     case 24:
       for (let i = 0; i < atoms.length; i++) {
-        if (atoms[i][3] === "O" && network[i].length === 4 && network[i][1] === 1) {atoms[i][3] = "Ts";}
+        if (atoms[i][3] === "O" && network[i].length === 4 && network[i][1] === 1 && network[network[i][2]][3] === "C") {atoms[i][3] = "Ts";}
       }
       break;
     case 0: // when no box is selected
