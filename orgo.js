@@ -141,14 +141,6 @@ function draw() {
   atomButton(620,20,"N",8);
   atomButton(740,20,"Br",9);
   atomButton(860,20,"Cl",10);
-
-  if (selectedBox === 11) {
-    stroke(255);
-    rect(260,windowHeight-70,100,50);
-    stroke(0);
-  } else {
-    rect(260,windowHeight-70,100,50);
-  }
   
 /*
   reactionButton(260,windowHeight-70,"POCl₃",11);
