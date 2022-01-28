@@ -404,9 +404,9 @@ function mouseClicked() {
           id2 = destinationAtom[0];
         }
         if (network.length<=id2) {
-          network.push([id2, bondType, id1, (360+bondAngle)%360]); // TEMPORARY, CANNOT SUPPORT DELETION
+          network.push([id2, bondType, id1, (180+bondAngle)%360]); // TEMPORARY, CANNOT SUPPORT DELETION
         } else {
-          network[id2].push(bondType, id1, (360+bondAngle)%360);
+          network[id2].push(bondType, id1, (180+bondAngle)%360);
         }
         console.log(network);
         if (destinationAtom.length === 0) {
