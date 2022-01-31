@@ -27,7 +27,8 @@ let windowHeight = 0;
 let windowLength = 0;
 var cachedMouseX = 0.0;
 var cachedMouseY = 0.0;
-var angleSnap = false;
+var angleSnap = true;
+// TODO: bad practice to make so many global variables
 
 function setup() {
   // createCanvas must be the first statement
@@ -63,14 +64,16 @@ function draw() {
       selectedBox = 9; // Br
     } else if (mouseX < 960 && mouseX > 860) {
       selectedBox = 10; // Cl
+    } else if (mouseY < 70) {
+      if (mouseX > windowWidth-120 && mouseX < windowWidth-20) {
+        selectedBox = 4;
+      } else if (mouseX > windowWidth-240 && mouseX < windowWidth-140) {
+        selectedBox = 5;
+      }
     }
   }
   if (mouseY > windowHeight-70 && mouseY < windowHeight-20) {
-    if (mouseX < 120 && mouseX > 20) {
-      selectedBox = 4;
-    } else if (mouseX < 240 && mouseX > 140) {
-      selectedBox = 5;
-    } else if (mouseX < 360 && mouseX > 260) {
+    if (mouseX < 360 && mouseX > 260) {
       selectedBox = 11; // HBr
     } else if (mouseX < 480 && mouseX > 380) {
       selectedBox = 12; // HBr, H₂O₂
@@ -109,15 +112,15 @@ function draw() {
   }
   if (selectedBox === 4) {
     stroke(255);
-    rect(20,windowHeight-70,100,50);
+    rect(windowWidth-120,20,100,50);
     stroke(0);
   } else {
-    rect(20,windowHeight-70,100,50);
+    rect(windowWidth-120,20,100,50);
   }
   fill(0);
   textAlign(CENTER);
   textSize(16);
-  text("SNAP ANGLES",20,windowHeight-70,100,50);
+  text("SNAP ANGLES",windowWidth-120,20,100,50);
   fill(230);
 
   if (!angleSnap) {
@@ -125,15 +128,15 @@ function draw() {
   }
   if (selectedBox === 5) {
     stroke(255);
-    rect(140,windowHeight-70,100,50);
+    rect(windowWidth-240,20,100,50);
     stroke(0);
   } else {
-    rect(140,windowHeight-70,100,50);
+    rect(windowWidth-240,20,100,50);
   }
   fill(0);
   textAlign(CENTER); // TODO: change this to (CENTER,CENTER) once version 1.4.1 of p5.js is released on January 31, 2022
   textSize(16);
-  text("FREEFORM ANGLES",140,windowHeight-70,100,50);
+  text("FREEFORM ANGLES",windowWidth-240,20,100,50);
   fill(230);
 
   atomButton(380,20,"C",6);
