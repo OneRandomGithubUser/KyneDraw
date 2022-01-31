@@ -143,7 +143,6 @@ function draw() {
   atomButton(860,20,"Cl",10);
   
   reactionButton(260,windowHeight-70,"POCl₃",11);
-/*
   reactionButton(380,windowHeight-70,"KOH",12);
   reactionButton(500,windowHeight-70,"HBr",13);
   reactionButton(620,windowHeight-70,"HBr, H₂O₂",14);
@@ -151,7 +150,7 @@ function draw() {
   reactionButton(860,windowHeight-70,"Br₂, H₂O",16);
   reactionButton(980,windowHeight-70,"H₂, Pd",17);
   reactionButton(1100,windowHeight-70,"Hg(OAc)₂,H₂O,BH₄",18);
-  reactionButton(1220,windowHeight-70,"BH₃",19);*/
+  reactionButton(1220,windowHeight-70,"BH₃",19);
   reactionButton(1340,windowHeight-70,"NaBH₄",20);
   reactionButton(1460,windowHeight-70,"Swern",21);
   reactionButton(1580,windowHeight-70,"PBr₃",22);
