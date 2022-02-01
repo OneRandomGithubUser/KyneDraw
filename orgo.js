@@ -8,7 +8,8 @@ var element = "C";
 var reagents = "";
 var bondMode = true;
 var bonds = []; // list of the bond type and then the two atoms, named by their ID, and then the bond angle
-var network = []; // list of one atom ID, then alternating between a bond type and the second atom ID and then the bond angle
+var oldNetwork = []; // list of one atom ID, then alternating between a bond type and the second atom ID and then the bond angle
+var network = []; // atom id (int), atom element (string), atomX (number), atomY (number), bond1 type (number), bond1 destination atom id, etc.
 var closestDistance = 0; // 20 is the maximum distance for selection
 var selectedAtom = []; // selected atom when snap-on is in effect
 var destinationAtom = [];
@@ -16,7 +17,7 @@ var previewX1 = 0;
 var previewY1 = 0;
 var previewX2 = 0;
 var previewY2 = 0; // to determine where the cursor is, with snap-on
-const selectionDistance = 20;
+const selectionDistance = 15;
 const destinationDistance = 5;
 var mousePressed = false;
 var id1 = 0;
@@ -25,9 +26,10 @@ const minWidth = 1920;
 const minHeight = 210;
 let windowHeight = 0;
 let windowLength = 0;
-var cachedMouseX = 0.0;
-var cachedMouseY = 0.0;
+var previousMouseX = 0.0;
+var previousMouseY = 0.0;
 var angleSnap = true;
+var validBond = true;
 // TODO: bad practice to make so many global variables
 
 function setup() {
@@ -38,68 +40,75 @@ function setup() {
   console.log("Written by Joseph. github.com/OneRandomGithubUser");
 }
 
+let font;
+function preload() {
+  font = loadFont('./arial.ttf');
+}
+
 function draw() {
   windowWidth = Math.max(window.innerWidth-16,minWidth);
   windowHeight = Math.max(window.innerHeight-20,minHeight);
   resizeCanvas(windowWidth,windowHeight);
   background(255); // Set the background to white
+  let cachedMouseX = mouseX;
+  let cachedMouseY = mouseY;
 
   // draw UI
   fill(230);
   selectedBox = 0;
-  if (mouseY < 120 && mouseY > 20) {
-    if (mouseX < 120 && mouseX > 20) {
+  if (cachedMouseY < 120 && cachedMouseY > 20) {
+    if (cachedMouseX < 120 && cachedMouseX > 20) {
       selectedBox = 1; // single bond
-    } else if (mouseX < 240 && mouseX > 140) {
+    } else if (cachedMouseX < 240 && cachedMouseX > 140) {
       selectedBox = 2; // double bond
-    } else if (mouseX < 360 && mouseX > 260) {
+    } else if (cachedMouseX < 360 && cachedMouseX > 260) {
       selectedBox = 3; // triple bond
-    } else if (mouseX < 480 && mouseX > 380) {
+    } else if (cachedMouseX < 480 && cachedMouseX > 380) {
       selectedBox = 6; // C
-    } else if (mouseX < 600 && mouseX > 500) {
+    } else if (cachedMouseX < 600 && cachedMouseX > 500) {
       selectedBox = 7; // O
-    } else if (mouseX < 720 && mouseX > 620) {
+    } else if (cachedMouseX < 720 && cachedMouseX > 620) {
       selectedBox = 8; // N
-    } else if (mouseX < 840 && mouseX > 740) {
+    } else if (cachedMouseX < 840 && cachedMouseX > 740) {
       selectedBox = 9; // Br
-    } else if (mouseX < 960 && mouseX > 860) {
+    } else if (cachedMouseX < 960 && cachedMouseX > 860) {
       selectedBox = 10; // Cl
-    } else if (mouseY < 70) {
-      if (mouseX > windowWidth-120 && mouseX < windowWidth-20) {
+    } else if (cachedMouseY < 70) {
+      if (cachedMouseX > windowWidth-120 && cachedMouseX < windowWidth-20) {
         selectedBox = 4;
-      } else if (mouseX > windowWidth-240 && mouseX < windowWidth-140) {
+      } else if (cachedMouseX > windowWidth-240 && cachedMouseX < windowWidth-140) {
         selectedBox = 5;
       }
     }
   }
-  if (mouseY > windowHeight-70 && mouseY < windowHeight-20) {
-    if (mouseX < 360 && mouseX > 260) {
+  if (cachedMouseY > windowHeight-70 && cachedMouseY < windowHeight-20) {
+    if (cachedMouseX < 360 && cachedMouseX > 260) {
       selectedBox = 11; // HBr
-    } else if (mouseX < 480 && mouseX > 380) {
+    } else if (cachedMouseX < 480 && cachedMouseX > 380) {
       selectedBox = 12; // HBr, H₂O₂
-    } else if (mouseX < 600 && mouseX > 500) {
+    } else if (cachedMouseX < 600 && cachedMouseX > 500) {
       selectedBox = 13; // Br₂
-    } else if (mouseX < 720 && mouseX > 620) {
+    } else if (cachedMouseX < 720 && cachedMouseX > 620) {
       selectedBox = 14; // Br₂, H₂O
-    } else if (mouseX < 840 && mouseX > 740) {
+    } else if (cachedMouseX < 840 && cachedMouseX > 740) {
       selectedBox = 15; // H₂, Pd
-    } else if (mouseX < 960 && mouseX > 860) {
+    } else if (cachedMouseX < 960 && cachedMouseX > 860) {
       selectedBox = 16; // CH₂I₂
-    } else if (mouseX < 1080 && mouseX > 980) {
+    } else if (cachedMouseX < 1080 && cachedMouseX > 980) {
       selectedBox = 17; // Hg(OAc)₂,H₂O,BH₄
-    } else if (mouseX < 1200 && mouseX > 1100) {
+    } else if (cachedMouseX < 1200 && cachedMouseX > 1100) {
       selectedBox = 18; // BH₃
-    } else if (mouseX < 1320 && mouseX > 1220) {
+    } else if (cachedMouseX < 1320 && cachedMouseX > 1220) {
       selectedBox = 19; // m-CPBA
-    } else if (mouseX < 1440 && mouseX > 1340) {
+    } else if (cachedMouseX < 1440 && cachedMouseX > 1340) {
       selectedBox = 20; // OsO₄, H₂O
-    } else if (mouseX < 1560 && mouseX > 1460) {
+    } else if (cachedMouseX < 1560 && cachedMouseX > 1460) {
       selectedBox = 21;
-    } else if (mouseX < 1680 && mouseX > 1580) {
+    } else if (cachedMouseX < 1680 && cachedMouseX > 1580) {
       selectedBox = 22;
-    } else if (mouseX < 1800 && mouseX > 1700) {
+    } else if (cachedMouseX < 1800 && cachedMouseX > 1700) {
       selectedBox = 23;
-    } else if (mouseX < 1920 && mouseX > 1820) {
+    } else if (cachedMouseX < 1920 && cachedMouseX > 1820) {
       selectedBox = 24;
     } // TODO: fix the comments above
   }
@@ -120,7 +129,11 @@ function draw() {
   fill(0);
   textAlign(CENTER);
   textSize(16);
+  noStroke();
+  textStyle(BOLD);
   text("SNAP ANGLES",windowWidth-120,20,100,50);
+  textStyle(NORMAL);
+  stroke(0);
   fill(230);
 
   if (!angleSnap) {
@@ -136,7 +149,11 @@ function draw() {
   fill(0);
   textAlign(CENTER); // TODO: change this to (CENTER,CENTER) once version 1.4.1 of p5.js is released on January 31, 2022
   textSize(16);
+  noStroke();
+  textStyle(BOLD);
   text("FREEFORM ANGLES",windowWidth-240,20,100,50);
+  textStyle(NORMAL);
+  stroke(0);
   fill(230);
 
   atomButton(380,20,"C",6);
@@ -160,88 +177,128 @@ function draw() {
   reactionButton(1700,windowHeight-70,"SOCl₂",23);
   reactionButton(1820,windowHeight-70,"TsCl",24);
 
-  // render preexisting bonds
-  for (let i = 0; i < bonds.length; i++) {
-    let currentBond = bonds[i];
-    if (currentBond[1] === -1) {continue;}
-    if (currentBond[2] === -1) {continue;}
-    let atom1 = atoms[currentBond[1]];
-    let atom2 = atoms[currentBond[2]];
-    line(atom1[1], atom1[2], atom2[1], atom2[2]);
-    if (currentBond[0]===2||currentBond[0]===3) {
-      {lineOffset(atom1[1], atom1[2], atom2[1], atom2[2], currentBond[3], 5);}
-      if (currentBond[0]===3) {lineOffset(atom1[1], atom1[2], atom2[1], atom2[2], currentBond[3], -5);}
-    }
-  }
+  selectedAtom = []; // selected atom when snap-on is in effect
+  closestDistance = selectionDistance;
+  let distance = 0;
+  validBond = true;
 
-  // render preexisting atoms
-  fill(255);
-  stroke(255);
-  textAlign(CENTER);
-  textSize(22);
-  for (let i = 0; i < atoms.length; i++) {   
-    let currentAtom = atoms[i];
-    if (currentAtom === -1) {continue;}
-    if (currentAtom[3] !== "C" && currentAtom[0] !== -1) {
-      circle(currentAtom[1],currentAtom[2],20);
-      fill(0);
-      text(currentAtom[3],currentAtom[1]-10,currentAtom[2]-10,20,30);
-      fill(255);
-    }
-  }
-  fill(0);
-  stroke(0);
+  // cycle through all atoms
+  for (let i = 0; i < network.length; i++) {
+    let currentAtom = network[i];
 
-  // calculate closest selected atom
-  if (!mousePressed) {
-    selectedAtom = []; // selected atom when snap-on is in effect
-    closestDistance = selectionDistance;
-    for (let i = 0; i < atoms.length; i++) {
-      let currentAtom = atoms[i];
-      let distance = Math.sqrt((mouseX-currentAtom[1])**2 + (mouseY-currentAtom[2])**2);
-      if (distance < selectionDistance && distance < closestDistance) {
+    // render preexisting bonds
+    if (currentAtom.length !== 4) {
+      for (let j = 4; j < currentAtom.length; j+=2) {
+        if (currentAtom[j+1] > currentAtom[0]) {
+          bond(currentAtom[2], currentAtom[3], network[currentAtom[j+1]][2], network[currentAtom[j+1]][3], currentAtom[j]);
+        }
+      }
+    }
+    
+    // render preexisting atoms
+    noStroke();
+    if (currentAtom[1] === -1) {
+      continue; // deleted atom
+    } else {
+      let label = currentAtom[1];
+      if (currentAtom[1] === "C") {
+        if (currentAtom.length === 4) {
+          label = "CH₄"
+        } else {
+          label = "";
+        }
+      } else if (label === "O") {
+        switch (currentAtom.length) {
+          case 4:
+            label = "H₂O";
+            break;
+          case 6:
+            label = "OH";
+            break;
+        }
+      } else if (label === "N") {
+        switch (currentAtom.length) {
+          case 4:
+            label = "NH₃";
+            break;
+          case 6:
+            label = "NH₂";
+            break;
+          case 8:
+            label = "NH";
+            break;
+        }
+      }
+      if (label !== "") {
+        textAlign(CENTER);
+        fill(255);
+        rectMode(CENTER);
+        let boundingBox = font.textBounds(label, currentAtom[2], currentAtom[3], 20, CENTER);
+        rectMode(CORNER);
+        rect(boundingBox.x-5, boundingBox.y-5, boundingBox.w+10, boundingBox.h+10);
+        fill(0);
+        textSize(20);
+        rectMode(CENTER);
+        text(label, currentAtom[2], currentAtom[3]);
+        rectMode(CORNER);
+        fill(255);
+      }
+    }
+    stroke(0);
+
+    // calculate closest selected atom as long as the mouse is not pressed
+    if (!mousePressed) {
+      let distance = Math.sqrt((cachedMouseX-currentAtom[2])**2 + (cachedMouseY-currentAtom[3])**2);
+      if (distance < closestDistance) {
         closestDistance = distance;
         selectedAtom = currentAtom;
       }
     }
   }
 
-  // render preview line and calculate new bond angle
+  // calculate new bond angle
   if (selectedAtom.length !== 0 && !mousePressed && bondMode) { // selectedAtom is previously defined in cyan selection dot area
-    let currentBondSectors = []; // ranges from 0 to 11 for each 30 degree sector
+    let currentBondSectors = []; // ranges from 0 to 11 for each 30 degree sector, starting at 15 degrees
     let currentBondAngles = [];
-    let currentNetwork = network[selectedAtom[0]];
-    for (let i = 3; i < currentNetwork.length; i+=3) {
-      currentBondAngles.push(currentNetwork[i]);
-      currentBondSectors.push(Math.floor(currentNetwork[i]/30));
+    if (selectedAtom.length !== 4) {
+      for (let i = 5; i < selectedAtom.length; i+=2) {
+        currentBondAngles.push(Math.round(findBondAngle(selectedAtom[2], selectedAtom[3], network[selectedAtom[i]][2], network[selectedAtom[i]][3])));
+        currentBondSectors.push(Math.floor((findBondAngle(selectedAtom[2], selectedAtom[3], network[selectedAtom[i]][2], network[selectedAtom[i]][3])+15)/30));
+      }
     }
     bondAngle = calculateBondAngle(currentBondSectors,currentBondAngles);
-    previewX1 = selectedAtom[1];
-    previewY1 = selectedAtom[2];
-    previewX2 = selectedAtom[1] + Math.cos(toRadians(360-bondAngle))*bondLength;
-    previewY2 = selectedAtom[2] + Math.sin(toRadians(360-bondAngle))*bondLength;
-  } else if (mousePressed) {
+    previewX1 = selectedAtom[2];
+    previewY1 = selectedAtom[3];
+    previewX2 = selectedAtom[2] + Math.cos(toRadians(360-bondAngle))*bondLength;
+    previewY2 = selectedAtom[3] + Math.sin(toRadians(360-bondAngle))*bondLength;
+  } else if (mousePressed) { // on mouse press, stop updating previewX1 and previewY1
     if (angleSnap) {
-      bondAngle = Math.floor((findBondAngle(previewX1,previewY1,mouseX,mouseY)+15)/30)*30 // round bond angle to nearest 30 degrees
+      bondAngle = Math.floor((findBondAngle(previewX1,previewY1,cachedMouseX,mouseY)+15)/30)*30 // round bond angle to nearest 30 degrees
       previewX2 = previewX1 + Math.cos(toRadians(360-bondAngle))*bondLength;
       previewY2 = previewY1 + Math.sin(toRadians(360-bondAngle))*bondLength;
     } else {
-      previewX2 = mouseX;
+      previewX2 = cachedMouseX;
       previewY2 = mouseY;
-      bondAngle = findBondAngle(previewX1,previewY1,mouseX,mouseY);
+      bondAngle = findBondAngle(previewX1,previewY1,cachedMouseX,mouseY);
     }
-  } else {
-    previewX1 = mouseX;
+  } else { // fallback
+    previewX1 = cachedMouseX;
     previewY1 = mouseY;
-    previewX2 = mouseX + Math.cos(toRadians(360-bondAngle))*bondLength;
+    previewX2 = cachedMouseX + Math.cos(toRadians(360-bondAngle))*bondLength;
     previewY2 = mouseY + Math.sin(toRadians(360-bondAngle))*bondLength;
     bondAngle = 330;
   }
   
   // render cyan/red selection dot
   if (selectedAtom.length !== 0) {
-    if (bondAngle === -1) {fill(255,0,0);} else {fill(48,227,255);}
-    circle(selectedAtom[1],selectedAtom[2],10);
+    if (bondAngle === -1) {
+      fill(255,0,0);
+      validBond = false;
+    } else {
+      fill(48,227,255);
+      validBond = true;
+    }
+    circle(selectedAtom[2],selectedAtom[3],10);
     fill(255);
   }
 
@@ -249,32 +306,45 @@ function draw() {
     // calculate destination atom
     destinationAtom = []; // destination atom
     closestDistance = destinationDistance;
-    for (let i = 0; i < atoms.length; i++) {
-      let currentAtom = atoms[i];
-      let distance = Math.sqrt((previewX2-currentAtom[1])**2 + (previewY2-currentAtom[2])**2);
-      if (distance < destinationDistance && distance < closestDistance) {
-        closestDistance = distance;
-        destinationAtom = currentAtom;
+    for (let i = 0; i < network.length; i++) {
+      let currentAtom = network[i];
+      let distance = Math.sqrt((previewX2-currentAtom[2])**2 + (previewY2-currentAtom[3])**2);
+      if (distance < destinationDistance && distance < closestDistance && validBond) {
+        if (destinationAtom.length > 10) {
+          continue;
+        } else if (selectedAtom.length > 4) {
+          for (let i = 5; i < selectedAtom.length; i += 2) {
+            if (selectedAtom[i] === destinationAtom[0]) {
+              validBond = false; // TODO: why does this not prevent you from doing two of the same bond???
+              break;
+            }
+          }
+        }
+        if (validBond) {
+          closestDistance = distance;
+          destinationAtom = currentAtom;
+        }
       }
     }
 
     // render cyan destination dot
     if (destinationAtom.length !== 0) {
       fill(48,227,255);
-      circle(destinationAtom[1],destinationAtom[2],10);
+      circle(destinationAtom[2],destinationAtom[3],10);
       fill(255);
-      previewX2 = destinationAtom[1];
-      previewY2 = destinationAtom[2];
+      previewX2 = destinationAtom[2];
+      previewY2 = destinationAtom[3];
       bondAngle = findBondAngle(previewX1,previewY1,previewX2,previewY2);
     }
 
-    // draw preview bond
-    if (bondAngle !== -1) {
-      line(previewX1, previewY1, previewX2, previewY2);
-      if (bondType === 2 || bondType === 3) {
-        lineOffset(previewX1, previewY1, previewX2, previewY2, bondAngle, 5);
-        if (bondType === 3) {lineOffset(previewX1, previewY1, previewX2, previewY2, bondAngle,-5);}
-      }
+    // draw preview
+    if (!bondMode) {
+      console.log("sadf");
+      rectMode(CENTER);
+      text(element, cachedMouseX, cachedMouseY);
+      rectMode(CORNER);
+    } else if (validBond) {
+      bond(previewX1, previewY1, previewX2, previewY2, bondType);
     }
   }
 
@@ -295,11 +365,11 @@ function draw() {
     text("KyneDraw",0,windowHeight/2,windowWidth);
     stroke(0);
   } else {
-    if (cachedMouseX === mouseX && cachedMouseY === mouseY) {
+    if (previousMouseX === cachedMouseX && previousMouseY === mouseY) {
       noLoop();
     } else {
-      cachedMouseX = mouseX;
-      cachedMouseY = mouseY;
+      previousMouseX = cachedMouseX;
+      previousMouseY = cachedMouseY;
     }
   }
 }
@@ -346,21 +416,13 @@ function mouseClicked() {
       break;
     case 11:
       for (let i = 0; i < atoms.length; i++) {
-        if (atoms[i][3] === "O" && network[i].length === 4 && network[i][1] === 1 && atoms[network[i][2]][3] === "C") { // TODO: make this compatible with deletion
-          let adjacentAtom = network[network[i][2]]; // carbon atom that the oxygen is attached to
+        if (atoms[i][3] === "O" && [i].length === 4 && [i][1] === 1 && atoms[oldNetwork[i][2]][3] === "C") { // TODO: make this compatible with deletion
+          let adjacentAtom = oldNetwork[oldNetwork[i][2]]; // carbon atom that the oxygen is attached to
           var temp = []; // atom that is currently the most substituted
           var temp2 = 0; // index of the most substituted atom within the adjacentAtom's network
-/*          for (let j = 2; j < adjacentAtom.length; j++) { // loop through indicies of atoms attached to the adjacent atom
-            if (j === i) {continue;} // don't look at the original atom twice
-            if (adjacentAtom.length>temp.length && adjacentAtom.length < 3*4+1) {
-              temp = network[j];
-              temp2 = j;
-            } // get most substituted atom that has less than 4 bonds
-          }
-console.log(temp);*/
           if (temp === []) {break;} // methanol
-          network[network[i][2]][temp2-1]++;
-          network[i][0] = -1;
+          oldNetwork[oldNetwork[i][2]][temp2-1]++;
+          oldNetwork[i][0] = -1;
           atoms[i][0] = -1;
           for (let j = 0; j < bonds.length; j++) {
             if (bonds[j][1] === i) {bonds[j][1]=-1;} // remove OH
@@ -371,8 +433,8 @@ console.log(temp);*/
       break;
     case 20:
       for (let i = 0; i < atoms.length; i++) {
-        if (atoms[i][3] === "O" && network[i].length === 4 && network[i][1] === 2 && network[network[i][2]][3] === "C") {
-          network[i][1] = 1;
+        if (atoms[i][3] === "O" && oldNetwork[i].length === 4 && oldNetwork[i][1] === 2 && oldNetwork[oldNetwork[i][2]][3] === "C") {
+          oldNetwork[i][1] = 1;
           for (let j = 0; j < bonds.length; j++) {
             if (bonds[j][1] === i || bonds[j][2] === i) {bonds[j][0]=1;}
           }
@@ -381,8 +443,8 @@ console.log(temp);*/
       break;
     case 21:
       for (let i = 0; i < atoms.length; i++) {
-        if (atoms[i][3] === "O" && network[i].length === 4 && network[i][1] === 1 && network[network[i][2]][3] === "C") {
-          network[i][1] = 2;
+        if (atoms[i][3] === "O" && oldNetwork[i].length === 4 && oldNetwork[i][1] === 1 && oldNetwork[oldNetwork[i][2]][3] === "C") {
+          oldNetwork[i][1] = 2;
           for (let j = 0; j < bonds.length; j++) {
             if (bonds[j][1] === i || bonds[j][2] === i) {bonds[j][0]=2;}
           }
@@ -390,57 +452,60 @@ console.log(temp);*/
       }
       break;
     case 22:
-      for (let i = 0; i < atoms.length; i++) {
-        if (atoms[i][3] === "O" && network[i].length === 4 && network[i][1] === 1 && atoms[network[i][2]][3] == "C") {atoms[i][3] = "Br";}
+      for (let i = 0; i < network.length; i++) {
+        if (network[i][1] === "O" && network[i].length === 5 && network[i][4] === 1 && network[network[i][5]][3] === "C") {network[i][5] = "Br";}
       }
       break;
     case 23:
-      for (let i = 0; i < atoms.length; i++) {
-        if (atoms[i][3] === "O" && network[i].length === 4 && network[i][1] === 1 && network[network[i][2]][3] === "C") {atoms[i][3] = "Cl";}
+      for (let i = 0; i < network.length; i++) {
+        if (network[i][1] === "O" && network[i].length === 5 && network[i][4] === 1 && network[network[i][5]][3] === "C") {network[i][5] = "Cl";}
       }
       break;
     case 24:
-      for (let i = 0; i < atoms.length; i++) {
-        if (atoms[i][3] === "O" && network[i].length === 4 && network[i][1] === 1 && network[network[i][2]][3] === "C") {atoms[i][3] = "Ts";}
+      for (let i = 0; i < network.length; i++) {
+        if (network[i][1] === "O" && network[i].length === 5 && network[i][4] === 1 && network[network[i][5]][3] === "C") {network[i][5] = "Ts";}
       }
       break;
     case 0: // when no box is selected
-      if (bondMode) {
-        if (bondAngle === -1) {return false;} // -1 means invalid bond
-        let id1 = nextID;
-        if (selectedAtom.length !== 0) {
-          id1 = selectedAtom[0];
-        }
-        if (network.length<=id1) {
-          network.push([id1, bondType, nextID+1, (360+bondAngle)%360]); // TEMPORARY, CANNOT SUPPORT DELETION
-        } else {
-          network[id1].push(bondType, nextID+1, (360+bondAngle)%360);
-        }
-        if (selectedAtom.length === 0) {
-          atoms.push([id1, previewX1, previewY1, "C"]); // TODO: add support for changing element of new atoms
-          nextID++;
-        }
-
-        let id2 = nextID;
-        if (destinationAtom.length !== 0) {
-          id2 = destinationAtom[0];
-        }
-        if (network.length<=id2) {
-          network.push([id2, bondType, id1, (180+bondAngle)%360]); // TEMPORARY, CANNOT SUPPORT DELETION
-        } else {
-          network[id2].push(bondType, id1, (180+bondAngle)%360);
-        }
-        if (destinationAtom.length === 0) {
-          atoms.push([id2, previewX2, previewY2, "C"]);
-          nextID++;
-        }
-        bonds.push([bondType, id1, id2, bondAngle]);
-        break;
-      } else {
-        atoms[selectedAtom[0]][3] = element;
+    if (bondMode) {
+      element = "C";
+      if (bondAngle === -1) {return false;} // -1 means invalid bond
+      
+      let id1 = nextID;
+      if (selectedAtom.length !== 0) {
+        id1 = selectedAtom[0];
+      } else {        
+        nextID++;
       }
+      let id2 = nextID;
+      if (destinationAtom.length !== 0) {
+        id2 = destinationAtom[0];
+      } else {
+        nextID++;
+      }
+
+      if (network.length<=id1) {
+        network.push([id1, element, previewX1, previewY1, bondType, id2]); // TEMPORARY, CANNOT SUPPORT DELETION
+      } else {
+        network[id1].push(bondType, id2);
+      }
+      if (network.length<=id2) {
+        network.push([id2, element, previewX2, previewY2, bondType, id1]); // TEMPORARY, CANNOT SUPPORT DELETION
+      } else {
+        network[id2].push(bondType, id1);
+      }
+      break;
+    } else {
+      if (selectedAtom.length !== 0) {
+        network[selectedAtom[0]][1] = element;
+      } else {
+        network.push([nextID, element, previewX1, previewY1]);
+        nextID++;
+      }
+    }
   }
   loop();
+  console.log(network);
   return false;
 }
 
@@ -467,7 +532,8 @@ function toDegrees (angle) {
   return angle * (180/Math.PI);
 }
 
-function lineOffset (x1,y1,x2,y2,angle,offset) {
+function lineOffset (x1,y1,x2,y2,offset) {
+  let angle = findBondAngle(x1,y1,x2,y2);
   line(x1-Math.sin(toRadians(angle))*offset, y1-Math.cos(toRadians(angle))*offset, x2-Math.sin(toRadians(angle))*offset, y2-Math.cos(toRadians(angle))*offset);
 }
 
@@ -483,9 +549,9 @@ function bondButton (x,y,bonds) {
   fill(230);
   line(x+50-Math.cos(toRadians(30))*bondLength/2,y+50-Math.sin(toRadians(30))*bondLength/2,x+50+Math.cos(toRadians(30))*bondLength/2,y+50+Math.sin(toRadians(30))*bondLength/2);
   if (bonds > 1) {
-    lineOffset(x+50-Math.cos(toRadians(30))*bondLength/2,y+50-Math.sin(toRadians(30))*bondLength/2,x+50+Math.cos(toRadians(30))*bondLength/2,y+50+Math.sin(toRadians(30))*bondLength/2,330,5);
+    lineOffset(x+50-Math.cos(toRadians(30))*bondLength/2,y+50-Math.sin(toRadians(30))*bondLength/2,x+50+Math.cos(toRadians(30))*bondLength/2,y+50+Math.sin(toRadians(30))*bondLength/2,5);
     if (bonds > 2) {
-      lineOffset(x+50-Math.cos(toRadians(30))*bondLength/2,y+50-Math.sin(toRadians(30))*bondLength/2,x+50+Math.cos(toRadians(30))*bondLength/2,y+50+Math.sin(toRadians(30))*bondLength/2,330,-5);
+      lineOffset(x+50-Math.cos(toRadians(30))*bondLength/2,y+50-Math.sin(toRadians(30))*bondLength/2,x+50+Math.cos(toRadians(30))*bondLength/2,y+50+Math.sin(toRadians(30))*bondLength/2,-5);
     }
   }
 }
@@ -502,7 +568,9 @@ function atomButton (x,y,atom,box) {
   fill(0);
   textAlign(CENTER);
   textSize(48);
+  noStroke();
   text(atom,x,y,100,100);
+  stroke(0);
   fill(230);
 }
 
@@ -518,7 +586,11 @@ function reactionButton (x,y,reaction,box) {
   fill(0);
   textAlign(CENTER);
   textSize(16);
+  noStroke();
+  textStyle(BOLD);
   text(reaction,x,y,100,50);
+  textStyle(NORMAL);
+  stroke(0);
   fill(230);
 }
 
@@ -530,81 +602,46 @@ function findBondAngle (x1,y1,x2,y2) {
   return ans;
 }
 
-/*function makeNewBond(a,t) { // a for atom and t for type (of bond)
-    let currentBondSectors = []; // ranges from 0 to 11 for each 30 degree sector
-    let currentBondAngles = [];
-    let currentNetwork = network[a[0]];
-    for (let i = 3; i < currentNetwork.length; i+=3) {
-      currentBondAngles.push(currentNetwork[i]);
-      currentBondSectors.push(Math.floor(currentNetwork[i]/30));
-    }
-    let ba = makeNewBond(currentBondSectors,currentBondAngles);
-    let tempX1 = a[1];
-    let tempY1 = a[2];
-    let tempX2 = a[1] + Math.cos(toRadians(360-ba))*bondLength;
-    let tempY2 = a[2] + Math.sin(toRadians(360-ba))*bondLength;
-        if (ba === -1) {return false;} // -1 means invalid bond
-        let id1 = nextID;
-        if (selectedAtom.length !== 0) {
-          id1 = a[0];
-        }
-        if (network.length<=id1) {
-          network.push([id1, t, nextID+1, (360+ba)%360]); // TEMPORARY, CANNOT SUPPORT DELETION
-        } else {
-          network[id1].push(t, nextID+1, (360+ba)%360);
-        }
-        if (selectedAtom.length === 0) {
-          atoms.push([id1, tempX1, tempY1, "C"]); // TODO: add support for changing element of new atoms
-          nextID++;
-        }
-
-        let id2 = nextID;
-        if (destinationAtom.length !== 0) {
-          id2 = destinationAtom[0];
-        }
-        if (network.length<=id2) {
-          network.push([id2, t, id1, (180+ba)%360]); // TEMPORARY, CANNOT SUPPORT DELETION
-        } else {
-          network[id2].push(t, id1, (180+ba)%360);
-        }
-        if (destinationAtom.length === 0) {
-          atoms.push([id2, tempX2, tempY2, "C"]);
-          nextID++;
-        }
-        bonds.push([t, id1, id2, ba]);
-return;
-}*/
-
 function calculateBondAngle (bseclist,banglelist) {
     switch (bseclist.length) {
+      case 0:
+        return 330;
       case 1:
         let answer = (bseclist[0]*30+120)%360
         let alternate = (bseclist[0]*30+240)%360
         if (Math.min(alternate%180,180-(alternate%180)) < Math.min(answer%180,180-(answer%180))) {answer = alternate;}
         return answer;
-        break;
       case 2:
         if (Math.abs(banglelist[0] - banglelist[1]) > 180) {
           return (Math.floor((banglelist[0]+banglelist[1])/2))%360;
         } else {
           return (Math.floor((banglelist[0]+banglelist[1])/2)+180)%360;
         }
-        break;
       case 3:
         if (!bseclist.includes(8) && !bseclist.includes(9)) {
           return 240;
-        } else if (!bseclist.includes(2) && !bseclist.includes(3)) {
+        } else if (!bseclist.includes(2)) {
           return 60;
         } else {
-          for (let i = 1; i < 11; i++) {
+          for (let i = 0; i < 12
+            ; i++) {
             if (!bseclist.includes(i)) {
               return i*30;
-              break;
             }
           }
         }
-        break;
+        return -1;
       default:
         return -1;
     }
   }
+
+function bond (x1,y1,x2,y2,num) {
+  line(x1,y1,x2,y2);
+  if (num >= 2) {
+    lineOffset(x1,y1,x2,y2,5);
+    if (num === 3) {
+      lineOffset(x1,y1,x2,y2,-5);
+    }
+  }
+}
