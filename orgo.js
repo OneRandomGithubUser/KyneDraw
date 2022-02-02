@@ -30,7 +30,9 @@ var validBond = true;
 
 function setup() {
   // createCanvas must be the first statement
-  createCanvas(window.innerWidth-16,window.innerHeight-20);
+  windowWidth = Math.max(window.innerWidth,minWidth);
+  windowHeight = Math.max(window.innerHeight,minHeight);
+  createCanvas(windowWidth,windowHeight);
   stroke(0); // Set line drawing color to black
   frameRate(60);
   console.log("Written by Joseph. github.com/OneRandomGithubUser");
@@ -42,7 +44,7 @@ function preload() {
 }
 
 function draw() {
-  windowWidth = Math.max(window.innerWidth-16,minWidth);
+  windowWidth = Math.max(window.innerWidth-20,minWidth);
   windowHeight = Math.max(window.innerHeight-20,minHeight);
   resizeCanvas(windowWidth,windowHeight);
   background(255); // Set the background to white
@@ -306,11 +308,12 @@ function draw() {
       let currentAtom = network[i];
       let distance = Math.sqrt((previewX2-currentAtom[2])**2 + (previewY2-currentAtom[3])**2);
       if (distance < destinationDistance && distance < closestDistance && validBond) {
-        if (destinationAtom.length > 10) {
+        if (countBonds(destinationAtom) > 4) {
           continue;
         } else if (countBonds(selectedAtom) !== 0) {
           for (let i = 5; i < selectedAtom.length; i += 2) {
             if (selectedAtom[i] === destinationAtom[0]) {
+              bondAngle = -1;
               validBond = false; // TODO: why does this not prevent you from doing two of the same bond???
               break;
             }
