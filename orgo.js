@@ -1,14 +1,11 @@
 // Written by Joseph. github.com/OneRandomGithubUser
 const bondLength = 50;
 var bondAngle = 0;
-var atoms = []; // list of the atom ID and then its two coordinates and then its element
 var nextID = 0; // next atom ID
 var bondType = 1;
 var element = "C";
 var reagents = "";
 var bondMode = true;
-var bonds = []; // list of the bond type and then the two atoms, named by their ID, and then the bond angle
-var oldNetwork = []; // list of one atom ID, then alternating between a bond type and the second atom ID and then the bond angle
 var network = []; // atom id (int), atom element (string), atomX (number), atomY (number), bond1 type (number), bond1 destination atom id, etc.
 var closestDistance = 0; // 20 is the maximum distance for selection
 var selectedAtom = []; // selected atom when snap-on is in effect
@@ -20,7 +17,6 @@ var previewY2 = 0; // to determine where the cursor is, with snap-on
 const selectionDistance = 15;
 const destinationDistance = 5;
 var mousePressed = false;
-var id1 = 0;
 var selectedBox = 0;
 const minWidth = 1920;
 const minHeight = 210;
@@ -131,7 +127,7 @@ function draw() {
   textSize(16);
   noStroke();
   textStyle(BOLD);
-  text("SNAP ANGLES",windowWidth-120,20,100,50);
+  text("SNAP BONDS",windowWidth-120,20,100,50);
   textStyle(NORMAL);
   stroke(0);
   fill(230);
@@ -151,7 +147,7 @@ function draw() {
   textSize(16);
   noStroke();
   textStyle(BOLD);
-  text("FREEFORM ANGLES",windowWidth-240,20,100,50);
+  text("FREEFORM BONDS",windowWidth-240,20,100,50);
   textStyle(NORMAL);
   stroke(0);
   fill(230);
@@ -177,7 +173,7 @@ function draw() {
   reactionButton(1700,windowHeight-70,"SOCl₂",23);
   reactionButton(1820,windowHeight-70,"TsCl",24);
 
-  selectedAtom = []; // selected atom when snap-on is in effect
+  if (!mousePressed) {selectedAtom = [];} // selected atom when snap-on is in effect
   closestDistance = selectionDistance;
   let distance = 0;
   validBond = true;
@@ -187,7 +183,7 @@ function draw() {
     let currentAtom = network[i];
 
     // render preexisting bonds
-    if (currentAtom.length !== 4) {
+    if (countBonds(currentAtom) !== 0) {
       for (let j = 4; j < currentAtom.length; j+=2) {
         if (currentAtom[j+1] > currentAtom[0]) {
           bond(currentAtom[2], currentAtom[3], network[currentAtom[j+1]][2], network[currentAtom[j+1]][3], currentAtom[j]);
@@ -202,29 +198,29 @@ function draw() {
     } else {
       let label = currentAtom[1];
       if (currentAtom[1] === "C") {
-        if (currentAtom.length === 4) {
+        if (countBonds(currentAtom) === 0) {
           label = "CH₄"
         } else {
           label = "";
         }
       } else if (label === "O") {
-        switch (currentAtom.length) {
-          case 4:
+        switch (countBonds(currentAtom)) {
+          case 0:
             label = "H₂O";
             break;
-          case 6:
+          case 1:
             label = "OH";
             break;
         }
       } else if (label === "N") {
-        switch (currentAtom.length) {
-          case 4:
+        switch (countBonds(currentAtom)) {
+          case 0:
             label = "NH₃";
             break;
-          case 6:
+          case 1:
             label = "NH₂";
             break;
-          case 8:
+          case 2:
             label = "NH";
             break;
         }
@@ -258,9 +254,9 @@ function draw() {
 
   // calculate new bond angle
   if (selectedAtom.length !== 0 && !mousePressed && bondMode) { // selectedAtom is previously defined in cyan selection dot area
-    let currentBondSectors = []; // ranges from 0 to 11 for each 30 degree sector, starting at 15 degrees
+    let currentBondSectors = []; // ranges from 0 to 11 for each 30 degree sector, starting at -15 degrees
     let currentBondAngles = [];
-    if (selectedAtom.length !== 4) {
+    if (countBonds(selectedAtom) !== 0) {
       for (let i = 5; i < selectedAtom.length; i+=2) {
         currentBondAngles.push(Math.round(findBondAngle(selectedAtom[2], selectedAtom[3], network[selectedAtom[i]][2], network[selectedAtom[i]][3])));
         currentBondSectors.push(Math.floor((findBondAngle(selectedAtom[2], selectedAtom[3], network[selectedAtom[i]][2], network[selectedAtom[i]][3])+15)/30));
@@ -312,7 +308,7 @@ function draw() {
       if (distance < destinationDistance && distance < closestDistance && validBond) {
         if (destinationAtom.length > 10) {
           continue;
-        } else if (selectedAtom.length > 4) {
+        } else if (countBonds(selectedAtom) !== 0) {
           for (let i = 5; i < selectedAtom.length; i += 2) {
             if (selectedAtom[i] === destinationAtom[0]) {
               validBond = false; // TODO: why does this not prevent you from doing two of the same bond???
@@ -327,25 +323,37 @@ function draw() {
       }
     }
 
-    // render cyan destination dot
+    // render cyan/red destination dot
     if (destinationAtom.length !== 0) {
-      fill(48,227,255);
-      circle(destinationAtom[2],destinationAtom[3],10);
-      fill(255);
-      previewX2 = destinationAtom[2];
-      previewY2 = destinationAtom[3];
-      bondAngle = findBondAngle(previewX1,previewY1,previewX2,previewY2);
+      if (countBonds(destinationAtom) <= 4) {
+        fill(48,227,255);
+        circle(destinationAtom[2],destinationAtom[3],10);
+        fill(255);
+        previewX2 = destinationAtom[2];
+        previewY2 = destinationAtom[3];
+        bondAngle = findBondAngle(previewX1,previewY1,previewX2,previewY2);
+      } else {
+        fill(255,0,0);
+        circle(destinationAtom[2],destinationAtom[3],10);
+        fill(255);
+        previewX2 = destinationAtom[2];
+        previewY2 = destinationAtom[3];
+        bondAngle = -1;
+      }
     }
+  }
 
-    // draw preview
-    if (!bondMode) {
-      console.log("sadf");
-      rectMode(CENTER);
-      text(element, cachedMouseX, cachedMouseY);
-      rectMode(CORNER);
-    } else if (validBond) {
-      bond(previewX1, previewY1, previewX2, previewY2, bondType);
-    }
+  // draw preview
+  if (!bondMode) {
+    rectMode(CENTER);
+    fill(0);
+    noStroke();
+    text(element, previewX1, previewY1);
+    fill(255);
+    stroke(0);
+    rectMode(CORNER);
+  } else if (validBond) {
+    bond(previewX1, previewY1, previewX2, previewY2, bondType);
   }
 
   // introduction screen and pause rendering during inactivity
@@ -375,6 +383,7 @@ function draw() {
 }
 
 function mouseClicked() {
+  console.log(network);
   switch (selectedBox) {
     case 1:
       bondType = selectedBox;
@@ -432,44 +441,59 @@ function mouseClicked() {
       }
       break;
     case 20:
-      for (let i = 0; i < atoms.length; i++) {
-        if (atoms[i][3] === "O" && oldNetwork[i].length === 4 && oldNetwork[i][1] === 2 && oldNetwork[oldNetwork[i][2]][3] === "C") {
-          oldNetwork[i][1] = 1;
-          for (let j = 0; j < bonds.length; j++) {
-            if (bonds[j][1] === i || bonds[j][2] === i) {bonds[j][0]=1;}
+      for (let i = 0; i < network.length; i++) {
+        let currentAtom = network[i];
+        if (currentAtom[1] === "O" && currentAtom.length === 6 && countBonds(currentAtom) === 2 && network[currentAtom[5]][1] === "C") {
+          network[i][4] = 1;
+          for (let j = 4; j < network[currentAtom[5]].length; j++) {
+            if (network[currentAtom[5]][j+1] === i) {
+              network[currentAtom[5]][j] = 1;
+            }
           }
         }
       }
       break;
     case 21:
-      for (let i = 0; i < atoms.length; i++) {
-        if (atoms[i][3] === "O" && oldNetwork[i].length === 4 && oldNetwork[i][1] === 1 && oldNetwork[oldNetwork[i][2]][3] === "C") {
-          oldNetwork[i][1] = 2;
-          for (let j = 0; j < bonds.length; j++) {
-            if (bonds[j][1] === i || bonds[j][2] === i) {bonds[j][0]=2;}
+      for (let i = 0; i < network.length; i++) {
+        let currentAtom = network[i];
+        if (currentAtom[1] === "O" && currentAtom.length === 6 && countBonds(currentAtom) === 1 && network[currentAtom[5]][1] === "C") {
+          network[i][4] = 2;
+          for (let j = 4; j < network[currentAtom[5]].length; j++) {
+            if (network[currentAtom[5]][j+1] === i) {
+              network[currentAtom[5]][j] = 2;
+            }
           }
         }
       }
       break;
     case 22:
       for (let i = 0; i < network.length; i++) {
-        if (network[i][1] === "O" && network[i].length === 5 && network[i][4] === 1 && network[network[i][5]][3] === "C") {network[i][5] = "Br";}
+        let currentAtom = network[i];
+        if (currentAtom[1] === "O" && currentAtom.length === 6 && countBonds(currentAtom) === 1 && network[currentAtom[5]][1] === "C") {
+          network[i][1] = "Br";
+        }
       }
       break;
     case 23:
       for (let i = 0; i < network.length; i++) {
-        if (network[i][1] === "O" && network[i].length === 5 && network[i][4] === 1 && network[network[i][5]][3] === "C") {network[i][5] = "Cl";}
+        let currentAtom = network[i];
+        if (currentAtom[1] === "O" && currentAtom.length === 6 && countBonds(currentAtom) === 1 && network[currentAtom[5]][1] === "C") {
+          network[i][1] = "Cl";
+        }
       }
       break;
     case 24:
       for (let i = 0; i < network.length; i++) {
-        if (network[i][1] === "O" && network[i].length === 5 && network[i][4] === 1 && network[network[i][5]][3] === "C") {network[i][5] = "Ts";}
+        let currentAtom = network[i];
+        if (currentAtom[1] === "O" && currentAtom.length === 6 && countBonds(currentAtom) === 1 && network[currentAtom[5]][1] === "C") {
+          network[i][1] = "Ts";
+        }
       }
       break;
     case 0: // when no box is selected
     if (bondMode) {
       element = "C";
-      if (bondAngle === -1) {return false;} // -1 means invalid bond
+      if (bondAngle === -1 || !validBond) {return false;} // -1 means invalid bond TODO: change this, bondAngle is not needed elsewhere
       
       let id1 = nextID;
       if (selectedAtom.length !== 0) {
@@ -505,7 +529,6 @@ function mouseClicked() {
     }
   }
   loop();
-  console.log(network);
   return false;
 }
 
@@ -596,7 +619,19 @@ function reactionButton (x,y,reaction,box) {
 
 
 function findBondAngle (x1,y1,x2,y2) {
-  let ans = toDegrees(Math.atan(-(y2-y1)/(x2-x1)));
+  let ans;
+  if (y1 === y2) {
+    switch (Math.sign(x1-x2)) {
+      case 1:
+        return 180;
+      case -1:
+        return 0;
+      case 0:
+        return -1;
+    }
+  } else {
+    ans = toDegrees(Math.atan(-(y2-y1)/(x2-x1)));
+  }
   if (ans < 0) {ans+=180;}
   if (-(y2-y1) < 0) {ans = (180+ans)%360;}
   return ans;
@@ -643,5 +678,17 @@ function bond (x1,y1,x2,y2,num) {
     if (num === 3) {
       lineOffset(x1,y1,x2,y2,-5);
     }
+  }
+}
+
+function countBonds (atom) {
+  if (atom.length === 4) {
+    return 0;
+  } else {
+    let ans = 0;
+    for (let i = 4; i < atom.length; i+=2) {
+      ans += atom[i];
+    }
+    return ans;
   }
 }
