@@ -125,7 +125,7 @@ function draw() {
     rect(windowWidth-120,20,100,50);
   }
   fill(0);
-  textAlign(CENTER);
+  textAlign(CENTER, CENTER);
   textSize(16);
   noStroke();
   textStyle(BOLD);
@@ -145,7 +145,7 @@ function draw() {
     rect(windowWidth-240,20,100,50);
   }
   fill(0);
-  textAlign(CENTER); // TODO: change this to (CENTER,CENTER) once version 1.4.1 of p5.js is released on January 31, 2022
+  textAlign(CENTER, CENTER);
   textSize(16);
   noStroke();
   textStyle(BOLD);
@@ -228,7 +228,7 @@ function draw() {
         }
       }
       if (label !== "") {
-        textAlign(CENTER);
+        textAlign(CENTER, CENTER);
         fill(255);
         rectMode(CENTER);
         let boundingBox = font.textBounds(label, currentAtom[2], currentAtom[3], 20, CENTER);
@@ -264,11 +264,14 @@ function draw() {
         currentBondSectors.push(Math.floor((findBondAngle(selectedAtom[2], selectedAtom[3], network[selectedAtom[i]][2], network[selectedAtom[i]][3])+15)/30));
       }
     }
-    bondAngle = calculateBondAngle(currentBondSectors,currentBondAngles);
+    bondAngle = calculateBondAngle(currentBondSectors,currentBondAngles); // TODO: change calculateBondAngle such that alkynes are linear
     previewX1 = selectedAtom[2];
     previewY1 = selectedAtom[3];
     previewX2 = selectedAtom[2] + Math.cos(toRadians(360-bondAngle))*bondLength;
     previewY2 = selectedAtom[3] + Math.sin(toRadians(360-bondAngle))*bondLength;
+    if (countBonds(selectedAtom) >= 4-bondType) { // too many bonds
+      bondAngle = -1;
+    }
   } else if (mousePressed) { // on mouse press, stop updating previewX1 and previewY1
     if (angleSnap) {
       bondAngle = Math.floor((findBondAngle(previewX1,previewY1,cachedMouseX,mouseY)+15)/30)*30 // round bond angle to nearest 30 degrees
@@ -308,9 +311,7 @@ function draw() {
       let currentAtom = network[i];
       let distance = Math.sqrt((previewX2-currentAtom[2])**2 + (previewY2-currentAtom[3])**2);
       if (distance < destinationDistance && distance < closestDistance && validBond) {
-        if (countBonds(destinationAtom) > 4) {
-          continue;
-        } else if (countBonds(selectedAtom) !== 0) {
+        if (countBonds(selectedAtom) !== 0) {
           for (let i = 5; i < selectedAtom.length; i += 2) {
             if (selectedAtom[i] === destinationAtom[0]) {
               bondAngle = -1;
@@ -328,7 +329,7 @@ function draw() {
 
     // render cyan/red destination dot
     if (destinationAtom.length !== 0) {
-      if (countBonds(destinationAtom) <= 4) {
+      if (countBonds(destinationAtom) <= 4-bondType) {
         fill(48,227,255);
         circle(destinationAtom[2],destinationAtom[3],10);
         fill(255);
@@ -373,7 +374,7 @@ function draw() {
       fill(0);
     }
     textSize(144);
-    textAlign(CENTER);
+    textAlign(CENTER, CENTER);
     text("KyneDraw",0,windowHeight/2,windowWidth);
     stroke(0);
   } else {
@@ -386,6 +387,178 @@ function draw() {
   }
 }
 
+function mouseDragged() {
+  loop();
+  mousePressed = true;
+}
+
+function mouseMoved() {
+  loop();
+  return false;
+}
+
+function mouseReleased() {
+  loop();
+  mousePressed = false;
+}
+
+function toRadians (angle) {
+  return angle * (Math.PI/180);
+}
+
+function toDegrees (angle) {
+  return angle * (180/Math.PI);
+}
+
+function lineOffset (x1,y1,x2,y2,offset) {
+  let angle = findBondAngle(x1,y1,x2,y2);
+  line(x1-Math.sin(toRadians(angle))*offset, y1-Math.cos(toRadians(angle))*offset, x2-Math.sin(toRadians(angle))*offset, y2-Math.cos(toRadians(angle))*offset);
+}
+
+function bondButton (x,y,bonds) {
+  if (bondType === bonds && bondMode) {fill(205);}
+  if (selectedBox === bonds) {
+    stroke(255);
+    rect(x,y,100,100);
+    stroke(0);
+  } else {
+    rect(x,y,100,100);
+  }
+  fill(230);
+  line(x+50-Math.cos(toRadians(30))*bondLength/2,y+50-Math.sin(toRadians(30))*bondLength/2,x+50+Math.cos(toRadians(30))*bondLength/2,y+50+Math.sin(toRadians(30))*bondLength/2);
+  if (bonds > 1) {
+    lineOffset(x+50-Math.cos(toRadians(30))*bondLength/2,y+50-Math.sin(toRadians(30))*bondLength/2,x+50+Math.cos(toRadians(30))*bondLength/2,y+50+Math.sin(toRadians(30))*bondLength/2,5);
+    if (bonds > 2) {
+      lineOffset(x+50-Math.cos(toRadians(30))*bondLength/2,y+50-Math.sin(toRadians(30))*bondLength/2,x+50+Math.cos(toRadians(30))*bondLength/2,y+50+Math.sin(toRadians(30))*bondLength/2,-5);
+    }
+  }
+}
+
+function atomButton (x,y,atom,box) {
+  if (element === atom && !bondMode) {fill(205);}
+  if (selectedBox === box) {    
+    stroke(255);
+    rect(x,y,100,100);
+    stroke(0);
+  } else {
+    rect(x,y,100,100);
+  }
+  fill(0);
+  textAlign(CENTER, CENTER);
+  textSize(48);
+  noStroke();
+  text(atom,x,y,100,100);
+  stroke(0);
+  fill(230);
+}
+
+
+function reactionButton (x,y,reaction,box) {
+  if (selectedBox === box) {
+    stroke(255);
+    rect(x,y,100,50);
+    stroke(0);
+  } else {
+    rect(x,y,100,50);
+  }
+  fill(0);
+  textAlign(CENTER, CENTER);
+  textSize(16);
+  noStroke();
+  textStyle(BOLD);
+  text(reaction,x,y,100,50);
+  textStyle(NORMAL);
+  stroke(0);
+  fill(230);
+}
+
+
+function findBondAngle (x1,y1,x2,y2) {
+  let ans;
+  if (y1 === y2) {
+    switch (Math.sign(x1-x2)) {
+      case 1:
+        return 180;
+      case -1:
+        return 0;
+      case 0:
+        return -1;
+    }
+  } else {
+    ans = toDegrees(Math.atan(-(y2-y1)/(x2-x1)));
+  }
+  if (ans < 0) {ans+=180;}
+  if (-(y2-y1) < 0) {ans = (180+ans)%360;}
+  return ans;
+}
+
+function calculateBondAngle (bseclist,banglelist) {
+    switch (bseclist.length) {
+      case 0:
+        return 330;
+      case 1:
+        let answer = (bseclist[0]*30+120)%360
+        let alternate = (bseclist[0]*30+240)%360
+        if (Math.min(alternate%180,180-(alternate%180)) < Math.min(answer%180,180-(answer%180))) {answer = alternate;}
+        return answer;
+      case 2:
+        if (Math.abs(banglelist[0] - banglelist[1]) > 180) {
+          return (Math.floor((banglelist[0]+banglelist[1])/2))%360;
+        } else {
+          return (Math.floor((banglelist[0]+banglelist[1])/2)+180)%360;
+        }
+      case 3:
+        if (!bseclist.includes(8) && !bseclist.includes(9)) {
+          return 240;
+        } else if (!bseclist.includes(2)) {
+          return 60;
+        } else {
+          for (let i = 0; i < 12
+            ; i++) {
+            if (!bseclist.includes(i)) {
+              return i*30;
+            }
+          }
+        }
+        return -1;
+      default:
+        return -1;
+    }
+  }
+
+function bond (x1,y1,x2,y2,num) {
+  line(x1,y1,x2,y2);
+  if (num >= 2) {
+    lineOffset(x1,y1,x2,y2,5);
+    if (num === 3) {
+      lineOffset(x1,y1,x2,y2,-5);
+    }
+  }
+}
+
+function countBonds (atom) {
+  if (atom.length <= 4) {
+    return 0;
+
+  } else {
+
+    let ans =
+     0;
+    for (let 
+      i = 4; i < atom.length; i+=2) {
+      ans += atom[i];
+    }
+    return ans;
+  }
+}
+
+function isHydroxyl (atom) {
+  return atom[1] === "O" && atom.length === 6 && countBonds(atom) === 1;
+}
+
+function isKetone (atom) { // is ketone or aldehyde
+  return atom[1] === "O" && atom.length === 6 && countBonds(atom) === 2;
+}
 function mouseClicked() {
   switch (selectedBox) {
     case 1:
@@ -562,173 +735,4 @@ function mouseClicked() {
   }
   loop();
   return false;
-}
-
-function mouseDragged() {
-  loop();
-  mousePressed = true;
-}
-
-function mouseMoved() {
-  loop();
-  return false;
-}
-
-function mouseReleased() {
-  loop();
-  mousePressed = false;
-}
-
-function toRadians (angle) {
-  return angle * (Math.PI/180);
-}
-
-function toDegrees (angle) {
-  return angle * (180/Math.PI);
-}
-
-function lineOffset (x1,y1,x2,y2,offset) {
-  let angle = findBondAngle(x1,y1,x2,y2);
-  line(x1-Math.sin(toRadians(angle))*offset, y1-Math.cos(toRadians(angle))*offset, x2-Math.sin(toRadians(angle))*offset, y2-Math.cos(toRadians(angle))*offset);
-}
-
-function bondButton (x,y,bonds) {
-  if (bondType === bonds && bondMode) {fill(205);}
-  if (selectedBox === bonds) {
-    stroke(255);
-    rect(x,y,100,100);
-    stroke(0);
-  } else {
-    rect(x,y,100,100);
-  }
-  fill(230);
-  line(x+50-Math.cos(toRadians(30))*bondLength/2,y+50-Math.sin(toRadians(30))*bondLength/2,x+50+Math.cos(toRadians(30))*bondLength/2,y+50+Math.sin(toRadians(30))*bondLength/2);
-  if (bonds > 1) {
-    lineOffset(x+50-Math.cos(toRadians(30))*bondLength/2,y+50-Math.sin(toRadians(30))*bondLength/2,x+50+Math.cos(toRadians(30))*bondLength/2,y+50+Math.sin(toRadians(30))*bondLength/2,5);
-    if (bonds > 2) {
-      lineOffset(x+50-Math.cos(toRadians(30))*bondLength/2,y+50-Math.sin(toRadians(30))*bondLength/2,x+50+Math.cos(toRadians(30))*bondLength/2,y+50+Math.sin(toRadians(30))*bondLength/2,-5);
-    }
-  }
-}
-
-function atomButton (x,y,atom,box) {
-  if (element === atom && !bondMode) {fill(205);}
-  if (selectedBox === box) {    
-    stroke(255);
-    rect(x,y,100,100);
-    stroke(0);
-  } else {
-    rect(x,y,100,100);
-  }
-  fill(0);
-  textAlign(CENTER);
-  textSize(48);
-  noStroke();
-  text(atom,x,y,100,100);
-  stroke(0);
-  fill(230);
-}
-
-
-function reactionButton (x,y,reaction,box) {
-  if (selectedBox === box) {
-    stroke(255);
-    rect(x,y,100,50);
-    stroke(0);
-  } else {
-    rect(x,y,100,50);
-  }
-  fill(0);
-  textAlign(CENTER);
-  textSize(16);
-  noStroke();
-  textStyle(BOLD);
-  text(reaction,x,y,100,50);
-  textStyle(NORMAL);
-  stroke(0);
-  fill(230);
-}
-
-
-function findBondAngle (x1,y1,x2,y2) {
-  let ans;
-  if (y1 === y2) {
-    switch (Math.sign(x1-x2)) {
-      case 1:
-        return 180;
-      case -1:
-        return 0;
-      case 0:
-        return -1;
-    }
-  } else {
-    ans = toDegrees(Math.atan(-(y2-y1)/(x2-x1)));
-  }
-  if (ans < 0) {ans+=180;}
-  if (-(y2-y1) < 0) {ans = (180+ans)%360;}
-  return ans;
-}
-
-function calculateBondAngle (bseclist,banglelist) {
-    switch (bseclist.length) {
-      case 0:
-        return 330;
-      case 1:
-        let answer = (bseclist[0]*30+120)%360
-        let alternate = (bseclist[0]*30+240)%360
-        if (Math.min(alternate%180,180-(alternate%180)) < Math.min(answer%180,180-(answer%180))) {answer = alternate;}
-        return answer;
-      case 2:
-        if (Math.abs(banglelist[0] - banglelist[1]) > 180) {
-          return (Math.floor((banglelist[0]+banglelist[1])/2))%360;
-        } else {
-          return (Math.floor((banglelist[0]+banglelist[1])/2)+180)%360;
-        }
-      case 3:
-        if (!bseclist.includes(8) && !bseclist.includes(9)) {
-          return 240;
-        } else if (!bseclist.includes(2)) {
-          return 60;
-        } else {
-          for (let i = 0; i < 12
-            ; i++) {
-            if (!bseclist.includes(i)) {
-              return i*30;
-            }
-          }
-        }
-        return -1;
-      default:
-        return -1;
-    }
-  }
-
-function bond (x1,y1,x2,y2,num) {
-  line(x1,y1,x2,y2);
-  if (num >= 2) {
-    lineOffset(x1,y1,x2,y2,5);
-    if (num === 3) {
-      lineOffset(x1,y1,x2,y2,-5);
-    }
-  }
-}
-
-function countBonds (atom) {
-  if (atom.length <= 4) {
-    return 0;
-  } else {
-    let ans = 0;
-    for (let i = 4; i < atom.length; i+=2) {
-      ans += atom[i];
-    }
-    return ans;
-  }
-}
-
-function isHydroxyl (atom) {
-  return atom[1] === "O" && atom.length === 6 && countBonds(atom) === 1;
-}
-
-function isKetone (atom) { // is ketone or aldehyde
-  return atom[1] === "O" && atom.length === 6 && countBonds(atom) === 2;
 }
