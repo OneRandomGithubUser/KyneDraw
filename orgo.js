@@ -179,20 +179,20 @@ function draw() {
   atomButton(740,20,"Br",9);
   atomButton(860,20,"Cl",10);
   
-  reactionButton(260,windowHeight-70,"POCl₃",11);
-  reactionButton(380,windowHeight-70,"KOH",12);
-  reactionButton(500,windowHeight-70,"HBr",13);
-  reactionButton(620,windowHeight-70,"HBr, H₂O₂",14);
-  reactionButton(740,windowHeight-70,"Br₂",15);
-  reactionButton(860,windowHeight-70,"Br₂, H₂O",16);
-  reactionButton(980,windowHeight-70,"H₂, Pd",17);
-  reactionButton(1100,windowHeight-70,"Hg(OAc)₂,H₂O,BH₄",18);
-  reactionButton(1220,windowHeight-70,"BH₃",19);
-  reactionButton(1340,windowHeight-70,"NaBH₄",20);
-  reactionButton(1460,windowHeight-70,"Swern",21);
-  reactionButton(1580,windowHeight-70,"PBr₃",22);
-  reactionButton(1700,windowHeight-70,"SOCl₂",23);
-  reactionButton(1820,windowHeight-70,"TsCl",24);
+  reactionButton(260,windowHeight-70,"POCl₃",21);
+  reactionButton(380,windowHeight-70,"KOH",22);
+  reactionButton(500,windowHeight-70,"HBr",23);
+  reactionButton(620,windowHeight-70,"HBr, H₂O₂",24);
+  reactionButton(740,windowHeight-70,"Br₂",25);
+  reactionButton(860,windowHeight-70,"Br₂, H₂O",26);
+  reactionButton(980,windowHeight-70,"H₂, Pd",27);
+  reactionButton(1100,windowHeight-70,"Hg(OAc)₂,H₂O,BH₄",28);
+  reactionButton(1220,windowHeight-70,"BH₃",29);
+  reactionButton(1340,windowHeight-70,"NaBH₄",30);
+  reactionButton(1460,windowHeight-70,"Swern",31);
+  reactionButton(1580,windowHeight-70,"PBr₃",32);
+  reactionButton(1700,windowHeight-70,"SOCl₂",33);
+  reactionButton(1820,windowHeight-70,"TsCl",34);
 
   if (!mousePressed) {selectedAtom = [];} // selected atom when snap-on is in effect
   closestDistance = selectionDistance;
@@ -625,7 +625,6 @@ function mouseClicked() {
       for (let i = 0; i < network.length; i++) {
         let currentAtom = network[i];
         if (isHydroxyl(currentAtom) && network[currentAtom[5]][1] === "C") {
-          network[i][1] = -1; // remove OH from O. TODO: does not properly remove the atom, add checks to make sure that these atoms are ignored
           let adjacentAtom = network[currentAtom[5]]; // carbon atom that the oxygen is attached to
           let mostSubstitutedAtom = [];
           for (let j = 5; j < adjacentAtom.length; j+=2) { // look at the atoms attached to the adjacentAtom
@@ -641,6 +640,7 @@ function mouseClicked() {
             }
           }
           if (mostSubstitutedAtom.length !== 0) {
+            network[i][1] = -1; // remove OH from O. TODO: does not properly remove the atom, add checks to make sure that these atoms are ignored
             for (let j = 5; j < mostSubstitutedAtom.length; j+=2) { // TODO: make indexOf function for atoms
               if (mostSubstitutedAtom[j] === adjacentAtom[0]) {
                 network[mostSubstitutedAtom[0]][j-1]++;
