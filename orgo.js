@@ -73,33 +73,33 @@ function draw() {
       selectedBox = 10; // Cl
     } else if (cachedMouseY < 70) {
       if (cachedMouseX > windowWidth-120 && cachedMouseX < windowWidth-20) {
-        selectedBox = 4;
+        selectedBox = 4; // FREEFORM BONDS
       } else if (cachedMouseX > windowWidth-240 && cachedMouseX < windowWidth-140) {
-        selectedBox = 5;
+        selectedBox = 5; // SNAP BONDS
       }
     }
   }
   if (cachedMouseY > windowHeight-70 && cachedMouseY < windowHeight-20) {
     if (cachedMouseX < 360 && cachedMouseX > 260) {
-      selectedBox = 11; // HBr
+      selectedBox = 11;
     } else if (cachedMouseX < 480 && cachedMouseX > 380) {
-      selectedBox = 12; // HBr, H₂O₂
+      selectedBox = 12;
     } else if (cachedMouseX < 600 && cachedMouseX > 500) {
-      selectedBox = 13; // Br₂
+      selectedBox = 13;
     } else if (cachedMouseX < 720 && cachedMouseX > 620) {
-      selectedBox = 14; // Br₂, H₂O
+      selectedBox = 14;
     } else if (cachedMouseX < 840 && cachedMouseX > 740) {
-      selectedBox = 15; // H₂, Pd
+      selectedBox = 15;
     } else if (cachedMouseX < 960 && cachedMouseX > 860) {
-      selectedBox = 16; // CH₂I₂
+      selectedBox = 16;
     } else if (cachedMouseX < 1080 && cachedMouseX > 980) {
-      selectedBox = 17; // Hg(OAc)₂,H₂O,BH₄
+      selectedBox = 17;
     } else if (cachedMouseX < 1200 && cachedMouseX > 1100) {
-      selectedBox = 18; // BH₃
+      selectedBox = 18;
     } else if (cachedMouseX < 1320 && cachedMouseX > 1220) {
-      selectedBox = 19; // m-CPBA
+      selectedBox = 19;
     } else if (cachedMouseX < 1440 && cachedMouseX > 1340) {
-      selectedBox = 20; // OsO₄, H₂O
+      selectedBox = 20;
     } else if (cachedMouseX < 1560 && cachedMouseX > 1460) {
       selectedBox = 21;
     } else if (cachedMouseX < 1680 && cachedMouseX > 1580) {
@@ -108,7 +108,7 @@ function draw() {
       selectedBox = 23;
     } else if (cachedMouseX < 1920 && cachedMouseX > 1820) {
       selectedBox = 24;
-    } // TODO: fix the comments above
+    }
   }
   bondButton(20,20,1);
   bondButton(140,20,2);
@@ -351,6 +351,7 @@ function draw() {
     rectMode(CENTER);
     fill(0);
     noStroke();
+    textSize(20);
     text(element, previewX1, previewY1);
     fill(255);
     stroke(0);
@@ -386,7 +387,6 @@ function draw() {
 }
 
 function mouseClicked() {
-  console.log(network);
   switch (selectedBox) {
     case 1:
       bondType = selectedBox;
@@ -427,26 +427,55 @@ function mouseClicked() {
       bondMode = false;
       break;
     case 11:
-      for (let i = 0; i < atoms.length; i++) {
-        if (atoms[i][3] === "O" && [i].length === 4 && [i][1] === 1 && atoms[oldNetwork[i][2]][3] === "C") { // TODO: make this compatible with deletion
-          let adjacentAtom = oldNetwork[oldNetwork[i][2]]; // carbon atom that the oxygen is attached to
-          var temp = []; // atom that is currently the most substituted
-          var temp2 = 0; // index of the most substituted atom within the adjacentAtom's network
-          if (temp === []) {break;} // methanol
-          oldNetwork[oldNetwork[i][2]][temp2-1]++;
-          oldNetwork[i][0] = -1;
-          atoms[i][0] = -1;
-          for (let j = 0; j < bonds.length; j++) {
-            if (bonds[j][1] === i) {bonds[j][1]=-1;} // remove OH
-            if (bonds[j][2] === i) {bonds[j][2]=-1;} // remove OH
+      for (let i = 0; i < network.length; i++) {
+        let currentAtom = network[i];
+        if (isHydroxyl(currentAtom) && network[currentAtom[5]][1] === "C") {
+          network[i][1] = -1; // remove OH from O. TODO: does not properly remove the atom, add checks to make sure that these atoms are ignored
+          let adjacentAtom = network[currentAtom[5]]; // carbon atom that the oxygen is attached to
+          let mostSubstitutedAtom = [];
+          for (let j = 5; j < adjacentAtom.length; j+=2) { // look at the atoms attached to the adjacentAtom
+            let adajacentAdjacentAtom = network[adjacentAtom[j]];
+            if (adajacentAdjacentAtom[0] === i) { // ignore the currentAtom
+              continue;
+            }
+            if (countBonds(adajacentAdjacentAtom) === 3) { // can't dehydrate an OH attached to a triple bond
+              break;
+            }
+            if (countBonds(adajacentAdjacentAtom) > countBonds(mostSubstitutedAtom)) {
+              mostSubstitutedAtom = adajacentAdjacentAtom; // TODO: consider what happens when equally substituted
+            }
+          }
+          if (mostSubstitutedAtom.length !== 0) {
+            for (let j = 5; j < mostSubstitutedAtom.length; j+=2) { // TODO: make indexOf function for atoms
+              if (mostSubstitutedAtom[j] === adjacentAtom[0]) {
+                network[mostSubstitutedAtom[0]][j-1]++;
+              }
+            }
+            for (let j = 5; j < adjacentAtom.length; j+=2) {
+              if (adjacentAtom[j] === mostSubstitutedAtom[0]) {
+                network[adjacentAtom[0]][j-1]++;
+              } else if (adjacentAtom[j] === i) {
+                network[adjacentAtom[0]].splice(j-1,2); // remove OH from C
+                j -= 2; // adjust for shorter adjacentAtom
+              }
+            }
           }
         }
       }
       break;
+    case 17:
+      for (let i = 0; i < network.length; i++) {
+        let currentAtom = network[i];
+        for (let j = 4; j < currentAtom.length; j+=2) {
+          if (currentAtom[j] !== 1) {
+            network[i][j] = 1;
+          }
+        }
+      }
     case 20:
       for (let i = 0; i < network.length; i++) {
         let currentAtom = network[i];
-        if (currentAtom[1] === "O" && currentAtom.length === 6 && countBonds(currentAtom) === 2 && network[currentAtom[5]][1] === "C") {
+        if (isKetone(currentAtom) && network[currentAtom[5]][1] === "C") {
           network[i][4] = 1;
           for (let j = 4; j < network[currentAtom[5]].length; j++) {
             if (network[currentAtom[5]][j+1] === i) {
@@ -459,7 +488,7 @@ function mouseClicked() {
     case 21:
       for (let i = 0; i < network.length; i++) {
         let currentAtom = network[i];
-        if (currentAtom[1] === "O" && currentAtom.length === 6 && countBonds(currentAtom) === 1 && network[currentAtom[5]][1] === "C") {
+        if (isHydroxyl(currentAtom) && network[currentAtom[5]][1] === "C") {
           network[i][4] = 2;
           for (let j = 4; j < network[currentAtom[5]].length; j++) {
             if (network[currentAtom[5]][j+1] === i) {
@@ -472,7 +501,7 @@ function mouseClicked() {
     case 22:
       for (let i = 0; i < network.length; i++) {
         let currentAtom = network[i];
-        if (currentAtom[1] === "O" && currentAtom.length === 6 && countBonds(currentAtom) === 1 && network[currentAtom[5]][1] === "C") {
+        if (isHydroxyl(currentAtom) && network[currentAtom[5]][1] === "C") {
           network[i][1] = "Br";
         }
       }
@@ -480,7 +509,7 @@ function mouseClicked() {
     case 23:
       for (let i = 0; i < network.length; i++) {
         let currentAtom = network[i];
-        if (currentAtom[1] === "O" && currentAtom.length === 6 && countBonds(currentAtom) === 1 && network[currentAtom[5]][1] === "C") {
+        if (isHydroxyl(currentAtom) && network[currentAtom[5]][1] === "C") {
           network[i][1] = "Cl";
         }
       }
@@ -488,7 +517,7 @@ function mouseClicked() {
     case 24:
       for (let i = 0; i < network.length; i++) {
         let currentAtom = network[i];
-        if (currentAtom[1] === "O" && currentAtom.length === 6 && countBonds(currentAtom) === 1 && network[currentAtom[5]][1] === "C") {
+        if (isHydroxyl(currentAtom) && network[currentAtom[5]][1] === "C") {
           network[i][1] = "Ts";
         }
       }
@@ -685,7 +714,7 @@ function bond (x1,y1,x2,y2,num) {
 }
 
 function countBonds (atom) {
-  if (atom.length === 4) {
+  if (atom.length <= 4) {
     return 0;
   } else {
     let ans = 0;
@@ -694,4 +723,12 @@ function countBonds (atom) {
     }
     return ans;
   }
+}
+
+function isHydroxyl (atom) {
+  return atom[1] === "O" && atom.length === 6 && countBonds(atom) === 1;
+}
+
+function isKetone (atom) { // is ketone or aldehyde
+  return atom[1] === "O" && atom.length === 6 && countBonds(atom) === 2;
 }
