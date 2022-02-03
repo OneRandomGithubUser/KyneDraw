@@ -269,7 +269,7 @@ function draw() {
     previewY1 = selectedAtom[3];
     previewX2 = selectedAtom[2] + Math.cos(toRadians(360-bondAngle))*bondLength;
     previewY2 = selectedAtom[3] + Math.sin(toRadians(360-bondAngle))*bondLength;
-    if (countBonds(selectedAtom) >= 4-bondType) { // too many bonds
+    if (countBonds(selectedAtom) > 4-bondType) { // too many bonds
       bondAngle = -1;
     }
   } else if (mousePressed) { // on mouse press, stop updating previewX1 and previewY1
@@ -611,7 +611,7 @@ function mouseClicked() {
             if (adajacentAdjacentAtom[0] === i) { // ignore the currentAtom
               continue;
             }
-            if (countBonds(adajacentAdjacentAtom) === 3) { // can't dehydrate an OH attached to a triple bond
+            if (countBonds(adajacentAdjacentAtom) >= 3) { // can't dehydrate an OH attached to a triple bond
               break;
             }
             if (countBonds(adajacentAdjacentAtom) > countBonds(mostSubstitutedAtom)) {
