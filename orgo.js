@@ -76,38 +76,40 @@ function draw() {
         selectedBox = 4; // FREEFORM BONDS
       } else if (cachedMouseX > windowWidth-240 && cachedMouseX < windowWidth-140) {
         selectedBox = 5; // SNAP BONDS
+      } else if (cachedMouseX > windowWidth-360 && cachedMouseX < windowWidth-260) {
+        selectedBox = 11; // CLEAR MOLECULE
       }
     }
   }
   if (cachedMouseY > windowHeight-70 && cachedMouseY < windowHeight-20) {
     if (cachedMouseX < 360 && cachedMouseX > 260) {
-      selectedBox = 11;
-    } else if (cachedMouseX < 480 && cachedMouseX > 380) {
-      selectedBox = 12;
-    } else if (cachedMouseX < 600 && cachedMouseX > 500) {
-      selectedBox = 13;
-    } else if (cachedMouseX < 720 && cachedMouseX > 620) {
-      selectedBox = 14;
-    } else if (cachedMouseX < 840 && cachedMouseX > 740) {
-      selectedBox = 15;
-    } else if (cachedMouseX < 960 && cachedMouseX > 860) {
-      selectedBox = 16;
-    } else if (cachedMouseX < 1080 && cachedMouseX > 980) {
-      selectedBox = 17;
-    } else if (cachedMouseX < 1200 && cachedMouseX > 1100) {
-      selectedBox = 18;
-    } else if (cachedMouseX < 1320 && cachedMouseX > 1220) {
-      selectedBox = 19;
-    } else if (cachedMouseX < 1440 && cachedMouseX > 1340) {
-      selectedBox = 20;
-    } else if (cachedMouseX < 1560 && cachedMouseX > 1460) {
       selectedBox = 21;
-    } else if (cachedMouseX < 1680 && cachedMouseX > 1580) {
+    } else if (cachedMouseX < 480 && cachedMouseX > 380) {
       selectedBox = 22;
-    } else if (cachedMouseX < 1800 && cachedMouseX > 1700) {
+    } else if (cachedMouseX < 600 && cachedMouseX > 500) {
       selectedBox = 23;
-    } else if (cachedMouseX < 1920 && cachedMouseX > 1820) {
+    } else if (cachedMouseX < 720 && cachedMouseX > 620) {
       selectedBox = 24;
+    } else if (cachedMouseX < 840 && cachedMouseX > 740) {
+      selectedBox = 25;
+    } else if (cachedMouseX < 960 && cachedMouseX > 860) {
+      selectedBox = 26;
+    } else if (cachedMouseX < 1080 && cachedMouseX > 980) {
+      selectedBox = 27;
+    } else if (cachedMouseX < 1200 && cachedMouseX > 1100) {
+      selectedBox = 28;
+    } else if (cachedMouseX < 1320 && cachedMouseX > 1220) {
+      selectedBox = 29;
+    } else if (cachedMouseX < 1440 && cachedMouseX > 1340) {
+      selectedBox = 30;
+    } else if (cachedMouseX < 1560 && cachedMouseX > 1460) {
+      selectedBox = 31;
+    } else if (cachedMouseX < 1680 && cachedMouseX > 1580) {
+      selectedBox = 32;
+    } else if (cachedMouseX < 1800 && cachedMouseX > 1700) {
+      selectedBox = 33;
+    } else if (cachedMouseX < 1920 && cachedMouseX > 1820) {
+      selectedBox = 34;
     }
   }
   bondButton(20,20,1);
@@ -150,6 +152,23 @@ function draw() {
   noStroke();
   textStyle(BOLD);
   text("FREEFORM BONDS",windowWidth-240,20,100,50);
+  textStyle(NORMAL);
+  stroke(0);
+  fill(230);
+
+    if (selectedBox === 11) {
+    stroke(255);
+    rect(windowWidth-360,20,100,50);
+    stroke(0);
+  } else {
+    rect(windowWidth-360,20,100,50);
+  }
+  fill(0);
+  textAlign(CENTER, CENTER);
+  textSize(16);
+  noStroke();
+  textStyle(BOLD);
+  text("CLEAR",windowWidth-360,20,100,50);
   textStyle(NORMAL);
   stroke(0);
   fill(230);
@@ -600,6 +619,9 @@ function mouseClicked() {
       bondMode = false;
       break;
     case 11:
+      network = [];
+      break;
+    case 21:
       for (let i = 0; i < network.length; i++) {
         let currentAtom = network[i];
         if (isHydroxyl(currentAtom) && network[currentAtom[5]][1] === "C") {
@@ -636,7 +658,7 @@ function mouseClicked() {
         }
       }
       break;
-    case 17:
+    case 27:
       for (let i = 0; i < network.length; i++) {
         let currentAtom = network[i];
         for (let j = 4; j < currentAtom.length; j+=2) {
@@ -645,7 +667,7 @@ function mouseClicked() {
           }
         }
       }
-    case 20:
+    case 30:
       for (let i = 0; i < network.length; i++) {
         let currentAtom = network[i];
         if (isKetone(currentAtom) && network[currentAtom[5]][1] === "C") {
@@ -658,7 +680,7 @@ function mouseClicked() {
         }
       }
       break;
-    case 21:
+    case 31:
       for (let i = 0; i < network.length; i++) {
         let currentAtom = network[i];
         if (isHydroxyl(currentAtom) && network[currentAtom[5]][1] === "C") {
@@ -671,7 +693,7 @@ function mouseClicked() {
         }
       }
       break;
-    case 22:
+    case 32:
       for (let i = 0; i < network.length; i++) {
         let currentAtom = network[i];
         if (isHydroxyl(currentAtom) && network[currentAtom[5]][1] === "C") {
@@ -679,7 +701,7 @@ function mouseClicked() {
         }
       }
       break;
-    case 23:
+    case 33:
       for (let i = 0; i < network.length; i++) {
         let currentAtom = network[i];
         if (isHydroxyl(currentAtom) && network[currentAtom[5]][1] === "C") {
@@ -687,7 +709,7 @@ function mouseClicked() {
         }
       }
       break;
-    case 24:
+    case 34:
       for (let i = 0; i < network.length; i++) {
         let currentAtom = network[i];
         if (isHydroxyl(currentAtom) && network[currentAtom[5]][1] === "C") {
