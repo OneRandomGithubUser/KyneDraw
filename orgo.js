@@ -26,6 +26,7 @@ var previousMouseX = 0.0;
 var previousMouseY = 0.0;
 var angleSnap = true;
 var validBond = true;
+let buffer;
 // TODO: bad practice to make so many global variables
 
 function setup() {
@@ -33,6 +34,7 @@ function setup() {
   windowWidth = Math.max(window.innerWidth,minWidth);
   windowHeight = Math.max(window.innerHeight,minHeight);
   createCanvas(windowWidth,windowHeight);
+  buffer = createGraphics(windowWidth,windowHeight);
   stroke(0); // Set line drawing color to black
   frameRate(60);
   console.log("Written by Joseph. github.com/OneRandomGithubUser");
@@ -47,12 +49,14 @@ function draw() {
   windowWidth = Math.max(window.innerWidth-20,minWidth);
   windowHeight = Math.max(window.innerHeight-20,minHeight);
   resizeCanvas(windowWidth,windowHeight);
-  background(255); // Set the background to white
+  buffer.width = windowWidth;
+  buffer.height = windowHeight;
+  buffer.background(255); // Set the background to white
   let cachedMouseX = mouseX;
   let cachedMouseY = mouseY;
 
   // draw UI
-  fill(230);
+  buffer.fill(230);
   selectedBox = 0;
   if (cachedMouseY < 120 && cachedMouseY > 20) {
     if (cachedMouseX < 120 && cachedMouseX > 20) {
@@ -117,61 +121,60 @@ function draw() {
   bondButton(260,20,3);
 
   if (angleSnap) {
-    fill(205);
+    buffer.fill(205);
   }
   if (selectedBox === 4) {
-    stroke(255);
-    rect(windowWidth-120,20,100,50);
-    stroke(0);
+    buffer.stroke(255);
+    buffer.rect(windowWidth-120,20,100,50);
+    buffer.stroke(0);
   } else {
-    rect(windowWidth-120,20,100,50);
+    buffer.rect(windowWidth-120,20,100,50);
   }
-  fill(0);
-  textAlign(CENTER, CENTER);
-  textSize(16);
-  noStroke();
-  textStyle(BOLD);
-  text("SNAP BONDS",windowWidth-120,20,100,50);
-  textStyle(NORMAL);
-  stroke(0);
-  fill(230);
+  buffer.fill(0);
+  buffer.textAlign(CENTER, CENTER);
+  buffer.textSize(16);
+  buffer.noStroke();
+  buffer.textStyle(BOLD);
+  buffer.text("SNAP BONDS",windowWidth-120,20,100,50);
+  buffer.textStyle(NORMAL);
+  buffer.stroke(0);
+  buffer.fill(230);
 
   if (!angleSnap) {
-    fill(205);
+    buffer.fill(205);
   }
   if (selectedBox === 5) {
-    stroke(255);
-    rect(windowWidth-240,20,100,50);
-    stroke(0);
+    buffer.stroke(255);
+    buffer.rect(windowWidth-240,20,100,50);
+    buffer.stroke(0);
   } else {
-    rect(windowWidth-240,20,100,50);
+    buffer.rect(windowWidth-240,20,100,50);
   }
-  fill(0);
-  textAlign(CENTER, CENTER);
-  textSize(16);
-  noStroke();
-  textStyle(BOLD);
-  text("FREEFORM BONDS",windowWidth-240,20,100,50);
-  textStyle(NORMAL);
-  stroke(0);
-  fill(230);
-
+  buffer.fill(0);
+  buffer.textAlign(CENTER, CENTER);
+  buffer.textSize(16);
+  buffer.noStroke();
+  buffer.textStyle(BOLD);
+  buffer.text("FREEFORM BONDS",windowWidth-240,20,100,50);
+  buffer.textStyle(NORMAL);
+  buffer.stroke(0);
+  buffer.fill(230);
     if (selectedBox === 11) {
-    stroke(255);
-    rect(windowWidth-360,20,100,50);
-    stroke(0);
+      buffer.stroke(255);
+      buffer.rect(windowWidth-360,20,100,50);
+      buffer.stroke(0);
   } else {
-    rect(windowWidth-360,20,100,50);
+    buffer.rect(windowWidth-360,20,100,50);
   }
-  fill(0);
-  textAlign(CENTER, CENTER);
-  textSize(16);
-  noStroke();
-  textStyle(BOLD);
-  text("CLEAR",windowWidth-360,20,100,50);
-  textStyle(NORMAL);
-  stroke(0);
-  fill(230);
+  buffer.fill(0);
+  buffer.textAlign(CENTER, CENTER);
+  buffer.textSize(16);
+  buffer.noStroke();
+  buffer.textStyle(BOLD);
+  buffer.text("CLEAR",windowWidth-360,20,100,50);
+  buffer.textStyle(NORMAL);
+  buffer.stroke(0);
+  buffer.fill(230);
 
   atomButton(380,20,"C",6);
   atomButton(500,20,"O",7);
@@ -196,7 +199,6 @@ function draw() {
 
   if (!mousePressed) {selectedAtom = [];} // selected atom when snap-on is in effect
   closestDistance = selectionDistance;
-  let distance = 0;
   validBond = true;
 
   // cycle through all atoms
@@ -213,7 +215,7 @@ function draw() {
     }
     
     // render preexisting atoms
-    noStroke();
+    buffer.noStroke();
     if (currentAtom[1] === -1) {
       continue; // deleted atom
     } else {
@@ -247,21 +249,21 @@ function draw() {
         }
       }
       if (label !== "") {
-        textAlign(CENTER, CENTER);
-        fill(255);
-        rectMode(CENTER);
-        let boundingBox = font.textBounds(label, currentAtom[2], currentAtom[3], 20, CENTER);
-        rectMode(CORNER);
-        rect(boundingBox.x-5, boundingBox.y-5, boundingBox.w+10, boundingBox.h+10);
-        fill(0);
-        textSize(20);
-        rectMode(CENTER);
-        text(label, currentAtom[2], currentAtom[3]);
-        rectMode(CORNER);
-        fill(255);
+        buffer.textAlign(CENTER, CENTER);
+        buffer.fill(255);
+        buffer.rectMode(CENTER);
+        let boundingBox = font.textBounds(label, currentAtom[2], currentAtom[3], 20, CENTER, CENTER);
+        buffer.rectMode(CORNER);
+        buffer.rect(boundingBox.x-5, boundingBox.y-5, boundingBox.w+10, boundingBox.h+10);
+        buffer.fill(0);
+        buffer.textSize(20);
+        buffer.rectMode(CENTER);
+        buffer.text(label, currentAtom[2], currentAtom[3]);
+        buffer.rectMode(CORNER);
+        buffer.fill(255);
       }
     }
-    stroke(0);
+    buffer.stroke(0);
 
     // calculate closest selected atom as long as the mouse is not pressed
     if (!mousePressed) {
@@ -312,14 +314,14 @@ function draw() {
   // render cyan/red selection dot
   if (selectedAtom.length !== 0) {
     if (bondAngle === -1) {
-      fill(255,0,0);
+      buffer.fill(255,0,0);
       validBond = false;
     } else {
-      fill(48,227,255);
+      buffer.fill(48,227,255);
       validBond = true;
     }
-    circle(selectedAtom[2],selectedAtom[3],10);
-    fill(255);
+    buffer.circle(selectedAtom[2],selectedAtom[3],10);
+    buffer.fill(255);
   }
 
   if (bondMode) {
@@ -349,16 +351,16 @@ function draw() {
     // render cyan/red destination dot
     if (destinationAtom.length !== 0) {
       if (countBonds(destinationAtom) <= 4-bondType) {
-        fill(48,227,255);
-        circle(destinationAtom[2],destinationAtom[3],10);
-        fill(255);
+        buffer.fill(48,227,255);
+        buffer.circle(destinationAtom[2],destinationAtom[3],10);
+        buffer.fill(255);
         previewX2 = destinationAtom[2];
         previewY2 = destinationAtom[3];
         bondAngle = findBondAngle(previewX1,previewY1,previewX2,previewY2);
       } else {
-        fill(255,0,0);
-        circle(destinationAtom[2],destinationAtom[3],10);
-        fill(255);
+        buffer.fill(255,0,0);
+        buffer.circle(destinationAtom[2],destinationAtom[3],10);
+        buffer.fill(255);
         previewX2 = destinationAtom[2];
         previewY2 = destinationAtom[3];
         bondAngle = -1;
@@ -368,34 +370,34 @@ function draw() {
 
   // draw preview
   if (!bondMode) {
-    rectMode(CENTER);
-    fill(0);
-    noStroke();
-    textSize(20);
-    text(element, previewX1, previewY1);
-    fill(255);
-    stroke(0);
-    rectMode(CORNER);
+    buffer.rectMode(CENTER);
+    buffer.fill(0);
+    buffer.noStroke();
+    buffer.textSize(20);
+    buffer.text(element, previewX1, previewY1);
+    buffer.fill(255);
+    buffer.stroke(0);
+    buffer.rectMode(CORNER);
   } else if (validBond) {
     bond(previewX1, previewY1, previewX2, previewY2, bondType);
   }
 
   // introduction screen and pause rendering during inactivity
   if (frameCount < 120) {
-    stroke(255);
+    buffer.stroke(255);
     if (frameCount > 60) {
-      fill(255,255-(frameCount-60)/60*255);
-      rect(0,0,windowWidth,windowHeight);
-      fill(0,255-(frameCount-60)/60*255);
+      buffer.fill(255,255-(frameCount-60)/60*255);
+      buffer.rect(0,0,windowWidth,windowHeight);
+      buffer.fill(0,255-(frameCount-60)/60*255);
     } else {      
-      fill(255);
-      rect(0,0,windowWidth,windowHeight);
-      fill(0);
+      buffer.fill(255);
+      buffer.rect(0,0,windowWidth,windowHeight);
+      buffer.fill(0);
     }
-    textSize(144);
-    textAlign(CENTER, CENTER);
-    text("KyneDraw",0,windowHeight/2,windowWidth);
-    stroke(0);
+    buffer.textSize(144);
+    buffer.textAlign(CENTER, CENTER);
+    buffer.text("KyneDraw",0,windowHeight/2,windowWidth);
+    buffer.stroke(0);
   } else {
     if (previousMouseX === cachedMouseX && previousMouseY === mouseY) {
       noLoop();
@@ -404,6 +406,9 @@ function draw() {
       previousMouseY = cachedMouseY;
     }
   }
+  
+  // copy buffer to screen
+  image(buffer, 0, 0, windowWidth, windowHeight);
 }
 
 function mouseDragged() {
@@ -431,20 +436,22 @@ function toDegrees (angle) {
 
 function lineOffset (x1,y1,x2,y2,offset) {
   let angle = findBondAngle(x1,y1,x2,y2);
-  line(x1-Math.sin(toRadians(angle))*offset, y1-Math.cos(toRadians(angle))*offset, x2-Math.sin(toRadians(angle))*offset, y2-Math.cos(toRadians(angle))*offset);
+  buffer.line(x1-Math.sin(toRadians(angle))*offset, y1-Math.cos(toRadians(angle))*offset, x2-Math.sin(toRadians(angle))*offset, y2-Math.cos(toRadians(angle))*offset);
 }
 
 function bondButton (x,y,bonds) {
-  if (bondType === bonds && bondMode) {fill(205);}
-  if (selectedBox === bonds) {
-    stroke(255);
-    rect(x,y,100,100);
-    stroke(0);
-  } else {
-    rect(x,y,100,100);
+  if (bondType === bonds && bondMode) {
+    buffer.fill(205);
   }
-  fill(230);
-  line(x+50-Math.cos(toRadians(30))*bondLength/2,y+50-Math.sin(toRadians(30))*bondLength/2,x+50+Math.cos(toRadians(30))*bondLength/2,y+50+Math.sin(toRadians(30))*bondLength/2);
+  if (selectedBox === bonds) {
+    buffer.stroke(255);
+    buffer.rect(x,y,100,100);
+    buffer.stroke(0);
+  } else {
+    buffer.rect(x,y,100,100);
+  }
+  buffer.fill(230);
+  buffer.line(x+50-Math.cos(toRadians(30))*bondLength/2,y+50-Math.sin(toRadians(30))*bondLength/2,x+50+Math.cos(toRadians(30))*bondLength/2,y+50+Math.sin(toRadians(30))*bondLength/2);
   if (bonds > 1) {
     lineOffset(x+50-Math.cos(toRadians(30))*bondLength/2,y+50-Math.sin(toRadians(30))*bondLength/2,x+50+Math.cos(toRadians(30))*bondLength/2,y+50+Math.sin(toRadians(30))*bondLength/2,5);
     if (bonds > 2) {
@@ -454,41 +461,43 @@ function bondButton (x,y,bonds) {
 }
 
 function atomButton (x,y,atom,box) {
-  if (element === atom && !bondMode) {fill(205);}
-  if (selectedBox === box) {    
-    stroke(255);
-    rect(x,y,100,100);
-    stroke(0);
-  } else {
-    rect(x,y,100,100);
+  if (element === atom && !bondMode) {
+    buffer.fill(205);
   }
-  fill(0);
-  textAlign(CENTER, CENTER);
-  textSize(48);
-  noStroke();
-  text(atom,x,y,100,100);
-  stroke(0);
-  fill(230);
+  if (selectedBox === box) {    
+    buffer.stroke(255);
+    buffer.rect(x,y,100,100);
+    buffer.stroke(0);
+  } else {
+    buffer.rect(x,y,100,100);
+  }
+  buffer.fill(0);
+  buffer.textAlign(CENTER, CENTER);
+  buffer.textSize(48);
+  buffer.noStroke();
+  buffer.text(atom,x,y,100,100);
+  buffer.stroke(0);
+  buffer.fill(230);
 }
 
 
 function reactionButton (x,y,reaction,box) {
   if (selectedBox === box) {
-    stroke(255);
-    rect(x,y,100,50);
-    stroke(0);
+    buffer.stroke(255);
+    buffer.rect(x,y,100,50);
+    buffer.stroke(0);
   } else {
-    rect(x,y,100,50);
+    buffer.rect(x,y,100,50);
   }
-  fill(0);
-  textAlign(CENTER, CENTER);
-  textSize(16);
-  noStroke();
-  textStyle(BOLD);
-  text(reaction,x,y,100,50);
-  textStyle(NORMAL);
-  stroke(0);
-  fill(230);
+  buffer.fill(0);
+  buffer.textAlign(CENTER, CENTER);
+  buffer.textSize(16);
+  buffer.noStroke();
+  buffer.textStyle(BOLD);
+  buffer.text(reaction,x,y,100,50);
+  buffer.textStyle(NORMAL);
+  buffer.stroke(0);
+  buffer.fill(230);
 }
 
 
@@ -546,7 +555,7 @@ function calculateBondAngle (bseclist,banglelist) {
   }
 
 function bond (x1,y1,x2,y2,num) {
-  line(x1,y1,x2,y2);
+  buffer.line(x1,y1,x2,y2);
   if (num >= 2) {
     lineOffset(x1,y1,x2,y2,5);
     if (num === 3) {
