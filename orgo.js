@@ -35,7 +35,7 @@ function setup() {
   windowHeight = Math.max(window.innerHeight,minHeight);
   createCanvas(windowWidth,windowHeight);
   buffer = createGraphics(windowWidth,windowHeight);
-  stroke(0); // Set line drawing color to black
+  buffer.stroke(0); // Set line drawing color to black
   frameRate(60);
   console.log("Written by Joseph. github.com/OneRandomGithubUser");
 }
@@ -451,13 +451,7 @@ function bondButton (x,y,bonds) {
     buffer.rect(x,y,100,100);
   }
   buffer.fill(230);
-  buffer.line(x+50-Math.cos(toRadians(30))*bondLength/2,y+50-Math.sin(toRadians(30))*bondLength/2,x+50+Math.cos(toRadians(30))*bondLength/2,y+50+Math.sin(toRadians(30))*bondLength/2);
-  if (bonds > 1) {
-    lineOffset(x+50-Math.cos(toRadians(30))*bondLength/2,y+50-Math.sin(toRadians(30))*bondLength/2,x+50+Math.cos(toRadians(30))*bondLength/2,y+50+Math.sin(toRadians(30))*bondLength/2,5);
-    if (bonds > 2) {
-      lineOffset(x+50-Math.cos(toRadians(30))*bondLength/2,y+50-Math.sin(toRadians(30))*bondLength/2,x+50+Math.cos(toRadians(30))*bondLength/2,y+50+Math.sin(toRadians(30))*bondLength/2,-5);
-    }
-  }
+  bond(x+50-Math.cos(toRadians(30))*bondLength/2,y+50-Math.sin(toRadians(30))*bondLength/2,x+50+Math.cos(toRadians(30))*bondLength/2,y+50+Math.sin(toRadians(30))*bondLength/2,bonds);
 }
 
 function atomButton (x,y,atom,box) {
