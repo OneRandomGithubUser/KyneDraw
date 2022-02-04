@@ -623,6 +623,7 @@ function mouseClicked() {
       break;
     case 11:
       network = [];
+      nextID = 0;
       break;
     case 21:
       for (let i = 0; i < network.length; i++) {
