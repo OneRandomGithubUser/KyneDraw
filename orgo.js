@@ -22,6 +22,8 @@ const minWidth = 1920;
 const minHeight = 210;
 let windowHeight = 0;
 let windowLength = 0;
+let previousWindowHeight = 0;
+let previousWindowWidth = 0;
 var previousMouseX = 0.0;
 var previousMouseY = 0.0;
 var angleSnap = true;
@@ -49,47 +51,8 @@ function setup() {
 }
 
 function draw() {
-  // resize drawing space
-  windowWidth = Math.max(window.innerWidth-20,minWidth);
-  windowHeight = Math.max(window.innerHeight-20,minHeight);
-  resizeCanvas(windowWidth,windowHeight);
-  buffer.width = windowWidth;
-  buffer.height = windowHeight;
   let cachedMouseX = mouseX;
   let cachedMouseY = mouseY;
-
-  // determine whether or not to render the frame
-  if (intro) {
-    if (frameCount < 120) {
-      buffer.stroke(255);
-      if (frameCount > 60) {
-        buffer.fill(255,255-(frameCount-60)/60*255);
-        buffer.rect(0,0,windowWidth,windowHeight);
-        buffer.fill(0,255-(frameCount-60)/60*255);
-      } else {      
-        buffer.fill(255);
-        buffer.rect(0,0,windowWidth,windowHeight);
-        buffer.fill(0);
-      }
-      if (frameCount === 60) {
-        renderFrame = true;
-      }
-      buffer.textSize(144);
-      buffer.textAlign(CENTER, CENTER);
-      buffer.text("KyneDraw",0,windowHeight/2,windowWidth);
-      buffer.stroke(0);
-    } else if (frameCount === 120) {
-      intro = false;
-    }
-  } else {
-  // pause rendering during inactivity and when not in intro
-    if (previousMouseX === cachedMouseX && previousMouseY === mouseY) {
-      renderFrame = false;
-    } else {
-      previousMouseX = cachedMouseX;
-      previousMouseY = cachedMouseY;
-    }
-  }
 
   if (renderFrame) {
     buffer.background(255); // Set the background to white
@@ -421,6 +384,39 @@ function draw() {
       bond(previewX1, previewY1, previewX2, previewY2, bondType);
     }
   }
+
+  // determine whether or not to render the next frame
+  if (intro) {
+    if (frameCount < 120) {
+      buffer.stroke(255);
+      if (frameCount > 60) {
+        buffer.fill(255,255-(frameCount-60)/60*255);
+        buffer.rect(0,0,windowWidth,windowHeight);
+        buffer.fill(0,255-(frameCount-60)/60*255);
+      } else {      
+        buffer.fill(255);
+        buffer.rect(0,0,windowWidth,windowHeight);
+        buffer.fill(0);
+      }
+      if (frameCount === 60) {
+        renderFrame = true;
+      }
+      buffer.textSize(144);
+      buffer.textAlign(CENTER, CENTER);
+      buffer.text("KyneDraw",0,windowHeight/2,windowWidth);
+      buffer.stroke(0);
+    } else if (frameCount === 120) {
+      intro = false;
+    }
+  } else {
+  // pause rendering during inactivity and when not in intro
+    if (previousMouseX === cachedMouseX && previousMouseY === mouseY) {
+      renderFrame = false;
+    } else {
+      previousMouseX = cachedMouseX;
+      previousMouseY = cachedMouseY;
+    }
+  }
   
   // copy buffer to screen
   image(buffer, 0, 0, windowWidth, windowHeight);
@@ -509,6 +505,17 @@ function reactionButton (x,y,reaction,box) {
   buffer.fill(230);
 }
 
+function windowResized() {
+  if (windowWidth != Math.max(window.innerWidth-20,minWidth) || windowHeight != Math.max(window.innerHeight-20,minHeight)) {
+    windowWidth = Math.max(window.innerWidth-20,minWidth);
+    windowHeight = Math.max(window.innerHeight-20,minHeight);
+    resizeCanvas(windowWidth,windowHeight);
+    var newGraphics = createGraphics(windowWidth,windowHeight);
+    newGraphics.image(buffer, 0, 0, newGraphics.width, newGraphics.height);
+    buffer = newGraphics;
+  }
+  renderFrame = true;
+}
 
 function findBondAngle (x1,y1,x2,y2) {
   let ans;
