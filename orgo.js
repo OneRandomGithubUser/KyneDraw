@@ -33,8 +33,8 @@ function setup() {
   // createCanvas must be the first statement
   windowWidth = Math.max(window.innerWidth,minWidth);
   windowHeight = Math.max(window.innerHeight,minHeight);
-  createCanvas(windowWidth,windowHeight);
-  buffer = createGraphics(windowWidth,windowHeight);
+  createCanvas(windowWidth,windowHeight,WEBGL);
+  buffer = createGraphics(windowWidth,windowHeight,WEBGL);
   buffer.stroke(0); // Set line drawing color to black
   frameRate(60);
   console.log("Written by Joseph. github.com/OneRandomGithubUser");
@@ -42,7 +42,7 @@ function setup() {
 
 let font;
 function preload() {
-  font = loadFont('./arial.ttf');
+  font = loadFont('arial');
 }
 
 function draw() {
