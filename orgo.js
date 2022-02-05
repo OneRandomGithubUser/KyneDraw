@@ -176,12 +176,18 @@ function draw() {
     buffer.stroke(0);
     buffer.fill(230);
 
+    // render atom buttons
+    buffer.textSize(48);
+    buffer.textStyle(NORMAL);
     atomButton(380,20,"C",6);
     atomButton(500,20,"O",7);
     atomButton(620,20,"N",8);
     atomButton(740,20,"Br",9);
     atomButton(860,20,"Cl",10);
     
+    // render reaction buttons
+    buffer.textSize(16);
+    buffer.textStyle(BOLD);
     reactionButton(260,windowHeight-70,"POCl₃",21);
     reactionButton(380,windowHeight-70,"KOH",22);
     reactionButton(500,windowHeight-70,"HBr",23);
@@ -196,6 +202,11 @@ function draw() {
     reactionButton(1580,windowHeight-70,"PBr₃",32);
     reactionButton(1700,windowHeight-70,"SOCl₂",33);
     reactionButton(1820,windowHeight-70,"TsCl",34);
+
+    buffer.textSize();
+    buffer.textStyle(NORMAL);
+    buffer.stroke(0);
+    buffer.fill(0);
 
     if (!mousePressed) {selectedAtom = [];} // selected atom when snap-on is in effect
     closestDistance = selectionDistance;
@@ -464,38 +475,33 @@ function bondButton (x,y,bonds) {
 function atomButton (x,y,atom,box) {
   if (element === atom && !bondMode) {
     buffer.fill(205);
+  } else {
+    buffer.fill(230);
   }
   if (selectedBox === box) {    
     buffer.stroke(255);
     buffer.rect(x,y,100,100);
-    buffer.stroke(0);
   } else {
+    buffer.stroke(0);
     buffer.rect(x,y,100,100);
   }
-  buffer.fill(0);
-  buffer.textSize(48);
   buffer.noStroke();
+  buffer.fill(0);
   buffer.text(atom,x,y,100,100);
-  buffer.stroke(0);
-  buffer.fill(230);
 }
 
 function reactionButton (x,y,reaction,box) {
+  buffer.fill(230);
   if (selectedBox === box) {
     buffer.stroke(255);
     buffer.rect(x,y,100,50);
-    buffer.stroke(0);
   } else {
+    buffer.stroke(0);
     buffer.rect(x,y,100,50);
   }
-  buffer.fill(0);
-  buffer.textSize(16);
   buffer.noStroke();
-  buffer.textStyle(BOLD);
+  buffer.fill(0);
   buffer.text(reaction,x,y,100,50);
-  buffer.textStyle(NORMAL);
-  buffer.stroke(0);
-  buffer.fill(230);
 }
 
 function windowResized() {
@@ -506,6 +512,7 @@ function windowResized() {
     var newGraphics = createGraphics(windowWidth,windowHeight);
     newGraphics.image(buffer, 0, 0, newGraphics.width, newGraphics.height);
     buffer = newGraphics;
+    buffer.textAlign(CENTER, CENTER);
   }
   renderFrame = true;
 }
