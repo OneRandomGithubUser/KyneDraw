@@ -46,6 +46,7 @@ function setup() {
   textFont(font);
   buffer = createGraphics(windowWidth,windowHeight);
   buffer.stroke(0); // Set line drawing color to black
+  buffer.textAlign(CENTER, CENTER);
   frameRate(60);
   console.log("Written by Joseph. github.com/OneRandomGithubUser");
 }
@@ -133,7 +134,6 @@ function draw() {
       buffer.rect(windowWidth-120,20,100,50);
     }
     buffer.fill(0);
-    buffer.textAlign(CENTER, CENTER);
     buffer.textSize(16);
     buffer.noStroke();
     buffer.textStyle(BOLD);
@@ -153,7 +153,6 @@ function draw() {
       buffer.rect(windowWidth-240,20,100,50);
     }
     buffer.fill(0);
-    buffer.textAlign(CENTER, CENTER);
     buffer.textSize(16);
     buffer.noStroke();
     buffer.textStyle(BOLD);
@@ -169,7 +168,6 @@ function draw() {
       buffer.rect(windowWidth-360,20,100,50);
     }
     buffer.fill(0);
-    buffer.textAlign(CENTER, CENTER);
     buffer.textSize(16);
     buffer.noStroke();
     buffer.textStyle(BOLD);
@@ -251,7 +249,6 @@ function draw() {
           }
         }
         if (label !== "") {
-          buffer.textAlign(CENTER, CENTER);
           buffer.fill(255);
           buffer.rectMode(CENTER);
           let boundingBox = font.textBounds(label, currentAtom[2], currentAtom[3], 20, CENTER, CENTER);
@@ -402,7 +399,6 @@ function draw() {
         renderFrame = true;
       }
       buffer.textSize(144);
-      buffer.textAlign(CENTER, CENTER);
       buffer.text("KyneDraw",0,windowHeight/2,windowWidth);
       buffer.stroke(0);
     } else if (frameCount === 120) {
@@ -477,14 +473,12 @@ function atomButton (x,y,atom,box) {
     buffer.rect(x,y,100,100);
   }
   buffer.fill(0);
-  buffer.textAlign(CENTER, CENTER);
   buffer.textSize(48);
   buffer.noStroke();
   buffer.text(atom,x,y,100,100);
   buffer.stroke(0);
   buffer.fill(230);
 }
-
 
 function reactionButton (x,y,reaction,box) {
   if (selectedBox === box) {
@@ -495,7 +489,6 @@ function reactionButton (x,y,reaction,box) {
     buffer.rect(x,y,100,50);
   }
   buffer.fill(0);
-  buffer.textAlign(CENTER, CENTER);
   buffer.textSize(16);
   buffer.noStroke();
   buffer.textStyle(BOLD);
