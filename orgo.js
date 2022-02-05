@@ -49,8 +49,7 @@ function draw() {
   windowWidth = Math.max(window.innerWidth-20,minWidth);
   windowHeight = Math.max(window.innerHeight-20,minHeight);
   resizeCanvas(windowWidth,windowHeight);
-  buffer.width = windowWidth;
-  buffer.height = windowHeight;
+  buffer.resize(windowWidth,windowHeight);
   buffer.background(255); // Set the background to white
   let cachedMouseX = mouseX;
   let cachedMouseY = mouseY;
