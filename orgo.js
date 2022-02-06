@@ -28,7 +28,7 @@ var previousMouseX = 0.0;
 var previousMouseY = 0.0;
 var angleSnap = true;
 var validBond = true;
-let background;
+let background2;
 let middleground;
 let foreground;
 var intro = true;
@@ -43,19 +43,19 @@ function preload() {
 
 function setup() {
   // createCanvas must be the first statement
-  // background: static UI elements
-  // middleground: background, preexisting bonds, atoms, and dynamic UI elements
+  // background2: static UI elements
+  // middleground: background2, preexisting bonds, atoms, and dynamic UI elements
   // foreground: preview bond/atom, snap indicators
   windowWidth = Math.max(window.innerWidth,minWidth);
   windowHeight = Math.max(window.innerHeight,minHeight);
   createCanvas(windowWidth,windowHeight);
   textFont(font);
   middleground = createGraphics(windowWidth,windowHeight);
-  background = createGraphics(windowWidth,windowHeight);
+  background2 = createGraphics(windowWidth,windowHeight);
   foreground = createGraphics(windowWidth,windowHeight);
-  background.textAlign(CENTER, CENTER);
-  background.clear();
-  drawBackground();
+  background2.textAlign(CENTER, CENTER);
+  background2.clear();
+  drawbackground2();
   middleground.stroke(0); // Set line drawing color to black
   middleground.textSize(16);
   middleground.textAlign(CENTER, CENTER);
@@ -138,7 +138,7 @@ function draw() {
     if (renderMiddleground) {
       // set draw attributes common to these buttons to speed up performance
       middleground.clear();
-      middleground.image(background, 0, 0, windowWidth, windowHeight);
+      middleground.image(background2, 0, 0, windowWidth, windowHeight);
       middleground.fill(230);
 
       // render bond button overlays
@@ -195,6 +195,8 @@ function draw() {
       let currentAtom = network[i];
 
       if (renderMiddleground) {
+        middleground.textSize(20);
+
         // render preexisting bonds
         if (countBonds(currentAtom) !== 0) {
           for (let j = 4; j < currentAtom.length; j+=2) {
@@ -248,16 +250,10 @@ function draw() {
           }
           if (label !== "") {
             middleground.fill(255);
-            middleground.rectMode(CENTER);
             let boundingBox = font.textBounds(label, currentAtom[2], currentAtom[3], 20, CENTER, CENTER);
-            middleground.rectMode(CORNER);
-            middleground.rect(boundingBox.x-5, boundingBox.y-5, boundingBox.w+10, boundingBox.h+10);
+            middleground.rect(boundingBox.x-5-boundingBox.w/2, boundingBox.y-5, boundingBox.w+10, boundingBox.h+10); // TODO: figure out why this is so weird
             middleground.fill(0);
-            middleground.textSize(20);
-            middleground.rectMode(CENTER);
             middleground.text(label, currentAtom[2], currentAtom[3]);
-            middleground.rectMode(CORNER);
-            middleground.fill(255);
           }
         }
         middleground.stroke(0);
@@ -459,10 +455,10 @@ function lineOffset (x1,y1,x2,y2,offset,frame) {
 }
 
 function angleSnapButton(x,y,label,box) {
-  background.fill(230);
-  background.rect(x,y,100,50);
-  background.fill(0);
-  background.text(label,x,y,100,50);
+  background2.fill(230);
+  background2.rect(x,y,100,50);
+  background2.fill(0);
+  background2.text(label,x,y,100,50);
 }
 
 function angleSnapButtonOverlay(x,y,label,box) {
@@ -487,10 +483,10 @@ function angleSnapButtonOverlay(x,y,label,box) {
 }
 
 function clearButton() {
-  background.fill(230);
-  background.rect(windowWidth-360,20,100,50);
-  background.fill(0);
-  background.text("CLEAR",windowWidth-360,20,100,50);
+  background2.fill(230);
+  background2.rect(windowWidth-360,20,100,50);
+  background2.fill(0);
+  background2.text("CLEAR",windowWidth-360,20,100,50);
 }
 
 function clearButtonOverlay() {
@@ -521,10 +517,10 @@ function bondButton (x,y,bonds) { // does not need an overlay version because li
 }
 
 function atomButton (x,y,atom,box) {
-  background.fill(230);
-  background.rect(x,y,100,100);
-  background.fill(0);
-  background.text(atom,x,y,100,100);
+  background2.fill(230);
+  background2.rect(x,y,100,100);
+  background2.fill(0);
+  background2.text(atom,x,y,100,100);
 }
 
 function atomButtonOverlay (x,y,atom,box) {
@@ -553,10 +549,10 @@ function atomButtonOverlay (x,y,atom,box) {
 }
 
 function reactionButton (x,y,reaction,box) {
-  background.fill(230);
-  background.rect(x,y,100,50);
-  background.fill(0);
-  background.text(reaction,x,y,100,50);
+  background2.fill(230);
+  background2.rect(x,y,100,50);
+  background2.fill(0);
+  background2.text(reaction,x,y,100,50);
 }
 
 function reactionButtonOverlay (x,y,reaction,box) {
@@ -570,18 +566,18 @@ function reactionButtonOverlay (x,y,reaction,box) {
 }
 
 function windowResized() {
-  drawBackground();
+  drawbackground2();
 }
 
-function drawBackground() {
+function drawbackground2() {
   if (windowWidth != Math.max(window.innerWidth-20,minWidth) || windowHeight != Math.max(window.innerHeight-20,minHeight)) {
     windowWidth = Math.max(window.innerWidth-20,minWidth);
     windowHeight = Math.max(window.innerHeight-20,minHeight);
     resizeCanvas(windowWidth,windowHeight);
     var newGraphics = createGraphics(windowWidth,windowHeight);
-    newGraphics.image(background, 0, 0, newGraphics.width, newGraphics.height);
-    background = newGraphics;
-    background.textAlign(CENTER, CENTER);
+    newGraphics.image(background2, 0, 0, newGraphics.width, newGraphics.height);
+    background2 = newGraphics;
+    background2.textAlign(CENTER, CENTER);
     var newGraphics = createGraphics(windowWidth,windowHeight);
     newGraphics.image(middleground, 0, 0, newGraphics.width, newGraphics.height);
     middleground = newGraphics;
@@ -594,16 +590,16 @@ function drawBackground() {
   renderFrame = true;
   renderMiddleground = true;
 
-  background.clear();
-  background.noStroke();
-  background.textSize(48);
+  background2.clear();
+  background2.noStroke();
+  background2.textSize(48);
   atomButton(380,20,"C",6);
   atomButton(500,20,"O",7);
   atomButton(620,20,"N",8);
   atomButton(740,20,"Br",9);
   atomButton(860,20,"Cl",10);
-  background.textSize(16);
-  background.textStyle(BOLD);
+  background2.textSize(16);
+  background2.textStyle(BOLD);
   reactionButton(260,windowHeight-70,"POCl₃",21);
   reactionButton(380,windowHeight-70,"KOH",22);
   reactionButton(500,windowHeight-70,"HBr",23);
@@ -621,8 +617,8 @@ function drawBackground() {
   clearButton();
   angleSnapButton(windowWidth-240,20,"SNAP BONDS",5);
   angleSnapButton(windowWidth-120,20,"FREEFORM BONDS",4);
-  background.stroke(0);
-  background.textStyle(NORMAL);
+  background2.stroke(0);
+  background2.textStyle(NORMAL);
 }
 
 function findBondAngle (x1,y1,x2,y2) {
