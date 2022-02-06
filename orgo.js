@@ -724,7 +724,7 @@ function mouseClicked() {
             if (adajacentAdjacentAtom[0] === i) { // ignore the currentAtom
               continue;
             }
-            if (countBonds(adajacentAdjacentAtom) >= 3) { // can't make another bond on a carbon with a full octet
+            if (countBonds(adajacentAdjacentAtom) > 3) { // can't make another bond on a carbon with a full octet
               continue;
             }
             if (countBonds(adajacentAdjacentAtom) > countBonds(mostSubstitutedAtom)) {
