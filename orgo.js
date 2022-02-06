@@ -207,6 +207,11 @@ function draw() {
             case 1:
               label = "OH";
               break;
+            case 3:
+              label = "O⁺"
+              break;
+            case 4:
+              label = "O²⁺"
           }
         } else if (label === "N") {
           switch (countBonds(currentAtom)) {
@@ -218,6 +223,9 @@ function draw() {
               break;
             case 2:
               label = "NH";
+              break;
+            case 4:
+              label = "N⁺"
               break;
           }
         }
