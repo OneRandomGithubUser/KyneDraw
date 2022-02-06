@@ -29,6 +29,7 @@ var previousMouseY = 0.0;
 var angleSnap = true;
 var validBond = true;
 let buffer;
+let staticUI;
 var intro = true;
 var renderFrame = false;
 // TODO: bad practice to make so many global variables
@@ -45,6 +46,10 @@ function setup() {
   createCanvas(windowWidth,windowHeight);
   textFont(font);
   buffer = createGraphics(windowWidth,windowHeight);
+  staticUI = createGraphics(windowWidth,windowHeight);
+  staticUI.textAlign(CENTER, CENTER);
+  staticUI.clear();
+  drawBackgroud();
   buffer.stroke(0); // Set line drawing color to black
   buffer.textAlign(CENTER, CENTER);
   frameRate(60);
@@ -56,7 +61,8 @@ function draw() {
   let cachedMouseY = mouseY;
 
   if (renderFrame) {
-    buffer.background(255); // Set the background to white
+    background(255);
+    buffer.clear(); // Set the background to white
 
     // draw UI
     buffer.fill(230);
@@ -177,33 +183,33 @@ function draw() {
     buffer.fill(230);
 
     // render atom buttons
+    buffer.noStroke();
     buffer.textSize(48);
     buffer.textStyle(NORMAL);
-    atomButton(380,20,"C",6);
-    atomButton(500,20,"O",7);
-    atomButton(620,20,"N",8);
-    atomButton(740,20,"Br",9);
-    atomButton(860,20,"Cl",10);
+    atomButtonOverlay(380,20,"C",6);
+    atomButtonOverlay(500,20,"O",7);
+    atomButtonOverlay(620,20,"N",8);
+    atomButtonOverlay(740,20,"Br",9);
+    atomButtonOverlay(860,20,"Cl",10);
     
-    // render reaction buttons
-    buffer.textSize(16);
-    buffer.textStyle(BOLD);
-    reactionButton(260,windowHeight-70,"POCl₃",21);
-    reactionButton(380,windowHeight-70,"KOH",22);
-    reactionButton(500,windowHeight-70,"HBr",23);
-    reactionButton(620,windowHeight-70,"HBr, H₂O₂",24);
-    reactionButton(740,windowHeight-70,"Br₂",25);
-    reactionButton(860,windowHeight-70,"Br₂, H₂O",26);
-    reactionButton(980,windowHeight-70,"H₂, Pd",27);
-    reactionButton(1100,windowHeight-70,"Hg(OAc)₂,H₂O,BH₄",28);
-    reactionButton(1220,windowHeight-70,"BH₃",29);
-    reactionButton(1340,windowHeight-70,"NaBH₄",30);
-    reactionButton(1460,windowHeight-70,"Swern",31);
-    reactionButton(1580,windowHeight-70,"PBr₃",32);
-    reactionButton(1700,windowHeight-70,"SOCl₂",33);
-    reactionButton(1820,windowHeight-70,"TsCl",34);
+    // render reaction buttons borders
+    buffer.noFill();
+    reactionButtonOverlay(260,windowHeight-70,"POCl₃",21);
+    reactionButtonOverlay(380,windowHeight-70,"KOH",22);
+    reactionButtonOverlay(500,windowHeight-70,"HBr",23);
+    reactionButtonOverlay(620,windowHeight-70,"HBr, H₂O₂",24);
+    reactionButtonOverlay(740,windowHeight-70,"Br₂",25);
+    reactionButtonOverlay(860,windowHeight-70,"Br₂, H₂O",26);
+    reactionButtonOverlay(980,windowHeight-70,"H₂, Pd",27);
+    reactionButtonOverlay(1100,windowHeight-70,"Hg(OAc)₂,H₂O,BH₄",28);
+    reactionButtonOverlay(1220,windowHeight-70,"BH₃",29);
+    reactionButtonOverlay(1340,windowHeight-70,"NaBH₄",30);
+    reactionButtonOverlay(1460,windowHeight-70,"Swern",31);
+    reactionButtonOverlay(1580,windowHeight-70,"PBr₃",32);
+    reactionButtonOverlay(1700,windowHeight-70,"SOCl₂",33);
+    reactionButtonOverlay(1820,windowHeight-70,"TsCl",34);
 
-    buffer.textSize();
+    buffer.textSize(16);
     buffer.textStyle(NORMAL);
     buffer.stroke(0);
     buffer.fill(0);
@@ -391,6 +397,10 @@ function draw() {
     } else if (validBond) {
       bond(previewX1, previewY1, previewX2, previewY2, bondType);
     }
+  
+    // copy buffer to screen
+    image(staticUI, 0, 0, windowWidth, windowHeight);
+    image(buffer, 0, 0, windowWidth, windowHeight);
   }
 
   // determine whether or not to render the next frame
@@ -424,9 +434,6 @@ function draw() {
       previousMouseY = cachedMouseY;
     }
   }
-  
-  // copy buffer to screen
-  image(buffer, 0, 0, windowWidth, windowHeight);
 }
 
 function mouseDragged() {
@@ -473,25 +480,38 @@ function bondButton (x,y,bonds) {
 }
 
 function atomButton (x,y,atom,box) {
+  staticUI.fill(230);
+  staticUI.rect(x,y,100,100);
+  staticUI.fill(0);
+  staticUI.text(atom,x,y,100,100);
+}
+
+function atomButtonOverlay (x,y,atom,box) {
   if (element === atom && !bondMode) {
     buffer.fill(205);
   } else {
-    buffer.fill(230);
+    buffer.noFill();
   }
   if (selectedBox === box) {    
     buffer.stroke(255);
     buffer.rect(x,y,100,100);
+    buffer.noStroke();
+    buffer.fill(0);
+    buffer.text(atom,x,y,100,100);
   } else {
     buffer.stroke(0);
     buffer.rect(x,y,100,100);
   }
-  buffer.noStroke();
-  buffer.fill(0);
-  buffer.text(atom,x,y,100,100);
 }
 
 function reactionButton (x,y,reaction,box) {
-  buffer.fill(230);
+  staticUI.fill(230);
+  staticUI.rect(x,y,100,50);
+  staticUI.fill(0);
+  staticUI.text(reaction,x,y,100,50);
+}
+
+function reactionButtonOverlay (x,y,reaction,box) {
   if (selectedBox === box) {
     buffer.stroke(255);
     buffer.rect(x,y,100,50);
@@ -499,12 +519,13 @@ function reactionButton (x,y,reaction,box) {
     buffer.stroke(0);
     buffer.rect(x,y,100,50);
   }
-  buffer.noStroke();
-  buffer.fill(0);
-  buffer.text(reaction,x,y,100,50);
 }
 
 function windowResized() {
+  drawBackground();
+}
+
+function drawBackgroud() {
   if (windowWidth != Math.max(window.innerWidth-20,minWidth) || windowHeight != Math.max(window.innerHeight-20,minHeight)) {
     windowWidth = Math.max(window.innerWidth-20,minWidth);
     windowHeight = Math.max(window.innerHeight-20,minHeight);
@@ -515,6 +536,38 @@ function windowResized() {
     buffer.textAlign(CENTER, CENTER);
   }
   renderFrame = true;
+
+  resizeCanvas(windowWidth,windowHeight);
+  var newStaticUI = createGraphics(windowWidth,windowHeight);
+  newStaticUI.image(buffer, 0, 0, newGraphics.width, newGraphics.height);
+  staticUI = newStaticUI;
+  staticUI.clear();
+  staticUI.textAlign(CENTER, CENTER);
+  staticUI.noStroke();
+  staticUI.textSize(48);
+  atomButton(380,20,"C",6);
+  atomButton(500,20,"O",7);
+  atomButton(620,20,"N",8);
+  atomButton(740,20,"Br",9);
+  atomButton(860,20,"Cl",10);
+  staticUI.textSize(16);
+  staticUI.textStyle(BOLD);
+  reactionButton(260,windowHeight-70,"POCl₃",21);
+  reactionButton(380,windowHeight-70,"KOH",22);
+  reactionButton(500,windowHeight-70,"HBr",23);
+  reactionButton(620,windowHeight-70,"HBr, H₂O₂",24);
+  reactionButton(740,windowHeight-70,"Br₂",25);
+  reactionButton(860,windowHeight-70,"Br₂, H₂O",26);
+  reactionButton(980,windowHeight-70,"H₂, Pd",27);
+  reactionButton(1100,windowHeight-70,"Hg(OAc)₂,H₂O,BH₄",28);
+  reactionButton(1220,windowHeight-70,"BH₃",29);
+  reactionButton(1340,windowHeight-70,"NaBH₄",30);
+  reactionButton(1460,windowHeight-70,"Swern",31);
+  reactionButton(1580,windowHeight-70,"PBr₃",32);
+  reactionButton(1700,windowHeight-70,"SOCl₂",33);
+  reactionButton(1820,windowHeight-70,"TsCl",34);
+  staticUI.stroke(0);
+  staticUI.textStyle(NORMAL);
 }
 
 function findBondAngle (x1,y1,x2,y2) {
