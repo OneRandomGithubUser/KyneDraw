@@ -28,10 +28,12 @@ var previousMouseX = 0.0;
 var previousMouseY = 0.0;
 var angleSnap = true;
 var validBond = true;
-let buffer;
-let staticUI;
+let background;
+let middleground;
+let foreground;
 var intro = true;
 var renderFrame = false;
+var renderMiddleground = false;
 // TODO: bad practice to make so many global variables
 
 let font;
@@ -41,17 +43,24 @@ function preload() {
 
 function setup() {
   // createCanvas must be the first statement
+  // background: static UI elements
+  // middleground: background, preexisting bonds, atoms, and dynamic UI elements
+  // foreground: preview bond/atom, snap indicators
   windowWidth = Math.max(window.innerWidth,minWidth);
   windowHeight = Math.max(window.innerHeight,minHeight);
   createCanvas(windowWidth,windowHeight);
   textFont(font);
-  buffer = createGraphics(windowWidth,windowHeight);
-  staticUI = createGraphics(windowWidth,windowHeight);
-  staticUI.textAlign(CENTER, CENTER);
-  staticUI.clear();
+  middleground = createGraphics(windowWidth,windowHeight);
+  background = createGraphics(windowWidth,windowHeight);
+  foreground = createGraphics(windowWidth,windowHeight);
+  background.textAlign(CENTER, CENTER);
+  background.clear();
   drawBackground();
-  buffer.stroke(0); // Set line drawing color to black
-  buffer.textAlign(CENTER, CENTER);
+  middleground.stroke(0); // Set line drawing color to black
+  middleground.textSize(16);
+  middleground.textAlign(CENTER, CENTER);
+  foreground.textSize(16);
+  foreground.textAlign(CENTER, CENTER);
   frameRate(60);
   console.log("Written by Joseph. github.com/OneRandomGithubUser");
 }
@@ -61,114 +70,121 @@ function draw() {
   let cachedMouseY = mouseY;
 
   if (renderFrame) {
-    background(255);
-    buffer.clear(); // Set the background to white
+    clear();
+    foreground.clear();
 
-    // draw UI
-    buffer.fill(230);
-    selectedBox = 0;
+    // update UI once they are moused over
     if (cachedMouseY < 120 && cachedMouseY > 20) {
       if (cachedMouseX < 120 && cachedMouseX > 20) {
-        selectedBox = 1; // single bond
+        selectBox(1); // single bond
       } else if (cachedMouseX < 240 && cachedMouseX > 140) {
-        selectedBox = 2; // double bond
+        selectBox(2); // double bond
       } else if (cachedMouseX < 360 && cachedMouseX > 260) {
-        selectedBox = 3; // triple bond
+        selectBox(3); // triple bond
       } else if (cachedMouseX < 480 && cachedMouseX > 380) {
-        selectedBox = 6; // C
+        selectBox(6); // C
       } else if (cachedMouseX < 600 && cachedMouseX > 500) {
-        selectedBox = 7; // O
+        selectBox(7); // O
       } else if (cachedMouseX < 720 && cachedMouseX > 620) {
-        selectedBox = 8; // N
+        selectBox(8); // N
       } else if (cachedMouseX < 840 && cachedMouseX > 740) {
-        selectedBox = 9; // Br
+        selectBox(9); // Br
       } else if (cachedMouseX < 960 && cachedMouseX > 860) {
-        selectedBox = 10; // Cl
+        selectBox(10); // Cl
       } else if (cachedMouseY < 70) {
         if (cachedMouseX > windowWidth-120 && cachedMouseX < windowWidth-20) {
-          selectedBox = 4; // FREEFORM BONDS
+          selectBox(4); // FREEFORM BONDS
         } else if (cachedMouseX > windowWidth-240 && cachedMouseX < windowWidth-140) {
-          selectedBox = 5; // SNAP BONDS
+          selectBox(5); // SNAP BONDS
         } else if (cachedMouseX > windowWidth-360 && cachedMouseX < windowWidth-260) {
-          selectedBox = 11; // CLEAR MOLECULE
+          selectBox(11); // CLEAR MOLECULE
         }
       }
-    }
-    if (cachedMouseY > windowHeight-70 && cachedMouseY < windowHeight-20) {
+    } else if (cachedMouseY > windowHeight-70 && cachedMouseY < windowHeight-20) {
       if (cachedMouseX < 360 && cachedMouseX > 260) {
-        selectedBox = 21;
+        selectBox(21);
       } else if (cachedMouseX < 480 && cachedMouseX > 380) {
-        selectedBox = 22;
+        selectBox(22);
       } else if (cachedMouseX < 600 && cachedMouseX > 500) {
-        selectedBox = 23;
+        selectBox(23);
       } else if (cachedMouseX < 720 && cachedMouseX > 620) {
-        selectedBox = 24;
+        selectBox(24);
       } else if (cachedMouseX < 840 && cachedMouseX > 740) {
-        selectedBox = 25;
+        selectBox(25);
       } else if (cachedMouseX < 960 && cachedMouseX > 860) {
-        selectedBox = 26;
+        selectBox(26);
       } else if (cachedMouseX < 1080 && cachedMouseX > 980) {
-        selectedBox = 27;
+        selectBox(27);
       } else if (cachedMouseX < 1200 && cachedMouseX > 1100) {
-        selectedBox = 28;
+        selectBox(28);
       } else if (cachedMouseX < 1320 && cachedMouseX > 1220) {
-        selectedBox = 29;
+        selectBox(29);
       } else if (cachedMouseX < 1440 && cachedMouseX > 1340) {
-        selectedBox = 30;
+        selectBox(30);
       } else if (cachedMouseX < 1560 && cachedMouseX > 1460) {
-        selectedBox = 31;
+        selectBox(31);
       } else if (cachedMouseX < 1680 && cachedMouseX > 1580) {
-        selectedBox = 32;
+        selectBox(32);
       } else if (cachedMouseX < 1800 && cachedMouseX > 1700) {
-        selectedBox = 33;
+        selectBox(33);
       } else if (cachedMouseX < 1920 && cachedMouseX > 1820) {
-        selectedBox = 34;
+        selectBox(34);
       }
+    } else if (selectedBox != 0) {
+      selectedBox = 0;
+      renderMiddleground = true;
     }
 
-    // render bond buttons
-    bondButton(20,20,1);
-    bondButton(140,20,2);
-    bondButton(260,20,3);
+    if (renderMiddleground) {
+      // set draw attributes common to these buttons to speed up performance
+      middleground.clear();
+      middleground.image(background, 0, 0, windowWidth, windowHeight);
+      middleground.fill(230);
 
-    // render atom buttons
-    buffer.noFill();
-    buffer.textSize(48);
-    buffer.textStyle(NORMAL);
-    atomButtonOverlay(380,20,"C",6);
-    atomButtonOverlay(500,20,"O",7);
-    atomButtonOverlay(620,20,"N",8);
-    atomButtonOverlay(740,20,"Br",9);
-    atomButtonOverlay(860,20,"Cl",10);
+      // render bond button overlays
+      bondButton(20,20,1);
+      bondButton(140,20,2);
+      bondButton(260,20,3);
 
-    // render angle snap buttons
-    buffer.textSize(16);
-    buffer.textStyle(BOLD);
-    angleSnapButtonOverlay(windowWidth-240,20,"SNAP BONDS",5);
-    angleSnapButtonOverlay(windowWidth-120,20,"FREEFORM BONDS",4);
+      // render atom button overlays
+      middleground.noFill();
+      middleground.textSize(48);
+      middleground.textStyle(NORMAL);
+      atomButtonOverlay(380,20,"C",6);
+      atomButtonOverlay(500,20,"O",7);
+      atomButtonOverlay(620,20,"N",8);
+      atomButtonOverlay(740,20,"Br",9);
+      atomButtonOverlay(860,20,"Cl",10);
 
-    // render clear button
-    clearButtonOverlay();
-    
-    // render reaction buttons borders
-    reactionButtonOverlay(260,windowHeight-70,"POCl₃",21);
-    reactionButtonOverlay(380,windowHeight-70,"KOH",22);
-    reactionButtonOverlay(500,windowHeight-70,"HBr",23);
-    reactionButtonOverlay(620,windowHeight-70,"HBr, H₂O₂",24);
-    reactionButtonOverlay(740,windowHeight-70,"Br₂",25);
-    reactionButtonOverlay(860,windowHeight-70,"Br₂, H₂O",26);
-    reactionButtonOverlay(980,windowHeight-70,"H₂, Pd",27);
-    reactionButtonOverlay(1100,windowHeight-70,"Hg(OAc)₂,H₂O,BH₄",28);
-    reactionButtonOverlay(1220,windowHeight-70,"BH₃",29);
-    reactionButtonOverlay(1340,windowHeight-70,"NaBH₄",30);
-    reactionButtonOverlay(1460,windowHeight-70,"Swern",31);
-    reactionButtonOverlay(1580,windowHeight-70,"PBr₃",32);
-    reactionButtonOverlay(1700,windowHeight-70,"SOCl₂",33);
-    reactionButtonOverlay(1820,windowHeight-70,"TsCl",34);
+      // render angle snap button overlays
+      middleground.textSize(16);
+      middleground.textStyle(BOLD);
+      angleSnapButtonOverlay(windowWidth-240,20,"SNAP BONDS",5);
+      angleSnapButtonOverlay(windowWidth-120,20,"FREEFORM BONDS",4);
 
-    buffer.textStyle(NORMAL);
-    buffer.stroke(0);
-    buffer.fill(0);
+      // render clear button overlay
+      clearButtonOverlay();
+      
+      // render reaction button overlays
+      reactionButtonOverlay(260,windowHeight-70,"POCl₃",21);
+      reactionButtonOverlay(380,windowHeight-70,"KOH",22);
+      reactionButtonOverlay(500,windowHeight-70,"HBr",23);
+      reactionButtonOverlay(620,windowHeight-70,"HBr, H₂O₂",24);
+      reactionButtonOverlay(740,windowHeight-70,"Br₂",25);
+      reactionButtonOverlay(860,windowHeight-70,"Br₂, H₂O",26);
+      reactionButtonOverlay(980,windowHeight-70,"H₂, Pd",27);
+      reactionButtonOverlay(1100,windowHeight-70,"Hg(OAc)₂,H₂O,BH₄",28);
+      reactionButtonOverlay(1220,windowHeight-70,"BH₃",29);
+      reactionButtonOverlay(1340,windowHeight-70,"NaBH₄",30);
+      reactionButtonOverlay(1460,windowHeight-70,"Swern",31);
+      reactionButtonOverlay(1580,windowHeight-70,"PBr₃",32);
+      reactionButtonOverlay(1700,windowHeight-70,"SOCl₂",33);
+      reactionButtonOverlay(1820,windowHeight-70,"TsCl",34);
+
+      middleground.textStyle(NORMAL);
+      middleground.stroke(0);
+      middleground.fill(0);
+    }
 
     if (!mousePressed) {selectedAtom = [];} // selected atom when snap-on is in effect
     closestDistance = selectionDistance;
@@ -178,72 +194,74 @@ function draw() {
     for (let i = 0; i < network.length; i++) {
       let currentAtom = network[i];
 
-      // render preexisting bonds
-      if (countBonds(currentAtom) !== 0) {
-        for (let j = 4; j < currentAtom.length; j+=2) {
-          if (currentAtom[j+1] > currentAtom[0]) {
-            bond(currentAtom[2], currentAtom[3], network[currentAtom[j+1]][2], network[currentAtom[j+1]][3], currentAtom[j]);
+      if (renderMiddleground) {
+        // render preexisting bonds
+        if (countBonds(currentAtom) !== 0) {
+          for (let j = 4; j < currentAtom.length; j+=2) {
+            if (currentAtom[j+1] > currentAtom[0]) {
+              bond(currentAtom[2], currentAtom[3], network[currentAtom[j+1]][2], network[currentAtom[j+1]][3], currentAtom[j],middleground);
+            }
           }
         }
+        
+        // render preexisting atoms
+        middleground.noStroke();
+        if (currentAtom[1] === -1) {
+          continue; // deleted atom
+        } else {
+          let label = currentAtom[1];
+          if (currentAtom[1] === "C") {
+            if (countBonds(currentAtom) === 0) {
+              label = "CH₄"
+            } else {
+              label = "";
+            }
+          } else if (label === "O") {
+            switch (countBonds(currentAtom)) {
+              case 0:
+                label = "H₂O";
+                break;
+              case 1:
+                label = "OH";
+                break;
+              case 3:
+                label = "O⁺"
+                break;
+              case 4:
+                label = "O²⁺"
+            }
+          } else if (label === "N") {
+            switch (countBonds(currentAtom)) {
+              case 0:
+                label = "NH₃";
+                break;
+              case 1:
+                label = "NH₂";
+                break;
+              case 2:
+                label = "NH";
+                break;
+              case 4:
+                label = "N⁺"
+                break;
+            }
+          }
+          if (label !== "") {
+            middleground.fill(255);
+            middleground.rectMode(CENTER);
+            let boundingBox = font.textBounds(label, currentAtom[2], currentAtom[3], 20, CENTER, CENTER);
+            middleground.rectMode(CORNER);
+            middleground.rect(boundingBox.x-5, boundingBox.y-5, boundingBox.w+10, boundingBox.h+10);
+            middleground.fill(0);
+            middleground.textSize(20);
+            middleground.rectMode(CENTER);
+            middleground.text(label, currentAtom[2], currentAtom[3]);
+            middleground.rectMode(CORNER);
+            middleground.fill(255);
+          }
+        }
+        middleground.stroke(0);
       }
-      
-      // render preexisting atoms
-      buffer.noStroke();
-      if (currentAtom[1] === -1) {
-        continue; // deleted atom
-      } else {
-        let label = currentAtom[1];
-        if (currentAtom[1] === "C") {
-          if (countBonds(currentAtom) === 0) {
-            label = "CH₄"
-          } else {
-            label = "";
-          }
-        } else if (label === "O") {
-          switch (countBonds(currentAtom)) {
-            case 0:
-              label = "H₂O";
-              break;
-            case 1:
-              label = "OH";
-              break;
-            case 3:
-              label = "O⁺"
-              break;
-            case 4:
-              label = "O²⁺"
-          }
-        } else if (label === "N") {
-          switch (countBonds(currentAtom)) {
-            case 0:
-              label = "NH₃";
-              break;
-            case 1:
-              label = "NH₂";
-              break;
-            case 2:
-              label = "NH";
-              break;
-            case 4:
-              label = "N⁺"
-              break;
-          }
-        }
-        if (label !== "") {
-          buffer.fill(255);
-          buffer.rectMode(CENTER);
-          let boundingBox = font.textBounds(label, currentAtom[2], currentAtom[3], 20, CENTER, CENTER);
-          buffer.rectMode(CORNER);
-          buffer.rect(boundingBox.x-5, boundingBox.y-5, boundingBox.w+10, boundingBox.h+10);
-          buffer.fill(0);
-          buffer.textSize(20);
-          buffer.rectMode(CENTER);
-          buffer.text(label, currentAtom[2], currentAtom[3]);
-          buffer.rectMode(CORNER);
-          buffer.fill(255);
-        }
-      }
-      buffer.stroke(0);
 
       // calculate closest selected atom as long as the mouse is not pressed
       if (!mousePressed) {
@@ -294,14 +312,14 @@ function draw() {
     // render cyan/red selection dot
     if (selectedAtom.length !== 0) {
       if (bondAngle === -1) {
-        buffer.fill(255,0,0);
+        foreground.fill(255,0,0);
         validBond = false;
       } else {
-        buffer.fill(48,227,255);
+        foreground.fill(48,227,255);
         validBond = true;
       }
-      buffer.circle(selectedAtom[2],selectedAtom[3],10);
-      buffer.fill(255);
+      foreground.circle(selectedAtom[2],selectedAtom[3],10);
+      foreground.fill(255);
     }
 
     if (bondMode) {
@@ -331,16 +349,16 @@ function draw() {
       // render cyan/red destination dot
       if (destinationAtom.length !== 0) {
         if (countBonds(destinationAtom) <= 4-bondType) {
-          buffer.fill(48,227,255);
-          buffer.circle(destinationAtom[2],destinationAtom[3],10);
-          buffer.fill(255);
+          foreground.fill(48,227,255);
+          foreground.circle(destinationAtom[2],destinationAtom[3],10);
+          foreground.fill(255);
           previewX2 = destinationAtom[2];
           previewY2 = destinationAtom[3];
           bondAngle = findBondAngle(previewX1,previewY1,previewX2,previewY2);
         } else {
-          buffer.fill(255,0,0);
-          buffer.circle(destinationAtom[2],destinationAtom[3],10);
-          buffer.fill(255);
+          foreground.fill(255,0,0);
+          foreground.circle(destinationAtom[2],destinationAtom[3],10);
+          foreground.fill(255);
           previewX2 = destinationAtom[2];
           previewY2 = destinationAtom[3];
           bondAngle = -1;
@@ -350,42 +368,47 @@ function draw() {
 
     // draw preview
     if (!bondMode) {
-      buffer.rectMode(CENTER);
-      buffer.fill(0);
-      buffer.noStroke();
-      buffer.textSize(20);
-      buffer.text(element, previewX1, previewY1);
-      buffer.fill(255);
-      buffer.stroke(0);
-      buffer.rectMode(CORNER);
+      foreground.rectMode(CENTER);
+      foreground.fill(0);
+      foreground.noStroke();
+      foreground.textSize(20);
+      foreground.text(element, previewX1, previewY1);
+      foreground.fill(255);
+      foreground.stroke(0);
+      foreground.rectMode(CORNER);
     } else if (validBond) {
-      bond(previewX1, previewY1, previewX2, previewY2, bondType);
+      bond(previewX1, previewY1, previewX2, previewY2, bondType, foreground);
+    }
+
+    if (renderMiddleground) {
+      renderMiddleground = false;
     }
   
-    // copy buffer to screen
-    image(staticUI, 0, 0, windowWidth, windowHeight);
-    image(buffer, 0, 0, windowWidth, windowHeight);
+    // copy middleground to screen
+    image(middleground, 0, 0, windowWidth, windowHeight);
+    image(foreground, 0, 0, windowWidth, windowHeight);
   }
 
   // determine whether or not to render the next frame
   if (intro) {
     if (frameCount < 120) {
-      buffer.stroke(255);
+      foreground.stroke(255);
       if (frameCount > 60) {
-        buffer.fill(255,255-(frameCount-60)/60*255);
-        buffer.rect(0,0,windowWidth,windowHeight);
-        buffer.fill(0,255-(frameCount-60)/60*255);
+        foreground.fill(255,255-(frameCount-60)/60*255);
+        foreground.rect(0,0,windowWidth,windowHeight);
+        foreground.fill(0,255-(frameCount-60)/60*255);
       } else {      
-        buffer.fill(255);
-        buffer.rect(0,0,windowWidth,windowHeight);
-        buffer.fill(0);
+        foreground.fill(255);
+        foreground.rect(0,0,windowWidth,windowHeight);
+        foreground.fill(0);
       }
       if (frameCount === 60) {
         renderFrame = true;
+        renderMiddleground = true;
       }
-      buffer.textSize(144);
-      buffer.text("KyneDraw",0,windowHeight/2,windowWidth);
-      buffer.stroke(0);
+      foreground.textSize(144);
+      foreground.text("KyneDraw",0,windowHeight/2,windowWidth);
+      foreground.stroke(0);
     } else if (frameCount === 120) {
       intro = false;
     }
@@ -423,119 +446,126 @@ function toDegrees (angle) {
   return angle * (180/Math.PI);
 }
 
-function lineOffset (x1,y1,x2,y2,offset) {
+function selectBox (id) {
+  if (selectedBox != id) {
+    selectedBox = id;
+    renderMiddleground = true;
+  } 
+}
+
+function lineOffset (x1,y1,x2,y2,offset,frame) {
   let angle = findBondAngle(x1,y1,x2,y2);
-  buffer.line(x1-Math.sin(toRadians(angle))*offset, y1-Math.cos(toRadians(angle))*offset, x2-Math.sin(toRadians(angle))*offset, y2-Math.cos(toRadians(angle))*offset);
+  frame.line(x1-Math.sin(toRadians(angle))*offset, y1-Math.cos(toRadians(angle))*offset, x2-Math.sin(toRadians(angle))*offset, y2-Math.cos(toRadians(angle))*offset);
 }
 
 function angleSnapButton(x,y,label,box) {
-  staticUI.fill(230);
-  staticUI.rect(x,y,100,50);
-  staticUI.fill(0);
-  staticUI.text(label,x,y,100,50);
+  background.fill(230);
+  background.rect(x,y,100,50);
+  background.fill(0);
+  background.text(label,x,y,100,50);
 }
 
 function angleSnapButtonOverlay(x,y,label,box) {
   if (selectedBox === box) {
-    buffer.stroke(255);
-    buffer.rect(x,y,100,50);
-    buffer.noStroke();
-    buffer.text(label,x,y,100,50);
-    buffer.stroke(0);
-    buffer.noFill();
+    middleground.stroke(255);
+    middleground.rect(x,y,100,50);
+    middleground.noStroke();
+    middleground.text(label,x,y,100,50);
+    middleground.stroke(0);
+    middleground.noFill();
   } else if (angleSnap && box === 5 || !angleSnap && box === 4) {
-    buffer.fill(205);
-    buffer.rect(x,y,100,50);
-    buffer.noStroke();
-    buffer.fill(0);
-    buffer.text(label,x,y,100,50);
-    buffer.stroke(0);
-    buffer.noFill();
+    middleground.fill(205);
+    middleground.rect(x,y,100,50);
+    middleground.noStroke();
+    middleground.fill(0);
+    middleground.text(label,x,y,100,50);
+    middleground.stroke(0);
+    middleground.noFill();
   } else {
-    buffer.rect(x,y,100,50);
+    middleground.rect(x,y,100,50);
   }
 }
 
 function clearButton() {
-  staticUI.fill(230);
-  staticUI.rect(windowWidth-360,20,100,50);
-  staticUI.fill(0);
-  staticUI.text("CLEAR",windowWidth-360,20,100,50);
+  background.fill(230);
+  background.rect(windowWidth-360,20,100,50);
+  background.fill(0);
+  background.text("CLEAR",windowWidth-360,20,100,50);
 }
 
 function clearButtonOverlay() {
   if (selectedBox === 11) {
-    buffer.stroke(255);
-    buffer.rect(windowWidth-360,20,100,50);
-    buffer.stroke(0);
+    middleground.stroke(255);
+    middleground.rect(windowWidth-360,20,100,50);
+    middleground.stroke(0);
   } else {
-    buffer.rect(windowWidth-360,20,100,50);
+    middleground.rect(windowWidth-360,20,100,50);
   }
 }
 
 function bondButton (x,y,bonds) { // does not need an overlay version because lines are very fast to render
   if (bondType === bonds && bondMode) {
-    buffer.fill(205);
+    middleground.fill(205);
   }
   if (selectedBox === bonds) {
-    buffer.stroke(255);
-    buffer.rect(x,y,100,100);
-    buffer.stroke(0);
+    middleground.stroke(255);
+    middleground.rect(x,y,100,100);
+    middleground.stroke(0);
   } else {
-    buffer.rect(x,y,100,100);
+    middleground.rect(x,y,100,100);
   }
   if (bondType === bonds && bondMode) {
-    buffer.fill(230);
+    middleground.fill(230);
   }
-  bond(x+50-Math.cos(toRadians(30))*bondLength/2,y+50-Math.sin(toRadians(30))*bondLength/2,x+50+Math.cos(toRadians(30))*bondLength/2,y+50+Math.sin(toRadians(30))*bondLength/2,bonds);
+  bond(x+50-Math.cos(toRadians(30))*bondLength/2,y+50-Math.sin(toRadians(30))*bondLength/2,x+50+Math.cos(toRadians(30))*bondLength/2,y+50+Math.sin(toRadians(30))*bondLength/2,bonds,middleground);
 }
 
 function atomButton (x,y,atom,box) {
-  staticUI.fill(230);
-  staticUI.rect(x,y,100,100);
-  staticUI.fill(0);
-  staticUI.text(atom,x,y,100,100);
+  background.fill(230);
+  background.rect(x,y,100,100);
+  background.fill(0);
+  background.text(atom,x,y,100,100);
 }
 
 function atomButtonOverlay (x,y,atom,box) {
   if (selectedBox === box) {    
-    buffer.stroke(255);
+    middleground.stroke(255);
     if (element === atom && !bondMode) {
-      buffer.fill(205);
+      middleground.fill(205);
     }
-    buffer.rect(x,y,100,100);
-    buffer.noStroke();
-    buffer.fill(0);
-    buffer.text(atom,x,y,100,100);
-    buffer.stroke(0);
-    buffer.noFill();
+    middleground.rect(x,y,100,100);
+    middleground.noStroke();
+    middleground.fill(0);
+    middleground.text(atom,x,y,100,100);
+    middleground.stroke(0);
+    middleground.noFill();
   } else if (element === atom && !bondMode) {
-    buffer.fill(205);
-    buffer.rect(x,y,100,100);
-    buffer.noStroke();
-    buffer.fill(0);
-    buffer.text(atom,x,y,100,100);
-    buffer.stroke(0);
-    buffer.noFill();
+    middleground.fill(205);
+    middleground.rect(x,y,100,100);
+    middleground.noStroke();
+    middleground.fill(0);
+    middleground.text(atom,x,y,100,100);
+    middleground.stroke(0);
+    middleground.noFill();
   } else {
-    buffer.rect(x,y,100,100);
+    middleground.rect(x,y,100,100);
   }
 }
 
 function reactionButton (x,y,reaction,box) {
-  staticUI.fill(230);
-  staticUI.rect(x,y,100,50);
-  staticUI.fill(0);
-  staticUI.text(reaction,x,y,100,50);
+  background.fill(230);
+  background.rect(x,y,100,50);
+  background.fill(0);
+  background.text(reaction,x,y,100,50);
 }
 
 function reactionButtonOverlay (x,y,reaction,box) {
   if (selectedBox === box) {
-    buffer.stroke(255);
-    buffer.rect(x,y,100,50);
+    middleground.stroke(255);
+    middleground.rect(x,y,100,50);
   } else {
-    buffer.stroke(0);
-    buffer.rect(x,y,100,50);
+    middleground.stroke(0);
+    middleground.rect(x,y,100,50);
   }
 }
 
@@ -549,27 +579,31 @@ function drawBackground() {
     windowHeight = Math.max(window.innerHeight-20,minHeight);
     resizeCanvas(windowWidth,windowHeight);
     var newGraphics = createGraphics(windowWidth,windowHeight);
-    newGraphics.image(buffer, 0, 0, newGraphics.width, newGraphics.height);
-    buffer = newGraphics;
-    buffer.textAlign(CENTER, CENTER);
+    newGraphics.image(background, 0, 0, newGraphics.width, newGraphics.height);
+    background = newGraphics;
+    background.textAlign(CENTER, CENTER);
+    var newGraphics = createGraphics(windowWidth,windowHeight);
+    newGraphics.image(middleground, 0, 0, newGraphics.width, newGraphics.height);
+    middleground = newGraphics;
+    middleground.textAlign(CENTER, CENTER);
+    var newGraphics = createGraphics(windowWidth,windowHeight);
+    newGraphics.image(foreground, 0, 0, newGraphics.width, newGraphics.height);
+    foreground = newGraphics;
+    foreground.textAlign(CENTER, CENTER);
   }
   renderFrame = true;
+  renderMiddleground = true;
 
-  resizeCanvas(windowWidth,windowHeight);
-  var newStaticUI = createGraphics(windowWidth,windowHeight);
-  newStaticUI.image(buffer, 0, 0, newGraphics.width, newGraphics.height);
-  staticUI = newStaticUI;
-  staticUI.clear();
-  staticUI.textAlign(CENTER, CENTER);
-  staticUI.noStroke();
-  staticUI.textSize(48);
+  background.clear();
+  background.noStroke();
+  background.textSize(48);
   atomButton(380,20,"C",6);
   atomButton(500,20,"O",7);
   atomButton(620,20,"N",8);
   atomButton(740,20,"Br",9);
   atomButton(860,20,"Cl",10);
-  staticUI.textSize(16);
-  staticUI.textStyle(BOLD);
+  background.textSize(16);
+  background.textStyle(BOLD);
   reactionButton(260,windowHeight-70,"POCl₃",21);
   reactionButton(380,windowHeight-70,"KOH",22);
   reactionButton(500,windowHeight-70,"HBr",23);
@@ -587,8 +621,8 @@ function drawBackground() {
   clearButton();
   angleSnapButton(windowWidth-240,20,"SNAP BONDS",5);
   angleSnapButton(windowWidth-120,20,"FREEFORM BONDS",4);
-  staticUI.stroke(0);
-  staticUI.textStyle(NORMAL);
+  background.stroke(0);
+  background.textStyle(NORMAL);
 }
 
 function findBondAngle (x1,y1,x2,y2) {
@@ -644,12 +678,12 @@ function calculateBondAngle (bseclist,banglelist) {
     }
   }
 
-function bond (x1,y1,x2,y2,num) {
-  buffer.line(x1,y1,x2,y2);
+function bond (x1,y1,x2,y2,num,frame) {
+  frame.line(x1,y1,x2,y2);
   if (num >= 2) {
-    lineOffset(x1,y1,x2,y2,5);
+    lineOffset(x1,y1,x2,y2,5,frame);
     if (num === 3) {
-      lineOffset(x1,y1,x2,y2,-5);
+      lineOffset(x1,y1,x2,y2,-5,frame);
     }
   }
 }
@@ -856,5 +890,6 @@ function mouseClicked() {
     }
   }
   renderFrame = true;
+  renderMiddleground = true;
   return false;
 }
