@@ -49,7 +49,7 @@ function setup() {
   staticUI = createGraphics(windowWidth,windowHeight);
   staticUI.textAlign(CENTER, CENTER);
   staticUI.clear();
-  drawBackgroud();
+  drawBackground();
   buffer.stroke(0); // Set line drawing color to black
   buffer.textAlign(CENTER, CENTER);
   frameRate(60);
@@ -125,65 +125,14 @@ function draw() {
         selectedBox = 34;
       }
     }
+
+    // render bond buttons
     bondButton(20,20,1);
     bondButton(140,20,2);
     bondButton(260,20,3);
 
-    if (angleSnap) {
-      buffer.fill(205);
-    }
-    if (selectedBox === 4) {
-      buffer.stroke(255);
-      buffer.rect(windowWidth-120,20,100,50);
-      buffer.stroke(0);
-    } else {
-      buffer.rect(windowWidth-120,20,100,50);
-    }
-    buffer.fill(0);
-    buffer.textSize(16);
-    buffer.noStroke();
-    buffer.textStyle(BOLD);
-    buffer.text("SNAP BONDS",windowWidth-120,20,100,50);
-    buffer.textStyle(NORMAL);
-    buffer.stroke(0);
-    buffer.fill(230);
-
-    if (!angleSnap) {
-      buffer.fill(205);
-    }
-    if (selectedBox === 5) {
-      buffer.stroke(255);
-      buffer.rect(windowWidth-240,20,100,50);
-      buffer.stroke(0);
-    } else {
-      buffer.rect(windowWidth-240,20,100,50);
-    }
-    buffer.fill(0);
-    buffer.textSize(16);
-    buffer.noStroke();
-    buffer.textStyle(BOLD);
-    buffer.text("FREEFORM BONDS",windowWidth-240,20,100,50);
-    buffer.textStyle(NORMAL);
-    buffer.stroke(0);
-    buffer.fill(230);
-      if (selectedBox === 11) {
-        buffer.stroke(255);
-        buffer.rect(windowWidth-360,20,100,50);
-        buffer.stroke(0);
-    } else {
-      buffer.rect(windowWidth-360,20,100,50);
-    }
-    buffer.fill(0);
-    buffer.textSize(16);
-    buffer.noStroke();
-    buffer.textStyle(BOLD);
-    buffer.text("CLEAR",windowWidth-360,20,100,50);
-    buffer.textStyle(NORMAL);
-    buffer.stroke(0);
-    buffer.fill(230);
-
     // render atom buttons
-    buffer.noStroke();
+    buffer.noFill();
     buffer.textSize(48);
     buffer.textStyle(NORMAL);
     atomButtonOverlay(380,20,"C",6);
@@ -191,9 +140,17 @@ function draw() {
     atomButtonOverlay(620,20,"N",8);
     atomButtonOverlay(740,20,"Br",9);
     atomButtonOverlay(860,20,"Cl",10);
+
+    // render angle snap buttons
+    buffer.textSize(16);
+    buffer.textStyle(BOLD);
+    angleSnapButtonOverlay(windowWidth-240,20,"SNAP BONDS",5);
+    angleSnapButtonOverlay(windowWidth-120,20,"FREEFORM BONDS",4);
+
+    // render clear button
+    clearButtonOverlay();
     
     // render reaction buttons borders
-    buffer.noFill();
     reactionButtonOverlay(260,windowHeight-70,"POCl₃",21);
     reactionButtonOverlay(380,windowHeight-70,"KOH",22);
     reactionButtonOverlay(500,windowHeight-70,"HBr",23);
@@ -209,7 +166,6 @@ function draw() {
     reactionButtonOverlay(1700,windowHeight-70,"SOCl₂",33);
     reactionButtonOverlay(1820,windowHeight-70,"TsCl",34);
 
-    buffer.textSize(16);
     buffer.textStyle(NORMAL);
     buffer.stroke(0);
     buffer.fill(0);
@@ -464,7 +420,52 @@ function lineOffset (x1,y1,x2,y2,offset) {
   buffer.line(x1-Math.sin(toRadians(angle))*offset, y1-Math.cos(toRadians(angle))*offset, x2-Math.sin(toRadians(angle))*offset, y2-Math.cos(toRadians(angle))*offset);
 }
 
-function bondButton (x,y,bonds) {
+function angleSnapButton(x,y,label,box) {
+  staticUI.fill(230);
+  staticUI.rect(x,y,100,50);
+  staticUI.fill(0);
+  staticUI.text(label,x,y,100,50);
+}
+
+function angleSnapButtonOverlay(x,y,label,box) {
+  if (selectedBox === box) {
+    buffer.stroke(255);
+    buffer.rect(x,y,100,50);
+    buffer.noStroke();
+    buffer.text(label,x,y,100,50);
+    buffer.stroke(0);
+    buffer.noFill();
+  } else if (angleSnap && box === 5 || !angleSnap && box === 4) {
+    buffer.fill(205);
+    buffer.rect(x,y,100,50);
+    buffer.noStroke();
+    buffer.fill(0);
+    buffer.text(label,x,y,100,50);
+    buffer.stroke(0);
+    buffer.noFill();
+  } else {
+    buffer.rect(x,y,100,50);
+  }
+}
+
+function clearButton() {
+  staticUI.fill(230);
+  staticUI.rect(windowWidth-360,20,100,50);
+  staticUI.fill(0);
+  staticUI.text("CLEAR",windowWidth-360,20,100,50);
+}
+
+function clearButtonOverlay() {
+  if (selectedBox === 11) {
+    buffer.stroke(255);
+    buffer.rect(windowWidth-360,20,100,50);
+    buffer.stroke(0);
+  } else {
+    buffer.rect(windowWidth-360,20,100,50);
+  }
+}
+
+function bondButton (x,y,bonds) { // does not need an overlay version because lines are very fast to render
   if (bondType === bonds && bondMode) {
     buffer.fill(205);
   }
@@ -475,7 +476,9 @@ function bondButton (x,y,bonds) {
   } else {
     buffer.rect(x,y,100,100);
   }
-  buffer.fill(230);
+  if (bondType === bonds && bondMode) {
+    buffer.fill(230);
+  }
   bond(x+50-Math.cos(toRadians(30))*bondLength/2,y+50-Math.sin(toRadians(30))*bondLength/2,x+50+Math.cos(toRadians(30))*bondLength/2,y+50+Math.sin(toRadians(30))*bondLength/2,bonds);
 }
 
@@ -487,19 +490,26 @@ function atomButton (x,y,atom,box) {
 }
 
 function atomButtonOverlay (x,y,atom,box) {
-  if (element === atom && !bondMode) {
-    buffer.fill(205);
-  } else {
-    buffer.noFill();
-  }
   if (selectedBox === box) {    
     buffer.stroke(255);
+    if (element === atom && !bondMode) {
+      buffer.fill(205);
+    }
     buffer.rect(x,y,100,100);
     buffer.noStroke();
     buffer.fill(0);
     buffer.text(atom,x,y,100,100);
-  } else {
     buffer.stroke(0);
+    buffer.noFill();
+  } else if (element === atom && !bondMode) {
+    buffer.fill(205);
+    buffer.rect(x,y,100,100);
+    buffer.noStroke();
+    buffer.fill(0);
+    buffer.text(atom,x,y,100,100);
+    buffer.stroke(0);
+    buffer.noFill();
+  } else {
     buffer.rect(x,y,100,100);
   }
 }
@@ -525,7 +535,7 @@ function windowResized() {
   drawBackground();
 }
 
-function drawBackgroud() {
+function drawBackground() {
   if (windowWidth != Math.max(window.innerWidth-20,minWidth) || windowHeight != Math.max(window.innerHeight-20,minHeight)) {
     windowWidth = Math.max(window.innerWidth-20,minWidth);
     windowHeight = Math.max(window.innerHeight-20,minHeight);
@@ -566,6 +576,9 @@ function drawBackgroud() {
   reactionButton(1580,windowHeight-70,"PBr₃",32);
   reactionButton(1700,windowHeight-70,"SOCl₂",33);
   reactionButton(1820,windowHeight-70,"TsCl",34);
+  clearButton();
+  angleSnapButton(windowWidth-240,20,"SNAP BONDS",5);
+  angleSnapButton(windowWidth-120,20,"FREEFORM BONDS",4);
   staticUI.stroke(0);
   staticUI.textStyle(NORMAL);
 }
@@ -671,10 +684,10 @@ function mouseClicked() {
       bondMode = true;
       break;
     case 4:
-      angleSnap = true;
+      angleSnap = false;
       break;
     case 5:
-      angleSnap = false;
+      angleSnap = true;
       break;
     case 6:
       element = "C"
