@@ -7,6 +7,7 @@ var element = "C";
 var reagents = "";
 var bondMode = true;
 var network = []; // atom id (int), atom element (string), atomX (number), atomY (number), bond1 type (number), bond1 destination atom id, etc.
+// TODO: change atoms to a custom object
 var closestDistance = 0; // 20 is the maximum distance for selection
 var selectedAtom = []; // selected atom when snap-on is in effect
 var destinationAtom = [];
