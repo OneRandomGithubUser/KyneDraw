@@ -814,7 +814,7 @@ function mouseClicked() {
     case 31:
       for (let i = 0; i < network.length; i++) {
         let currentAtom = network[i];
-        if (isHydroxyl(currentAtom) && network[currentAtom[5]][1] === "C") {
+        if (isHydroxyl(currentAtom) && network[currentAtom[5]][1] === "C" && countBonds(network[currentAtom[5]]) < 4) {
           network[i][4] = 2;
           for (let j = 4; j < network[currentAtom[5]].length; j++) {
             if (network[currentAtom[5]][j+1] === i) {
