@@ -167,7 +167,7 @@ function draw() {
       clearButtonOverlay();
       
       // render reaction button overlays
-      reactionButtonOverlay(260,windowHeight-70,"POCl₃",21);
+      reactionButtonOverlay(260,windowHeight-70,"POCl₃",21);/*
       reactionButtonOverlay(380,windowHeight-70,"KOH",22);
       reactionButtonOverlay(500,windowHeight-70,"HBr",23);
       reactionButtonOverlay(620,windowHeight-70,"HBr, H₂O₂",24);
@@ -175,7 +175,7 @@ function draw() {
       reactionButtonOverlay(860,windowHeight-70,"Br₂, H₂O",26);
       reactionButtonOverlay(980,windowHeight-70,"H₂, Pd",27);
       reactionButtonOverlay(1100,windowHeight-70,"Hg(OAc)₂,H₂O,BH₄",28);
-      reactionButtonOverlay(1220,windowHeight-70,"BH₃",29);
+      reactionButtonOverlay(1220,windowHeight-70,"BH₃",29);*/
       reactionButtonOverlay(1340,windowHeight-70,"NaBH₄",30);
       reactionButtonOverlay(1460,windowHeight-70,"Swern",31);
       reactionButtonOverlay(1580,windowHeight-70,"PBr₃",32);
@@ -601,7 +601,7 @@ function drawbackground2() {
   atomButton(860,20,"Cl",10);
   background2.textSize(16);
   background2.textStyle(BOLD);
-  reactionButton(260,windowHeight-70,"POCl₃",21);
+  reactionButton(260,windowHeight-70,"POCl₃",21);/*
   reactionButton(380,windowHeight-70,"KOH",22);
   reactionButton(500,windowHeight-70,"HBr",23);
   reactionButton(620,windowHeight-70,"HBr, H₂O₂",24);
@@ -609,7 +609,7 @@ function drawbackground2() {
   reactionButton(860,windowHeight-70,"Br₂, H₂O",26);
   reactionButton(980,windowHeight-70,"H₂, Pd",27);
   reactionButton(1100,windowHeight-70,"Hg(OAc)₂,H₂O,BH₄",28);
-  reactionButton(1220,windowHeight-70,"BH₃",29);
+  reactionButton(1220,windowHeight-70,"BH₃",29);*/
   reactionButton(1340,windowHeight-70,"NaBH₄",30);
   reactionButton(1460,windowHeight-70,"Swern",31);
   reactionButton(1580,windowHeight-70,"PBr₃",32);
