@@ -35,6 +35,19 @@ let foreground;
 var intro = true;
 var renderFrame = false;
 var renderMiddleground = false;
+var tip;
+var tips = [
+  "Press the CLEAR button to clear all atoms on the screen",
+  "Press the SNAP BONDS or FREEFORM BONDS to change the bonds made when clicking and dragging",
+  "Click and drag to make a custom bond",
+  "Click on an element button to change into atom addition mode",
+  "Click on a bond button to change into bond addition mode",
+  "This website is powered by p5.js",
+  "Click on a reagent button to simulate a reaction",
+  "This is a very simplified view of organic chemistry, don't expect this program to know everything",
+  "Snap onto preexisting atoms to make bonds from that atom or to change the element of that atom",
+  "This website has been optimized for speed at the expense of memory usage"
+];
 // TODO: bad practice to make so many global variables
 
 let font;
@@ -63,6 +76,7 @@ function setup() {
   foreground.textSize(16);
   foreground.textAlign(CENTER, CENTER);
   frameRate(60);
+  tip = "Tip: "+ tips[Math.floor(Math.random()*tips.length)];
   console.log("Written by Joseph. github.com/OneRandomGithubUser");
 }
 
@@ -380,12 +394,10 @@ function draw() {
     if (renderMiddleground) {
       renderMiddleground = false;
     }
-  
-    // copy middleground to screen
+    // copy buffers to screen
     image(middleground, 0, 0, windowWidth, windowHeight);
     image(foreground, 0, 0, windowWidth, windowHeight);
   }
-
   // determine whether or not to render the next frame
   if (intro) {
     if (frameCount < 120) {
@@ -405,7 +417,11 @@ function draw() {
       }
       foreground.textSize(144);
       foreground.text("KyneDraw",0,windowHeight/2,windowWidth);
+      foreground.textSize(36);
+      foreground.text(tip,0,windowHeight*3/4,windowWidth)
       foreground.stroke(0);
+      image(middleground, 0, 0, windowWidth, windowHeight);
+      image(foreground, 0, 0, windowWidth, windowHeight);
     } else if (frameCount === 120) {
       intro = false;
     }
