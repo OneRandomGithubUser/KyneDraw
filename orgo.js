@@ -208,6 +208,9 @@ function draw() {
     // cycle through all atoms
     for (let i = 0; i < network.length; i++) {
       let currentAtom = network[i];
+      if (currentAtom[1] === -1) {
+        continue;
+      }
 
       if (renderMiddleground) {
         middleground.textSize(20);
