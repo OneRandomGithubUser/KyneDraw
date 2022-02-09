@@ -592,15 +592,12 @@ function drawbackground2() {
     windowHeight = Math.max(window.innerHeight-20,minHeight);
     resizeCanvas(windowWidth,windowHeight);
     var newGraphics = createGraphics(windowWidth,windowHeight);
-    newGraphics.image(background2, 0, 0, newGraphics.width, newGraphics.height);
     background2 = newGraphics;
     background2.textAlign(CENTER, CENTER);
     var newGraphics = createGraphics(windowWidth,windowHeight);
-    newGraphics.image(middleground, 0, 0, newGraphics.width, newGraphics.height);
     middleground = newGraphics;
     middleground.textAlign(CENTER, CENTER);
     var newGraphics = createGraphics(windowWidth,windowHeight);
-    newGraphics.image(foreground, 0, 0, newGraphics.width, newGraphics.height);
     foreground = newGraphics;
     foreground.textAlign(CENTER, CENTER);
   }
