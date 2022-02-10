@@ -305,6 +305,10 @@ function draw() {
       if (countBonds(selectedAtom) > 4-bondType) { // too many bonds
         bondAngle = -1;
       }
+    } else if (selectedAtom.length !== 0 && !bondMode) {
+      previewX1 = selectedAtom[2];
+      previewY1 = selectedAtom[3];
+      bondAngle = 330;
     } else if (mousePressed) { // on mouse press, stop updating previewX1 and previewY1
       if (angleSnap) {
         bondAngle = Math.floor((findBondAngle(previewX1,previewY1,cachedMouseX,mouseY)+15)/30)*30 // round bond angle to nearest 30 degrees
