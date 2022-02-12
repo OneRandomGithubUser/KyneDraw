@@ -1,0 +1,41 @@
+body {
+    margin: 0 !important;
+    padding: 0 !important;
+    font-family: Arial, sans-serif;
+    text-align: center;
+}
+
+/* leftover testing from button improvement attempts */
+.radioButton {
+    background-color: #E6E6F0;
+    border: 1px black;
+    color: black;
+    text-align: center;
+    text-decoration: none;
+    position: absolute;
+    transition-duration: 0.1s;
+    accent-color: #CDCDE0;
+}
+
+.radioButton:hover {
+    border: white;
+}
+
+.radioButton:checked {
+    background-color: #CDCDE0;
+}
+
+.bondButton {
+    height: 100px;
+    width: 100px;
+}
+
+.atomButton {
+    height: 100px;
+    width: 100px;
+}
+
+.reactionButton {
+    height: 50px;
+    width: 100px;
+}
