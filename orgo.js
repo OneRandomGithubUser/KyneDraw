@@ -542,7 +542,7 @@ function draw() {
         previousMouseX = cachedMouseX;
         previousMouseY = cachedMouseY;
       }
-    }m;
+    }
   } catch (err) {
     let p = document.createElement("p");
     let n = document.createTextNode(err.stack);
