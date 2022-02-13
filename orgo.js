@@ -380,17 +380,6 @@ function draw() {
 
       // calculate new bond angle
       if (selectedAtom.length !== 0 && !mousePressed && bondMode) { // selectedAtom is previously defined in cyan selection dot area
-        /*
-        let currentBondSectors = []; // ranges from 0 to 11 for each 30 degree sector, starting at -15 degrees
-        let currentBondAngles = [];
-        if (countBonds(selectedAtom) !== 0) {
-          for (let i = 0; i < selectedAtom.bondIdList.length; i++) {
-            currentBondAngles.push(Math.round(findBondAngle(selectedAtom.x, selectedAtom.y, network[selectedAtom.bondIdList[i]][2], network[selectedAtom.bondIdList[i]][3])));
-            currentBondSectors.push(Math.floor((findBondAngle(selectedAtom.x, selectedAtom.y, network[selectedAtom.bondIdList[i]][2], network[selectedAtom.bondIdList[i]][3])+15)/30));
-          }
-        }
-        bondAngle = calculateBondAngle(currentBondSectors,currentBondAngles); // TODO: change calculateBondAngle such that alkynes are linear
-        */
         bondAngle = selectedAtom.nextBondAngle;
         previewX1 = selectedAtom.x;
         previewY1 = selectedAtom.y;
