@@ -166,7 +166,7 @@ function draw() {
   let cachedMouseY = mouseY;
 
   if (renderFrame) {
-    clear();
+    background(255);
     foreground.clear();
 
     // update UI once they are moused over
