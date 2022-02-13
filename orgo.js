@@ -76,6 +76,14 @@ class Atom {
       }
     }
   }
+
+  updateNumBonds () {
+    let numBonds = 0;
+    for (let i = 0; i < this.bondTypeList.length; i++) {
+      numBonds += this.bondTypeList[i];
+    }
+    this.numBonds = numBonds;
+  }
   
   isHydroxyl () { // is hydroxyl
     return this.element === "O" && this.numBonds === 1 && network[this.bondIdList[0]].element === "C";
@@ -441,7 +449,7 @@ function draw() {
         let currentAtom = network[i];
         let distance = Math.sqrt((previewX2-currentAtom.x)**2 + (previewY2-currentAtom.y)**2);
         if (distance < destinationDistance && distance < closestDistance && validBond) {
-          if (selectedAtom.numBonds !== 0) {
+          if (selectedAtom.length !== 0) {
             // check if the currentAtom is already bonded to the selectedAtom
             for (let j = 0; j < selectedAtom.bondIdList.length; j++) {
               if (selectedAtom.bondIdList[j] === currentAtom.id) {
@@ -521,9 +529,8 @@ function draw() {
       foreground.textSize(36);
       foreground.text(tip,0,windowHeight*3/4,windowWidth)
       foreground.stroke(0);
-      image(middleground, 0, 0, windowWidth, windowHeight);
       image(foreground, 0, 0, windowWidth, windowHeight);
-    } else if (frameCount === 120) {
+    } else if (frameCount >= 120) {
       intro = false;
     }
   } else {
@@ -755,42 +762,6 @@ function findBondAngle (x1,y1,x2,y2) {
   return ans;
 }
 
-/*
-function calculateBondAngle (bseclist,banglelist) {
-    switch (bseclist.length) {
-      case 0:
-        return 330;
-      case 1:
-        let answer = (bseclist[0]*30+120)%360
-        let alternate = (bseclist[0]*30+240)%360
-        if (Math.min(alternate%180,180-(alternate%180)) < Math.min(answer%180,180-(answer%180))) {answer = alternate;}
-        return answer;
-      case 2:
-        if (Math.abs(banglelist[0] - banglelist[1]) > 180) {
-          return (Math.floor((banglelist[0]+banglelist[1])/2))%360;
-        } else {
-          return (Math.floor((banglelist[0]+banglelist[1])/2)+180)%360;
-        }
-      case 3:
-        if (!bseclist.includes(8) && !bseclist.includes(9)) {
-          return 240;
-        } else if (!bseclist.includes(2)) {
-          return 60;
-        } else {
-          for (let i = 0; i < 12
-            ; i++) {
-            if (!bseclist.includes(i)) {
-              return i*30;
-            }
-          }
-        }
-        return -1;
-      default:
-        return -1;
-    }
-  }
-*/
-
 function bond (x1,y1,x2,y2,num,frame) {
   frame.line(x1,y1,x2,y2);
   if (num >= 2) {
@@ -800,24 +771,6 @@ function bond (x1,y1,x2,y2,num,frame) {
     }
   }
 }
-
-/*
-function countBonds (atom) {
-  if (atom.length <= 4) {
-    return 0;
-
-  } else {
-
-    let ans =
-     0;
-    for (let 
-      i = 4; i < atom.length; i+=2) {
-      ans += atom[i];
-    }
-    return ans;
-  }
-}
-*/
 
 function mouseClicked() {
   switch (selectedBox) {
@@ -886,14 +839,17 @@ function mouseClicked() {
             for (let j = 0; j < mostSubstitutedAtom.bondIdList.length; j++) { // TODO: make indexOf function for atoms
               if (mostSubstitutedAtom[j] === adjacentAtom.id) {
                 mostSubstitutedAtom.bondTypeList[j]++;
+                mostSubstitutedAtom.numBonds++;
               }
             }
             for (let j = 0; j < adjacentAtom.bondIdList.length; j++) {
               if (adjacentAtom.bondIdList[j] === mostSubstitutedAtom.id) {
                 adjacentAtom.bondTypeList[j]++;
+                adjacentAtom.numBonds++;
               } else if (adjacentAtom[j] === i) {
                 adjacentAtom.bondIdList.splice(j,1);
                 adjacentAtom.bondTypeList.splice(j,1); // remove OH from C
+                adjacentAtom.numBonds--;
                 j--; // adjust for shorter adjacentAtom
               }
             }
@@ -904,21 +860,28 @@ function mouseClicked() {
     case 27:
       for (let i = 0; i < network.length; i++) {
         let currentAtom = network[i];
+        let changed = false;
         for (let j = 0; j < currentAtom.bondTypeList.length; j++) {
           if (currentAtom.bondTypeList !== 1) {
-            network.bondTypeList[j] = 1;
+            currentAtom.bondTypeList[j] = 1;
+            changed = true;
           }
+        }
+        if (changed) {
+          currentAtom.updateNumBonds();
         }
       }
     case 30:
       for (let i = 0; i < network.length; i++) {
         let currentAtom = network[i];
-        if (isKetone(currentAtom)) {
+        if (currentAtom.isKetone(currentAtom)) {
           adjacentAtom = network[currentAtom.bondIdList[0]];
           currentAtom.bondTypeList[0] = 1;
+          currentAtom.numBonds = 1;
           for (let j = 0; j < adjacentAtom.bondTypeList.length; j++) {
             if (adjacentAtom.bondIdList[j] === currentAtom.id) {
               adjacentAtom.bondTypeList[j] = 1;
+              adjacentAtom.updateNumBonds();
             }
           }
         }
@@ -927,15 +890,17 @@ function mouseClicked() {
     case 31:
       for (let i = 0; i < network.length; i++) {
         let currentAtom = network[i];
-        if (isKetone(currentAtom)) {
+        if (currentAtom.isHydroxyl(currentAtom)) {
           adjacentAtom = network[currentAtom.bondIdList[0]];
           if (adjacentAtom.numBonds > 3) { // too many bonds to form another
             break;
           }
           currentAtom.bondTypeList[0] = 2;
+          currentAtom.numBonds = 2;
           for (let j = 0; j < adjacentAtom.bondTypeList.length; j++) {
             if (adjacentAtom.bondIdList[j] === currentAtom.id) {
               adjacentAtom.bondTypeList[j] = 2;
+              adjacentAtom.updateNumBonds();
             }
           }
         }
@@ -944,24 +909,24 @@ function mouseClicked() {
     case 32:
       for (let i = 0; i < network.length; i++) {
         let currentAtom = network[i];
-        if (isHydroxyl(currentAtom) && network[currentAtom[5]][1] === "C") {
-          network[i][1] = "Br";
+        if (currentAtom.isHydroxyl()) {
+          currentAtom.element = "Br";
         }
       }
       break;
     case 33:
       for (let i = 0; i < network.length; i++) {
         let currentAtom = network[i];
-        if (isHydroxyl(currentAtom) && network[currentAtom[5]][1] === "C") {
-          network[i][1] = "Cl";
+        if (currentAtom.isHydroxyl()) {
+          currentAtom.element = "Cl";
         }
       }
       break;
     case 34:
       for (let i = 0; i < network.length; i++) {
         let currentAtom = network[i];
-        if (isHydroxyl(currentAtom) && network[currentAtom[5]][1] === "C") {
-          network[i][1] = "Ts";
+        if (currentAtom.isHydroxyl()) {
+          currentAtom.element = "Ts";
         }
       }
       break;
@@ -1004,8 +969,8 @@ function mouseClicked() {
       if (selectedAtom.length !== 0) {
         selectedAtom.element = element;
       } else {
-        network.push(new Atom(id1, element, previewX1, previewY1, 0, false, 0));
-        network[id1].nextBondAngle = network[id1].calculateNextBondAngle();
+        network.push(new Atom(nextID, element, previewX1, previewY1, 0, false, 0, [], []));
+        network[nextID].nextBondAngle = network[nextID].calculateNextBondAngle();
         nextID++;
       }
     }
