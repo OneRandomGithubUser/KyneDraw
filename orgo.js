@@ -38,7 +38,7 @@ var renderMiddleground = false;
 var tip;
 var tips = [
   "Press the CLEAR button to clear all atoms on the screen",
-  "Press the SNAP BONDS or FREEFORM BONDS to change the bonds made when clicking and dragging",
+  "Press the SNAP BONDS or FREEFORM BONDS to change the way bonds are made when clicking and dragging",
   "Click and drag to make a custom bond",
   "Click on an element button to change into atom addition mode",
   "Click on a bond button to change into bond addition mode",
