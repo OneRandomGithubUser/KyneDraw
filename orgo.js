@@ -84,6 +84,7 @@ class Atom {
     if (bondType + this.numBonds > 4) {
       return false;
     } else {
+      // TODO: if nextBondAngle is updated, add update function call here
       let bondAngle = this.nextBondAngle;
       let previewX2 = this.x + Math.cos(toRadians(360-bondAngle))*bondLength;
       let previewY2 = this.y + Math.sin(toRadians(360-bondAngle))*bondLength;
@@ -108,31 +109,37 @@ class Atom {
     } else {
       let changed = false
       for (let i = 0; i < this.bondTypeList; i++) {
-        if (this.bondTypeList[i] === 2) { // find the alkene(s) TODO: find out if allenes can do alkene additions
+        if (this.bondTypeList[i] === 2 || this.bondTypeList[i] === 3) { // find the alkene(s)
           let atom2 = network[this.bondIdList[i]];
           if (atom2.element === "C") {
+            this.bondTypeList[i]--;
+            this.numBonds--;
+            for (let j = 0; j < atom2.bondIdList.length; j++) {
+              if (atom2.bondIdList[j] === this.id) {
+                atom2.bondTypeList[j]--;
+                atom2.numBonds--;
+              }
+            }
             if (this.isMoreStableCarbocationThan(atom2)) {
               if (markovnikovElementToAdd != "") {
-                this.addBond(markovnikovElementToAdd);
+                this.addBond(markovnikovElementToAdd, 1);
               }
               if (nonmarkovnikovElementToAdd != "") {
-                atom2.addBond(nonmarkovnikovElementToAdd);
+                atom2.addBond(nonmarkovnikovElementToAdd, 1);
               }
             } else {
               if (nonmarkovnikovElementToAdd != "") {
-                this.addBond(nonmarkovnikovElementToAdd);
+                this.addBond(nonmarkovnikovElementToAdd, 1);
               }
               if (markovnikovElementToAdd != "") {
-                atom2.addBond(markovnikovElementToAdd);
-              }
-            }
-            this.bondTypeList[i] = 1;
-            for (let j = 0; j < atom2.bondIdList.length; j++) {
-              if (atom2.bondIdList[j] === this.id) {
-                atom2.bondTypeList[j] = 1;
+                atom2.addBond(markovnikovElementToAdd, 1);
               }
             }
             changed = true;
+          }
+          // repeat again for alkynes
+          if (this.numBonds === 3) {
+            this.alkeneAddition(markovnikovElementToAdd,nonmarkovnikovElementToAdd);
           }
         }
       }
@@ -167,15 +174,13 @@ class Atom {
   }
 
   carbocationStabilityHelper(index) {
-    // TODO: this is a really inefficient algorithm and this is a bad way to handle other carbocations and can get stuck on aromatic ringsx
+    // TODO: this is a really inefficient algorithm and this is a bad way to handle other carbocations and can get stuck on aromatic rings
     if (this.element != "C") {
       return 0;
     }
     let ans = 0;
     if (index === 0) {
-      if (this.isBenzene()) {
-        return 6;
-      } else if (this.numBonds === this.bondIdList.length+1) {
+      if (this.numBonds === this.bondIdList.length+1) {
         // all single bonds, apart from the alkene
         ans += this.numBonds;
         for (let i = 0; i < this.bondIdList.length; i++) {
@@ -186,19 +191,20 @@ class Atom {
           }
         }
       }
-      return ans;
-    }
-    else {
+    } else {
+      // bad attempt at trying to correct for resonance
       for (let i = 0; i < this.bondIdList.length; i++) {
-        let currentIndex = this.bondTypeList[i];
-        if (currentIndex === i % 2 + 1) {
+        if (this.isBenzene()) {
+          ans++;
+        } else if (this.bondTypeList[i] === index % 2 + 1) {
           // bad way to try to account for resonance
-          ans += currentIndex/(2**i);
-          ans += network[currentIndex].carbocationStabilityHelper(index+1);
+          ans += 1/(2**i);
+          ans += network[this.bondIdList[i]].carbocationStabilityHelper(index+1);
         }
       }
-      return ans;
     }
+    this.nextBondAngle = this.calculateNextBondAngle();
+    return ans;
   }
   
   isHydroxyl() {
