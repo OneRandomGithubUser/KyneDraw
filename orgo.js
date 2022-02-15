@@ -78,6 +78,29 @@ class Atom {
     }
   }
 
+  // returns false if it failed, true if it succeeded
+  addBond(element, bondType) {
+    if (bondType + this.numBonds > 4) {
+      return false;
+    } else {
+      let bondAngle = this.nextBondAngle;
+      let previewX2 = this.x + Math.cos(toRadians(360-bondAngle))*bondLength;
+      let previewY2 = this.y + Math.sin(toRadians(360-bondAngle))*bondLength;
+      let id2 = nextID;
+      nextID++;
+      this.numBonds += bondType;
+      this.bondIdList.push(id2);
+      this.bondTypeList.push(bondType);
+      network.push(new Atom(id2, element, previewX2, previewY2, bondType, false, 0, [this.id], [bondType]));
+      this.nextBondAngle = this.calculateNextBondAngle();
+      network[id2].nextBondAngle = network[id2].calculateNextBondAngle();
+      // then update the frame
+      renderFrame = true;
+      renderMiddleground = true;
+      return true;
+    }
+  }
+
   updateNumBonds() {
     let numBonds = 0;
     for (let i = 0; i < this.bondTypeList.length; i++) {
