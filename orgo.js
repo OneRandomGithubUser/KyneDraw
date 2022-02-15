@@ -51,6 +51,7 @@ var tips = [
 // TODO: bad practice to make so many global variables
 
 // define the Atom class
+// TODO: possible performance improvements by caching functional groups, though too small to worry about right now
 class Atom {
   constructor(id,element,x,y,numBonds,deleted,nextBondAngle,bondIdList,bondTypeList) {
     this.id = id;
@@ -77,7 +78,7 @@ class Atom {
     }
   }
 
-  updateNumBonds () {
+  updateNumBonds() {
     let numBonds = 0;
     for (let i = 0; i < this.bondTypeList.length; i++) {
       numBonds += this.bondTypeList[i];
@@ -85,16 +86,42 @@ class Atom {
     this.numBonds = numBonds;
   }
   
-  isHydroxyl () { // is hydroxyl
+  isHydroxyl() {
     return this.element === "O" && this.numBonds === 1 && network[this.bondIdList[0]].element === "C";
   }
 
-  isKetone () { // is ketone or aldehyde
+  isKetone() { // is ketone or aldehyde
     return this.element === "O" && this.numBonds === 2 && this.bondIdList.length == 1 && network[this.bondIdList[0]].element === "C";
   }
+
+  isBenzene() {
+    return this.isBenzeneHelper(0, this.id);
+  }
   
-  // TODO: this is really poorly written
-  calculateNextBondAngle () {
+  // cycle through each bond one by one and see if there is a chain of 6 carbon atoms of single,double,single,double,single,double bonds (no need to check the other pattern since it's the same)
+  isBenzeneHelper(index, finalID) {
+    if (index === 6) {
+      if (this.id === finalID) { // see if, after 6 carbons, the chain cycles back to the original
+        return true;
+      } else {
+        return false;
+      }
+    } else if (this.element != "C") { // see if this atom is a carbon
+      return false;
+    } else {
+      // recursively run the helper function on atoms bonded with the next single/double bond
+      let ans = false;
+      for (let i = 0; i < this.bondTypeList.length; i++) {
+        if (this.bondTypeList[i] === index % 2 + 1) {
+          ans = ans || network[this.bondIdList[i]].isBenzeneHelper(index+1, finalID);
+        }
+      }
+      return ans;
+    }
+  }
+
+  // TODO: this is really poorly written. but it works.
+  calculateNextBondAngle() {
     let currentBondSectors = []; // ranges from 0 to 11 for each 30 degree sector, starting at -15 degrees
     let currentBondAngles = [];
     if (this.numBonds !== 0) {
@@ -158,7 +185,7 @@ function setup() {
   foreground = createGraphics(windowWidth,windowHeight);
   background2.textAlign(CENTER, CENTER);
   background2.clear();
-  drawbackground2();
+  drawBackground();
   middleground.stroke(0); // Set line drawing color to black
   middleground.textSize(16);
   middleground.textAlign(CENTER, CENTER);
@@ -556,22 +583,22 @@ function mouseReleased() {
   mousePressed = false;
 }
 
-function toRadians (angle) {
+function toRadians(angle) {
   return angle * (Math.PI/180);
 }
 
-function toDegrees (angle) {
+function toDegrees(angle) {
   return angle * (180/Math.PI);
 }
 
-function selectBox (id) {
+function selectBox(id) {
   if (selectedBox != id) {
     selectedBox = id;
     renderMiddleground = true;
   } 
 }
 
-function lineOffset (x1,y1,x2,y2,offset,frame) {
+function lineOffset(x1,y1,x2,y2,offset,frame) {
   let angle = findBondAngle(x1,y1,x2,y2);
   frame.line(x1-Math.sin(toRadians(angle))*offset, y1-Math.cos(toRadians(angle))*offset, x2-Math.sin(toRadians(angle))*offset, y2-Math.cos(toRadians(angle))*offset);
 }
@@ -621,7 +648,7 @@ function clearButtonOverlay() {
   }
 }
 
-function bondButton (x,y,bonds) { // does not need an overlay version because lines are very fast to render
+function bondButton(x,y,bonds) { // does not need an overlay version because lines are very fast to render
   if (bondType === bonds && bondMode) {
     middleground.fill(205);
   }
@@ -638,14 +665,14 @@ function bondButton (x,y,bonds) { // does not need an overlay version because li
   bond(x+50-Math.cos(toRadians(30))*bondLength/2,y+50-Math.sin(toRadians(30))*bondLength/2,x+50+Math.cos(toRadians(30))*bondLength/2,y+50+Math.sin(toRadians(30))*bondLength/2,bonds,middleground);
 }
 
-function atomButton (x,y,atom,box) {
+function atomButton(x,y,atom,box) {
   background2.fill(230);
   background2.rect(x,y,100,100);
   background2.fill(0);
   background2.text(atom,x,y,100,100);
 }
 
-function atomButtonOverlay (x,y,atom,box) {
+function atomButtonOverlay(x,y,atom,box) {
   if (selectedBox === box) {    
     middleground.stroke(255);
     if (element === atom && !bondMode) {
@@ -670,14 +697,14 @@ function atomButtonOverlay (x,y,atom,box) {
   }
 }
 
-function reactionButton (x,y,reaction,box) {
+function reactionButton(x,y,reaction,box) {
   background2.fill(230);
   background2.rect(x,y,100,50);
   background2.fill(0);
   background2.text(reaction,x,y,100,50);
 }
 
-function reactionButtonOverlay (x,y,reaction,box) {
+function reactionButtonOverlay(x,y,reaction,box) {
   if (selectedBox === box) {
     middleground.stroke(255);
     middleground.rect(x,y,100,50);
@@ -688,10 +715,10 @@ function reactionButtonOverlay (x,y,reaction,box) {
 }
 
 function windowResized() {
-  drawbackground2();
+  drawBackground();
 }
 
-function drawbackground2() {
+function drawBackground() {
   if (windowWidth != Math.max(window.innerWidth-20,minWidth) || windowHeight != Math.max(window.innerHeight-20,minHeight)) {
     windowWidth = Math.max(window.innerWidth-20,minWidth);
     windowHeight = Math.max(window.innerHeight-20,minHeight);
@@ -740,7 +767,7 @@ function drawbackground2() {
   background2.textStyle(NORMAL);
 }
 
-function findBondAngle (x1,y1,x2,y2) {
+function findBondAngle(x1,y1,x2,y2) {
   let ans;
   if (y1 === y2) {
     switch (Math.sign(x1-x2)) {
@@ -759,7 +786,7 @@ function findBondAngle (x1,y1,x2,y2) {
   return ans;
 }
 
-function bond (x1,y1,x2,y2,num,frame) {
+function bond(x1,y1,x2,y2,num,frame) {
   frame.line(x1,y1,x2,y2);
   if (num >= 2) {
     lineOffset(x1,y1,x2,y2,5,frame);
@@ -857,15 +884,18 @@ function mouseClicked() {
     case 27:
       for (let i = 0; i < network.length; i++) {
         let currentAtom = network[i];
-        let changed = false;
-        for (let j = 0; j < currentAtom.bondTypeList.length; j++) {
-          if (currentAtom.bondTypeList !== 1) {
-            currentAtom.bondTypeList[j] = 1;
-            changed = true;
+        // this technically doesn't work for things double bonded to a benzene ring, but that's not possible anyways
+        if (!currentAtom.isBenzene()) {
+          let changed = false;
+          for (let j = 0; j < currentAtom.bondTypeList.length; j++) {
+            if (currentAtom.bondTypeList !== 1) {
+              currentAtom.bondTypeList[j] = 1;
+              changed = true;
+            }
           }
-        }
-        if (changed) {
-          currentAtom.updateNumBonds();
+          if (changed) {
+            currentAtom.updateNumBonds();
+          }
         }
       }
     case 30:

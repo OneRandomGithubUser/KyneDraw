@@ -6,7 +6,7 @@ body {
 }
 
 /* leftover testing from button improvement attempts */
-.radioButton {
+.button {
     background-color: #E6E6F0;
     border: 1px black;
     color: black;
@@ -17,7 +17,7 @@ body {
     accent-color: #CDCDE0;
 }
 
-.radioButton:hover {
+.button:hover {
     border: white;
 }
 
