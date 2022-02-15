@@ -108,6 +108,10 @@ class Atom {
     }
     this.numBonds = numBonds;
   }
+
+  isMoreSubstitutedThan(atom) {
+    return this.bondIdList.length > atom.bondIdList.length;
+  }
   
   isHydroxyl() {
     return this.element === "O" && this.numBonds === 1 && network[this.bondIdList[0]].element === "C";
@@ -864,11 +868,12 @@ function mouseClicked() {
       nextID = 0;
       break;
     case 21:
+      // TODO: fix this
       for (let i = 0; i < network.length; i++) {
         let currentAtom = network[i];
         if (currentAtom.isHydroxyl()) {
           let adjacentAtom = network[currentAtom.bondIdList[0]]; // carbon atom that the oxygen is attached to
-          let mostSubstitutedAtom = network[adjacentAtom.bondIdList[0]];
+          let mostSubstitutedAtom = new Atom(0,"C",0,0,0,false,330,[],[]);
           for (let j = 0; j < adjacentAtom.bondIdList; j++) { // look at the atoms attached to the adjacentAtom
             let adajacentAdjacentAtom = network[adjacentAtom.bondIdList[j]];
             if (adajacentAdjacentAtom.id === i) { // ignore the currentAtom
@@ -877,13 +882,15 @@ function mouseClicked() {
             if (adajacentAdjacentAtom.numBonds > 3) { // can't make another bond on a carbon with a full octet
               continue;
             }
-            if (adajacentAdjacentAtom.bondIdList.length > mostSubstitutedAtom.bondIdList.length) {
+            if (adajacentAdjacentAtom.isMoreSubstitutedThan(mostSubstitutedAtom)) {
               mostSubstitutedAtom = adajacentAdjacentAtom; // TODO: consider what happens when equally substituted
             }
           }
           if (mostSubstitutedAtom.length !== 0) {
-            currentAtom.delete(); // remove OH from O. TODO: does not properly remove the atom, add checks to make sure that these atoms are ignored
-            for (let j = 0; j < mostSubstitutedAtom.bondIdList.length; j++) { // TODO: make indexOf function for atoms
+            // remove hydroxyl group (currentAtom)
+            currentAtom.delete();
+            // add another bond to the mostSubstitutedAtom to the adjacentAtom
+            for (let j = 0; j < mostSubstitutedAtom.bondIdList.length; j++) {
               if (mostSubstitutedAtom[j] === adjacentAtom.id) {
                 mostSubstitutedAtom.bondTypeList[j]++;
                 mostSubstitutedAtom.numBonds++;
@@ -891,12 +898,13 @@ function mouseClicked() {
             }
             for (let j = 0; j < adjacentAtom.bondIdList.length; j++) {
               if (adjacentAtom.bondIdList[j] === mostSubstitutedAtom.id) {
+                // add bond from adjacentAtom to the mostSubstitutedAtom
+                // numBonds is not updated because it will be cancelled out by the OH removal
                 adjacentAtom.bondTypeList[j]++;
-                adjacentAtom.numBonds++;
               } else if (adjacentAtom[j] === i) {
+                // remove bond between adjacentAtom and currentAtom (OH group)
                 adjacentAtom.bondIdList.splice(j,1);
                 adjacentAtom.bondTypeList.splice(j,1); // remove OH from C
-                adjacentAtom.numBonds--;
                 j--; // adjust for shorter adjacentAtom
               }
             }
