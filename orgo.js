@@ -110,9 +110,28 @@ class Atom {
       for (let i = 0; i < this.bondTypeList; i++) {
         if (this.bondTypeList[i] === 2) { // find the alkene(s) TODO: find out if allenes can do alkene additions
           let atom2 = network[this.bondIdList[i]];
-          if (atom2.element === "C" && this.isMoreStableCarbocationThan(atom2)) {
-            this.addBond(markovnikovElementToAdd);
-            atom2.addBond(nonmarkovnikovElementToAdd);
+          if (atom2.element === "C") {
+            if (this.isMoreStableCarbocationThan(atom2)) {
+              if (markovnikovElementToAdd != "") {
+                this.addBond(markovnikovElementToAdd);
+              }
+              if (nonmarkovnikovElementToAdd != "") {
+                atom2.addBond(nonmarkovnikovElementToAdd);
+              }
+            } else {
+              if (nonmarkovnikovElementToAdd != "") {
+                this.addBond(nonmarkovnikovElementToAdd);
+              }
+              if (markovnikovElementToAdd != "") {
+                atom2.addBond(markovnikovElementToAdd);
+              }
+            }
+            this.bondTypeList[i] = 1;
+            for (let j = 0; j < atom2.bondIdList.length; j++) {
+              if (atom2.bondIdList[j] === this.id) {
+                atom2.bondTypeList[j] = 1;
+              }
+            }
             changed = true;
           }
         }
@@ -148,13 +167,16 @@ class Atom {
   }
 
   carbocationStabilityHelper(index) {
-    // TODO: this is a really inefficient algorithm and this is a bad way to handle other carbocations
+    // TODO: this is a really inefficient algorithm and this is a bad way to handle other carbocations and can get stuck on aromatic ringsx
+    if (this.element != "C") {
+      return 0;
+    }
     let ans = 0;
     if (index === 0) {
       if (this.isBenzene()) {
         return 6;
-      } else if (this.numBonds === this.bondIdList.length) {
-        // all single bonds
+      } else if (this.numBonds === this.bondIdList.length+1) {
+        // all single bonds, apart from the alkene
         ans += this.numBonds;
         for (let i = 0; i < this.bondIdList.length; i++) {
           let resonance = network[this.bondIdList[i]].carbocationStabilityHelper(index+1);
@@ -393,11 +415,11 @@ function draw() {
         
         // render reaction button overlays
         reactionButtonOverlay(260,windowHeight-70,"POCl₃",21);/*
-        reactionButtonOverlay(380,windowHeight-70,"KOH",22);
+        reactionButtonOverlay(380,windowHeight-70,"KOH",22);*/
         reactionButtonOverlay(500,windowHeight-70,"HBr",23);
         reactionButtonOverlay(620,windowHeight-70,"HBr, H₂O₂",24);
         reactionButtonOverlay(740,windowHeight-70,"Br₂",25);
-        reactionButtonOverlay(860,windowHeight-70,"Br₂, H₂O",26);*/
+        reactionButtonOverlay(860,windowHeight-70,"Br₂, H₂O",26);
         reactionButtonOverlay(980,windowHeight-70,"H₂, Pd",27);/*
         reactionButtonOverlay(1100,windowHeight-70,"Hg(OAc)₂,H₂O,BH₄",28);
         reactionButtonOverlay(1220,windowHeight-70,"BH₃",29);*/
@@ -844,11 +866,11 @@ function drawBackground() {
   background2.textSize(16);
   background2.textStyle(BOLD);
   reactionButton(260,windowHeight-70,"POCl₃",21);/*
-  reactionButton(380,windowHeight-70,"KOH",22);
+  reactionButton(380,windowHeight-70,"KOH",22);*/
   reactionButton(500,windowHeight-70,"HBr",23);
   reactionButton(620,windowHeight-70,"HBr, H₂O₂",24);
   reactionButton(740,windowHeight-70,"Br₂",25);
-  reactionButton(860,windowHeight-70,"Br₂, H₂O",26);*/
+  reactionButton(860,windowHeight-70,"Br₂, H₂O",26);
   reactionButton(980,windowHeight-70,"H₂, Pd",27);/*
   reactionButton(1100,windowHeight-70,"Hg(OAc)₂,H₂O,BH₄",28);
   reactionButton(1220,windowHeight-70,"BH₃",29);*/
@@ -983,6 +1005,26 @@ function mouseClicked() {
             }
           }
         }
+      }
+      break;
+    case 23:
+      for (let i = 0; i < network.length; i++) {
+        network[i].alkeneAddition("Br","");
+      }
+      break;
+    case 24:
+      for (let i = 0; i < network.length; i++) {
+        network[i].alkeneAddition("","Br");
+      }
+      break;
+    case 25:
+      for (let i = 0; i < network.length; i++) {
+        network[i].alkeneAddition("Br","Br");
+      }
+      break;
+    case 26:
+      for (let i = 0; i < network.length; i++) {
+        network[i].alkeneAddition("O","Br");
       }
       break;
     case 27:
