@@ -107,47 +107,44 @@ class Atom {
     if (this.element != "C") {
       return false;
     } else {
-      let changed = false
-      for (let i = 0; i < this.bondTypeList; i++) {
-        if (this.bondTypeList[i] === 2 || this.bondTypeList[i] === 3) { // find the alkene(s)
+      let changed = false;
+      for (let i = 0; i < this.bondTypeList.length; i++) {
+        let reps = this.bondTypeList[i]-1; // number of times to repeat bond addition. reps = 1 if alkene, reps = 2 if alkyne
+        if (reps === 1 || reps === 2) { // find the alkene/alkyne(s)
           let atom2 = network[this.bondIdList[i]];
           if (atom2.element === "C") {
-            this.bondTypeList[i]--;
-            this.numBonds--;
+            this.bondTypeList[i] -= reps;
+            this.numBonds -= reps;
             for (let j = 0; j < atom2.bondIdList.length; j++) {
               if (atom2.bondIdList[j] === this.id) {
-                atom2.bondTypeList[j]--;
-                atom2.numBonds--;
+                atom2.bondTypeList[j] -= reps;
+                atom2.numBonds -= reps;
               }
             }
             if (this.isMoreStableCarbocationThan(atom2)) {
-              if (markovnikovElementToAdd != "") {
-                this.addBond(markovnikovElementToAdd, 1);
-              }
-              if (nonmarkovnikovElementToAdd != "") {
-                atom2.addBond(nonmarkovnikovElementToAdd, 1);
+              for (let j = 0; j < reps; j++) {
+                if (markovnikovElementToAdd != "") {
+                  this.addBond(markovnikovElementToAdd, 1);
+                }
+                if (nonmarkovnikovElementToAdd != "") {
+                  atom2.addBond(nonmarkovnikovElementToAdd, 1);
+                }
               }
             } else {
-              if (nonmarkovnikovElementToAdd != "") {
-                this.addBond(nonmarkovnikovElementToAdd, 1);
-              }
-              if (markovnikovElementToAdd != "") {
-                atom2.addBond(markovnikovElementToAdd, 1);
+              for (let j = 0; j < reps; j++) {
+                if (nonmarkovnikovElementToAdd != "") {
+                  this.addBond(nonmarkovnikovElementToAdd, 1);
+                }
+                if (markovnikovElementToAdd != "") {
+                  atom2.addBond(markovnikovElementToAdd, 1);
+                }
               }
             }
             changed = true;
           }
-          // repeat again for alkynes
-          if (this.numBonds === 3) {
-            this.alkeneAddition(markovnikovElementToAdd,nonmarkovnikovElementToAdd);
-          }
         }
       }
-      if (changed) {
-        return true;
-      } else {
-        return false;
-      }
+      return changed;
     }
   }
   
@@ -426,9 +423,9 @@ function draw() {
         reactionButtonOverlay(620,windowHeight-70,"HBr, H₂O₂",24);
         reactionButtonOverlay(740,windowHeight-70,"Br₂",25);
         reactionButtonOverlay(860,windowHeight-70,"Br₂, H₂O",26);
-        reactionButtonOverlay(980,windowHeight-70,"H₂, Pd",27);/*
+        reactionButtonOverlay(980,windowHeight-70,"H₂, Pd",27);
         reactionButtonOverlay(1100,windowHeight-70,"Hg(OAc)₂,H₂O,BH₄",28);
-        reactionButtonOverlay(1220,windowHeight-70,"BH₃",29);*/
+        reactionButtonOverlay(1220,windowHeight-70,"BH₃",29);
         reactionButtonOverlay(1340,windowHeight-70,"NaBH₄",30);
         reactionButtonOverlay(1460,windowHeight-70,"Swern",31);
         reactionButtonOverlay(1580,windowHeight-70,"PBr₃",32);
@@ -877,9 +874,9 @@ function drawBackground() {
   reactionButton(620,windowHeight-70,"HBr, H₂O₂",24);
   reactionButton(740,windowHeight-70,"Br₂",25);
   reactionButton(860,windowHeight-70,"Br₂, H₂O",26);
-  reactionButton(980,windowHeight-70,"H₂, Pd",27);/*
+  reactionButton(980,windowHeight-70,"H₂, Pd",27);
   reactionButton(1100,windowHeight-70,"Hg(OAc)₂,H₂O,BH₄",28);
-  reactionButton(1220,windowHeight-70,"BH₃",29);*/
+  reactionButton(1220,windowHeight-70,"BH₃",29);
   reactionButton(1340,windowHeight-70,"NaBH₄",30);
   reactionButton(1460,windowHeight-70,"Swern",31);
   reactionButton(1580,windowHeight-70,"PBr₃",32);
@@ -1050,7 +1047,17 @@ function mouseClicked() {
           }
         }
       }
-    case 30:
+      case 28:
+        for (let i = 0; i < network.length; i++) {
+          network[i].alkeneAddition("O","O");
+        }
+        break;
+      case 29:
+        for (let i = 0; i < network.length; i++) {
+          network[i].alkeneAddition("","O");
+        }
+        break;
+      case 30:
       for (let i = 0; i < network.length; i++) {
         let currentAtom = network[i];
         if (currentAtom.isKetone(currentAtom)) {
