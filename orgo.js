@@ -587,11 +587,14 @@ function draw() {
       }
     }
   } catch (err) {
-    let p = document.createElement("p");
-    let n = document.createTextNode(err.stack);
-    p.appendChild(n);
-    document.getElementById("error").appendChild(p);
-    remove();
+    // print error and debug message if something happens
+    let errorMessage = document.createElement("p");
+    errorMessage.appendChild(document.createTextNode("An error has occured. Please send me a screenshot as well as what had just happened that caused the error. Thank you!\n"));
+    errorMessage.appendChild(document.createTextNode(err.stack+"\n")); // stack trace
+    document.getElementById("error").appendChild(errorMessage);
+    clear();
+    image(middleground, 0, windowHeight*0.2, windowWidth*0.8, windowHeight*0.8);
+    noLoop();
   }
 }
 
