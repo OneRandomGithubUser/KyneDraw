@@ -874,12 +874,15 @@ function mouseClicked() {
       // TODO: fix this
       for (let i = 0; i < network.length; i++) {
         let currentAtom = network[i];
+        if (currentAtom.deleted) {
+          continue;
+        }
         if (currentAtom.isHydroxyl()) {
           let adjacentAtom = network[currentAtom.bondIdList[0]]; // carbon atom that the oxygen is attached to
-          let mostSubstitutedAtom = new Atom(0,"C",0,0,0,false,330,[],[]);
-          for (let j = 0; j < adjacentAtom.bondIdList; j++) { // look at the atoms attached to the adjacentAtom
+          let mostSubstitutedAtom = new Atom(0,"C",0,0,0,true,330,[],[]); // blank atom
+          for (let j = 0; j < adjacentAtom.bondIdList.length; j++) { // look at the atoms attached to the adjacentAtom
             let adajacentAdjacentAtom = network[adjacentAtom.bondIdList[j]];
-            if (adajacentAdjacentAtom.id === i) { // ignore the currentAtom
+            if (adajacentAdjacentAtom.id === currentAtom.id) { // ignore the currentAtom
               continue;
             }
             if (adajacentAdjacentAtom.numBonds > 3) { // can't make another bond on a carbon with a full octet
@@ -889,12 +892,12 @@ function mouseClicked() {
               mostSubstitutedAtom = adajacentAdjacentAtom; // TODO: consider what happens when equally substituted
             }
           }
-          if (mostSubstitutedAtom.length !== 0) {
+          if (!mostSubstitutedAtom.deleted) {
             // remove hydroxyl group (currentAtom)
             currentAtom.delete();
             // add another bond to the mostSubstitutedAtom to the adjacentAtom
             for (let j = 0; j < mostSubstitutedAtom.bondIdList.length; j++) {
-              if (mostSubstitutedAtom[j] === adjacentAtom.id) {
+              if (mostSubstitutedAtom.bondIdList[j] === adjacentAtom.id) {
                 mostSubstitutedAtom.bondTypeList[j]++;
                 mostSubstitutedAtom.numBonds++;
               }
@@ -904,7 +907,7 @@ function mouseClicked() {
                 // add bond from adjacentAtom to the mostSubstitutedAtom
                 // numBonds is not updated because it will be cancelled out by the OH removal
                 adjacentAtom.bondTypeList[j]++;
-              } else if (adjacentAtom[j] === i) {
+              } else if (adjacentAtom.bondIdList[j] === i) {
                 // remove bond between adjacentAtom and currentAtom (OH group)
                 adjacentAtom.bondIdList.splice(j,1);
                 adjacentAtom.bondTypeList.splice(j,1); // remove OH from C
