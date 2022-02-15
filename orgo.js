@@ -139,8 +139,44 @@ class Atom {
   }
 
   isMoreStableCarbocationThan(atom) {
-    // TODO: finish isMoreStableCarbocationThan function
-    return true;
+    // TODO: finish isMoreStableCarbocationThan function: what if it is unknown?
+    return this.carbocationStability() > atom.carbocationStability();
+  }
+
+  carbocationStability() {
+    return this.carbocationStabilityHelper(0);
+  }
+
+  carbocationStabilityHelper(index) {
+    // TODO: this is a really inefficient algorithm and this is a bad way to handle other carbocations
+    let ans = 0;
+    if (index === 0) {
+      if (this.isBenzene()) {
+        return 6;
+      } else if (this.numBonds === this.bondIdList.length) {
+        // all single bonds
+        ans += this.numBonds;
+        for (let i = 0; i < this.bondIdList.length; i++) {
+          let resonance = network[this.bondIdList[i]].carbocationStabilityHelper(index+1);
+          if (resonance !== 0) {
+            ans += resonance;
+            ans += 3;
+          }
+        }
+      }
+      return ans;
+    }
+    else {
+      for (let i = 0; i < this.bondIdList.length; i++) {
+        let currentIndex = this.bondTypeList[i];
+        if (currentIndex === i % 2 + 1) {
+          // bad way to try to account for resonance
+          ans += currentIndex/(2**i);
+          ans += network[currentIndex].carbocationStabilityHelper(index+1);
+        }
+      }
+      return ans;
+    }
   }
   
   isHydroxyl() {
