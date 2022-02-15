@@ -76,6 +76,7 @@ class Atom {
         }
       }
     }
+    return true;
   }
 
   // returns false if it failed, true if it succeeded
@@ -100,17 +101,46 @@ class Atom {
       return true;
     }
   }
-
+  
+  alkeneAddition(markovnikovElementToAdd, nonmarkovnikovElementToAdd) {
+    if (this.element != "C") {
+      return false;
+    } else {
+      let changed = false
+      for (let i = 0; i < this.bondTypeList; i++) {
+        if (this.bondTypeList[i] === 2) { // find the alkene(s) TODO: find out if allenes can do alkene additions
+          let atom2 = network[this.bondIdList[i]];
+          if (atom2.element === "C" && this.isMoreStableCarbocationThan(atom2)) {
+            this.addBond(markovnikovElementToAdd);
+            atom2.addBond(nonmarkovnikovElementToAdd);
+            changed = true;
+          }
+        }
+      }
+      if (changed) {
+        return true;
+      } else {
+        return false;
+      }
+    }
+  }
+  
   updateNumBonds() {
     let numBonds = 0;
     for (let i = 0; i < this.bondTypeList.length; i++) {
       numBonds += this.bondTypeList[i];
     }
     this.numBonds = numBonds;
+    return true;
   }
 
   isMoreSubstitutedThan(atom) {
     return this.bondIdList.length > atom.bondIdList.length;
+  }
+
+  isMoreStableCarbocationThan(atom) {
+    // TODO: finish isMoreStableCarbocationThan function
+    return true;
   }
   
   isHydroxyl() {
@@ -296,6 +326,7 @@ function draw() {
 
       if (renderMiddleground) {
         // set draw attributes common to these buttons to speed up performance
+        // yes, making these buttons are reinventing the wheel. therefore, TODO: make HTML buttons
         middleground.clear();
         middleground.image(background2, 0, 0, windowWidth, windowHeight);
         middleground.fill(230);
