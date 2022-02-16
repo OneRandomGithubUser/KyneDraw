@@ -361,6 +361,7 @@ function setup() {
   foreground.textSize(16);
   foreground.textAlign(CENTER, CENTER);
   frameRate(60);
+  pixelDensity(1);
   tip = "Tip: "+ tips[Math.floor(Math.random()*tips.length)];
   console.log("Written by Joseph. github.com/OneRandomGithubUser");
 }
