@@ -6,8 +6,8 @@ var bondType = 1;
 var element = "C";
 var reagents = "";
 var bondMode = true;
-var network = []; // atom id (int), atom element (string), atomX (number), atomY (number), bond1 type (number), bond1 destination atom id, etc.
-// TODO: change atoms to a custom object
+var network = []; // array of Atom objects
+// TODO: new Network object? might make index searching O(n) instead of O(1)
 var closestDistance = 0; // 20 is the maximum distance for selection
 var selectedAtom = []; // selected atom when snap-on is in effect
 var destinationAtom = [];
@@ -252,6 +252,10 @@ class Atom {
 
   isKetone() { // is ketone or aldehyde
     return this.element === "O" && this.numBonds === 2 && this.bondIdList.length == 1 && network[this.bondIdList[0]].element === "C";
+  }
+
+  isLeavingGroup() { // is ketone or aldehyde
+    return (this.element === "Br" || this.element === "Cl" || this.element === "F" || this.element === "I" || this.element === "Ts") && this.numBonds === 1 && this.bondIdList.length == 1 && network[this.bondIdList[0]].element === "C";
   }
 
   isBenzene() {
@@ -1019,16 +1023,23 @@ function mouseClicked() {
       break;
     case 19:
       for (let i = 0; i < network.length; i++) {
-        network[i].alkeneAddition("O","");
+        let currentAtom = network[i];
+        if (currentAtom.deleted) {
+          continue;
+        } 
+        currentAtom.alkeneAddition("O","");
       }
       break;
     case 20:
       for (let i = 0; i < network.length; i++) {
-        network[i].alkeneAddition2("O",2,"",1);
+        let currentAtom = network[i];
+        if (currentAtom.deleted) {
+          continue;
+        }
+        currentAtom.alkeneAddition2("O",2,"",1);
       }
       break;
     case 21:
-      // TODO: fix this
       for (let i = 0; i < network.length; i++) {
         let currentAtom = network[i];
         if (currentAtom.deleted) {
@@ -1075,29 +1086,56 @@ function mouseClicked() {
         }
       }
       break;
+    case 22:
+      // TODO: finish this and make this only accept antiperiplanar
+      for (let i = 0; i < network.length; i++) {
+        let currentAtom = network[i];
+        if (currentAtom.isLeavingGroup()) {
+          currentAtom.isMoreSubstitutedThan
+        }
+      }
     case 23:
       for (let i = 0; i < network.length; i++) {
-        network[i].alkeneAddition("Br","");
+        let currentAtom = network[i];
+        if (currentAtom.deleted) {
+          continue;
+        }
+        currentAtom.alkeneAddition("Br","");
       }
       break;
     case 24:
       for (let i = 0; i < network.length; i++) {
-        network[i].alkeneAddition("","Br");
+        let currentAtom = network[i];
+        if (currentAtom.deleted) {
+          continue;
+        }
+        currentAtom.alkeneAddition("","Br");
       }
       break;
     case 25:
       for (let i = 0; i < network.length; i++) {
-        network[i].alkeneAddition("Br","Br");
+        let currentAtom = network[i];
+        if (currentAtom.deleted) {
+          continue;
+        }
+        currentAtom.alkeneAddition("Br","Br");
       }
       break;
     case 26:
       for (let i = 0; i < network.length; i++) {
-        network[i].alkeneAddition("O","Br");
+        let currentAtom = network[i];
+        if (currentAtom.deleted) {
+          continue;
+        }
+        currentAtom.alkeneAddition("O","Br");
       }
       break;
     case 27:
       for (let i = 0; i < network.length; i++) {
         let currentAtom = network[i];
+        if (currentAtom.deleted) {
+          continue;
+        }
         // this technically doesn't work for things double bonded to a benzene ring, but that's not possible anyways
         if (!currentAtom.isBenzene()) {
           let changed = false;
@@ -1114,17 +1152,28 @@ function mouseClicked() {
       }
       case 28:
         for (let i = 0; i < network.length; i++) {
-          network[i].alkeneAddition("O","O");
+          let currentAtom = network[i];
+          if (currentAtom.deleted) {
+            continue;
+          }
+          currentAtom.alkeneAddition("O","O");
         }
         break;
       case 29:
         for (let i = 0; i < network.length; i++) {
-          network[i].alkeneAddition("","O");
+          let currentAtom = network[i];
+          if (currentAtom.deleted) {
+            continue;
+          }
+          currentAtom.alkeneAddition("","O");
         }
         break;
       case 30:
       for (let i = 0; i < network.length; i++) {
         let currentAtom = network[i];
+        if (currentAtom.deleted) {
+          continue;
+        }
         if (currentAtom.isKetone(currentAtom)) {
           adjacentAtom = network[currentAtom.bondIdList[0]];
           currentAtom.bondTypeList[0] = 1;
@@ -1141,6 +1190,9 @@ function mouseClicked() {
     case 31:
       for (let i = 0; i < network.length; i++) {
         let currentAtom = network[i];
+        if (currentAtom.deleted) {
+          continue;
+        }
         if (currentAtom.isHydroxyl(currentAtom)) {
           adjacentAtom = network[currentAtom.bondIdList[0]];
           if (adjacentAtom.numBonds > 3) { // too many bonds to form another
@@ -1160,6 +1212,9 @@ function mouseClicked() {
     case 32:
       for (let i = 0; i < network.length; i++) {
         let currentAtom = network[i];
+        if (currentAtom.deleted) {
+          continue;
+        }
         if (currentAtom.isHydroxyl()) {
           currentAtom.element = "Br";
         }
@@ -1168,6 +1223,9 @@ function mouseClicked() {
     case 33:
       for (let i = 0; i < network.length; i++) {
         let currentAtom = network[i];
+        if (currentAtom.deleted) {
+          continue;
+        }
         if (currentAtom.isHydroxyl()) {
           currentAtom.element = "Cl";
         }
@@ -1176,6 +1234,9 @@ function mouseClicked() {
     case 34:
       for (let i = 0; i < network.length; i++) {
         let currentAtom = network[i];
+        if (currentAtom.deleted) {
+          continue;
+        }
         if (currentAtom.isHydroxyl()) {
           currentAtom.element = "Ts";
         }
@@ -1184,7 +1245,10 @@ function mouseClicked() {
     case 0: // when no box is selected
     if (bondMode) {
       element = "C";
-      if (bondAngle === -1 || !validBond) {return false;} // -1 means invalid bond TODO: change this, bondAngle is not needed elsewhere
+      // -1 means invalid bond TODO: change this, bondAngle is not needed elsewhere
+      if (bondAngle === -1 || !validBond) {
+        return false;
+      }
       
       let id1 = nextID;
       if (selectedAtom.length !== 0) {
