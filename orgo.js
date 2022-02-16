@@ -104,7 +104,7 @@ class Atom {
   }
   
   alkeneAddition(markovnikovElementToAdd, nonmarkovnikovElementToAdd) {
-    if (this.element != "C") {
+    if (this.element != "C" || this.isBenzene()) {
       return false;
     } else {
       let changed = false;
@@ -115,12 +115,14 @@ class Atom {
           if (atom2.element === "C") {
             this.bondTypeList[i] -= reps;
             this.numBonds -= reps;
+            this.updateNextBondAngle();
             for (let j = 0; j < atom2.bondIdList.length; j++) {
               if (atom2.bondIdList[j] === this.id) {
                 atom2.bondTypeList[j] -= reps;
                 atom2.numBonds -= reps;
               }
             }
+            atom2.updateNextBondAngle();
             if (this.isMoreStableCarbocationThan(atom2)) {
               for (let j = 0; j < reps; j++) {
                 if (markovnikovElementToAdd != "") {
@@ -177,30 +179,23 @@ class Atom {
     }
     let ans = 0;
     if (index === 0) {
-      if (this.numBonds === this.bondIdList.length+1) {
-        // all single bonds, apart from the alkene
-        ans += this.numBonds;
-        for (let i = 0; i < this.bondIdList.length; i++) {
-          let resonance = network[this.bondIdList[i]].carbocationStabilityHelper(index+1);
-          if (resonance !== 0) {
-            ans += resonance;
-            ans += 3;
-          }
-        }
+      // if this is the first atom, find the number of bonded atoms, then add anything due to resonance
+      ans += this.bondIdList.length;
+      for (let i = 0; i < this.bondIdList.length; i++) {
+        ans += network[this.bondIdList[i]].carbocationStabilityHelper(index+1);
       }
     } else {
-      // bad attempt at trying to correct for resonance
       for (let i = 0; i < this.bondIdList.length; i++) {
         if (this.isBenzene()) {
-          ans++;
+          // add 4 for the super stable benzene if it's next to the original, otherwise decrease it by half every atom it's away. probably not accurate
+          ans+=4/(2**index-1);
         } else if (this.bondTypeList[i] === index % 2 + 1) {
-          // bad way to try to account for resonance
-          ans += 1/(2**i);
+          // bad way to try to account for resonance. add 1/2+1/4+1/8+... for each resonance contributor. probably does not count all resonance
+          ans += 1/(2**index);
           ans += network[this.bondIdList[i]].carbocationStabilityHelper(index+1);
         }
       }
     }
-    this.nextBondAngle = this.calculateNextBondAngle();
     return ans;
   }
   
@@ -236,6 +231,11 @@ class Atom {
       }
       return ans;
     }
+  }
+
+  updateNextBondAngle() {
+    this.nextBondAngle = this.calculateNextBondAngle();
+    return true;
   }
 
   // TODO: this is really poorly written. but it works.
