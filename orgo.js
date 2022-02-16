@@ -964,6 +964,11 @@ function findBondAngle(x1,y1,x2,y2) {
 }
 
 function bond(x1,y1,x2,y2,num,frame) {
+  if (num > 3) {
+    throw new Error ("Too many bonds!");
+  } else if (num < 1) {
+    throw new Error ("Negative or zero bonds!");
+  }
   frame.line(x1,y1,x2,y2);
   if (num >= 2) {
     lineOffset(x1,y1,x2,y2,5,frame);
@@ -1028,7 +1033,6 @@ function mouseClicked() {
       }
       break;
     case 21:
-      // TODO: fix this
       for (let i = 0; i < network.length; i++) {
         let currentAtom = network[i];
         if (currentAtom.deleted) {
@@ -1036,6 +1040,10 @@ function mouseClicked() {
         }
         if (currentAtom.isHydroxyl()) {
           let adjacentAtom = network[currentAtom.bondIdList[0]]; // carbon atom that the oxygen is attached to
+          if (adjacentAtom.numBonds > 3) {
+            // can't make a new bond if it's full
+            continue;
+          }
           let mostSubstitutedAtom = new Atom(0,"C",0,0,0,true,330,[],[]); // blank atom
           for (let j = 0; j < adjacentAtom.bondIdList.length; j++) { // look at the atoms attached to the adjacentAtom
             let adajacentAdjacentAtom = network[adjacentAtom.bondIdList[j]];
