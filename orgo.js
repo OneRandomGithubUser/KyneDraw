@@ -150,6 +150,53 @@ class Atom {
     }
   }
   
+  alkeneAddition2(markovnikovElementToAdd, markovnikovNumBondsToAdd, nonmarkovnikovElementToAdd, nonmarkovnikovNumBondsToAdd) {
+    if (this.element != "C" || this.isBenzene()) {
+      return false;
+    } else {
+      let changed = false;
+      for (let i = 0; i < this.bondTypeList.length; i++) {
+        let reps = this.bondTypeList[i]-1; // number of times to repeat bond addition. reps = 1 if alkene, reps = 2 if alkyne
+        if (reps === 1 || reps === 2) { // find the alkene/alkyne(s)
+          let atom2 = network[this.bondIdList[i]];
+          if (atom2.element === "C") {
+            this.bondTypeList[i] -= reps;
+            this.numBonds -= reps;
+            this.updateNextBondAngle();
+            for (let j = 0; j < atom2.bondIdList.length; j++) {
+              if (atom2.bondIdList[j] === this.id) {
+                atom2.bondTypeList[j] -= reps;
+                atom2.numBonds -= reps;
+              }
+            }
+            atom2.updateNextBondAngle();
+            if (this.isMoreStableCarbocationThan(atom2)) {
+              for (let j = 0; j < reps; j++) {
+                if (markovnikovElementToAdd != "") {
+                  this.addBond(markovnikovElementToAdd, markovnikovNumBondsToAdd);
+                }
+                if (nonmarkovnikovElementToAdd != "") {
+                  atom2.addBond(nonmarkovnikovElementToAdd, nonmarkovnikovNumBondsToAdd);
+                }
+              }
+            } else {
+              for (let j = 0; j < reps; j++) {
+                if (nonmarkovnikovElementToAdd != "") {
+                  this.addBond(nonmarkovnikovElementToAdd, nonmarkovnikovNumBondsToAdd);
+                }
+                if (markovnikovElementToAdd != "") {
+                  atom2.addBond(markovnikovElementToAdd, markovnikovNumBondsToAdd);
+                }
+              }
+            }
+            changed = true;
+          }
+        }
+      }
+      return changed;
+    }
+  }
+  
   updateNumBonds() {
     let numBonds = 0;
     for (let i = 0; i < this.bondTypeList.length; i++) {
@@ -351,7 +398,11 @@ function draw() {
           }
         }
       } else if (cachedMouseY > windowHeight-70 && cachedMouseY < windowHeight-20) {
-        if (cachedMouseX < 360 && cachedMouseX > 260) {
+        if (cachedMouseX < 120 && cachedMouseX > 20) {
+          selectBox(19);
+        } else if (cachedMouseX < 240 && cachedMouseX > 140) {
+          selectBox(20);
+        } else if (cachedMouseX < 360 && cachedMouseX > 260) {
           selectBox(21);
         } else if (cachedMouseX < 480 && cachedMouseX > 380) {
           selectBox(22);
@@ -417,6 +468,8 @@ function draw() {
         clearButtonOverlay();
         
         // render reaction button overlays
+        reactionButtonOverlay(20,windowHeight-70,"H⁺,H₂O",19);
+        reactionButtonOverlay(140,windowHeight-70,"PdCl₂,H₂O",20);
         reactionButtonOverlay(260,windowHeight-70,"POCl₃",21);/*
         reactionButtonOverlay(380,windowHeight-70,"KOH",22);*/
         reactionButtonOverlay(500,windowHeight-70,"HBr",23);
@@ -868,6 +921,8 @@ function drawBackground() {
   atomButton(860,20,"Cl",10);
   background2.textSize(16);
   background2.textStyle(BOLD);
+  reactionButton(20,windowHeight-70,"H⁺,H₂O",19);
+  reactionButton(140,windowHeight-70,"PdCl₂,H₂O",20);
   reactionButton(260,windowHeight-70,"POCl₃",21);/*
   reactionButton(380,windowHeight-70,"KOH",22);*/
   reactionButton(500,windowHeight-70,"HBr",23);
@@ -961,6 +1016,16 @@ function mouseClicked() {
     case 11:
       network = [];
       nextID = 0;
+      break;
+    case 19:
+      for (let i = 0; i < network.length; i++) {
+        network[i].alkeneAddition("O","");
+      }
+      break;
+    case 20:
+      for (let i = 0; i < network.length; i++) {
+        network[i].alkeneAddition2("O",2,"",1);
+      }
       break;
     case 21:
       // TODO: fix this
