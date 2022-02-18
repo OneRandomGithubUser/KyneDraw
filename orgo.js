@@ -541,12 +541,12 @@ function draw() {
                   break;
                 case 1:
                   label = "OH";
-                  break;
+                  break;/*
                 case 3:
                   label = "O⁺"
                   break;
                 case 4:
-                  label = "O²⁺"
+                  label = "O²⁺"*/
               }
             } else if (label === "N") {
               switch (currentAtom.numBonds) {
@@ -558,10 +558,10 @@ function draw() {
                   break;
                 case 2:
                   label = "NH";
-                  break;
+                  break;/*
                 case 4:
                   label = "N⁺"
-                  break;
+                  break;*/
               }
             }
             if (label !== "") {
@@ -598,7 +598,12 @@ function draw() {
       } else if (selectedAtom.length !== 0 && !bondMode) {
         previewX1 = selectedAtom.x;
         previewY1 = selectedAtom.y;
-        bondAngle = 330;
+        if (selectedAtom.numBonds > maxBonds(element)) {
+          bondAngle = -1;
+          validBond = false;
+        } else {
+          bondAngle = 330;
+        }
       } else if (mousePressed) { // on mouse press, stop updating previewX1 and previewY1
         if (angleSnap) {
           if (selectedAtom.numBonds > maxBonds(selectedAtom.element)-bondType) { // too many bonds
@@ -1323,7 +1328,9 @@ function clickButton(selectedBox) {
       network[id2].nextBondAngle = network[id2].calculateNextBondAngle();
       break;
     } else {
-      if (selectedAtom.length !== 0) {
+      if (!validBond) {
+        break;
+      } else if (selectedAtom.length !== 0) {
         selectedAtom.element = element;
       } else {
         network.push(new Atom(nextID, element, previewX1, previewY1, 0, false, 0, [], []));
