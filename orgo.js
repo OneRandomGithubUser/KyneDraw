@@ -944,6 +944,7 @@ function drawBackground() {
   thinButton(1820,windowHeight-70,"TsCl",34);
   thinButton(windowWidth-360,20,"CLEAR",11);
   thinButton(windowWidth-480,20,"RANDOM MOLECULE",12);
+  // TODO: when buttons are changed to HTML, make hackerman button selectable
   thinButton(windowWidth-600,20,"HACKERMAN",13);
   angleSnapButton(windowWidth-240,20,"SNAP BONDS",5);
   angleSnapButton(windowWidth-120,20,"FREEFORM BONDS",4);
