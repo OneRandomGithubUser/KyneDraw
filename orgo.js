@@ -81,7 +81,7 @@ class Atom {
 
   // returns false if it failed, true if it succeeded
   addBond(element, bondType) {
-    if (bondType + this.numBonds > 4) {
+    if (bondType + this.numBonds > maxBonds(this.element)) {
       return false;
     } else {
       // TODO: if nextBondAngle is updated, add update function call here
@@ -400,6 +400,8 @@ function draw() {
             selectBox(5); // SNAP BONDS
           } else if (cachedMouseX > windowWidth-360 && cachedMouseX < windowWidth-260) {
             selectBox(11); // CLEAR MOLECULE
+          } else if (cachedMouseX > windowWidth-480 && cachedMouseX < windowWidth-380) {
+            selectBox(12); // RANDOM MOLECULE
           }
         }
       } else if (cachedMouseY > windowHeight-70 && cachedMouseY < windowHeight-20) {
@@ -469,26 +471,27 @@ function draw() {
         angleSnapButtonOverlay(windowWidth-240,20,"SNAP BONDS",5);
         angleSnapButtonOverlay(windowWidth-120,20,"FREEFORM BONDS",4);
 
-        // render clear button overlay
-        clearButtonOverlay();
+        // render clear and random button overlay
+        thinButtonOverlay(windowWidth-360,20,"CLEAR",11);
+        thinButtonOverlay(windowWidth-480,20,"RANDOM MOLECULE",12);
         
         // render reaction button overlays
-        reactionButtonOverlay(20,windowHeight-70,"H⁺,H₂O",19);
-        reactionButtonOverlay(140,windowHeight-70,"PdCl₂,H₂O",20);
-        reactionButtonOverlay(260,windowHeight-70,"POCl₃",21);/*
-        reactionButtonOverlay(380,windowHeight-70,"KOH",22);*/
-        reactionButtonOverlay(500,windowHeight-70,"HBr",23);
-        reactionButtonOverlay(620,windowHeight-70,"HBr, H₂O₂",24);
-        reactionButtonOverlay(740,windowHeight-70,"Br₂",25);
-        reactionButtonOverlay(860,windowHeight-70,"Br₂, H₂O",26);
-        reactionButtonOverlay(980,windowHeight-70,"H₂, Pd",27);
-        reactionButtonOverlay(1100,windowHeight-70,"Hg(OAc)₂,H₂O,BH₄",28);
-        reactionButtonOverlay(1220,windowHeight-70,"BH₃",29);
-        reactionButtonOverlay(1340,windowHeight-70,"NaBH₄",30);
-        reactionButtonOverlay(1460,windowHeight-70,"Swern",31);
-        reactionButtonOverlay(1580,windowHeight-70,"PBr₃",32);
-        reactionButtonOverlay(1700,windowHeight-70,"SOCl₂",33);
-        reactionButtonOverlay(1820,windowHeight-70,"TsCl",34);
+        thinButtonOverlay(20,windowHeight-70,"H⁺,H₂O",19);
+        thinButtonOverlay(140,windowHeight-70,"PdCl₂,H₂O",20);
+        thinButtonOverlay(260,windowHeight-70,"POCl₃",21);/*
+        thinButtonOverlay(380,windowHeight-70,"KOH",22);*/
+        thinButtonOverlay(500,windowHeight-70,"HBr",23);
+        thinButtonOverlay(620,windowHeight-70,"HBr, H₂O₂",24);
+        thinButtonOverlay(740,windowHeight-70,"Br₂",25);
+        thinButtonOverlay(860,windowHeight-70,"Br₂, H₂O",26);
+        thinButtonOverlay(980,windowHeight-70,"H₂, Pd",27);
+        thinButtonOverlay(1100,windowHeight-70,"Hg(OAc)₂,H₂O,BH₄",28);
+        thinButtonOverlay(1220,windowHeight-70,"BH₃",29);
+        thinButtonOverlay(1340,windowHeight-70,"NaBH₄",30);
+        thinButtonOverlay(1460,windowHeight-70,"Swern",31);
+        thinButtonOverlay(1580,windowHeight-70,"PBr₃",32);
+        thinButtonOverlay(1700,windowHeight-70,"SOCl₂",33);
+        thinButtonOverlay(1820,windowHeight-70,"TsCl",34);
 
         middleground.textStyle(NORMAL);
         middleground.stroke(0);
@@ -589,7 +592,7 @@ function draw() {
         previewY1 = selectedAtom.y;
         previewX2 = selectedAtom.x + Math.cos(toRadians(360-bondAngle))*bondLength;
         previewY2 = selectedAtom.y + Math.sin(toRadians(360-bondAngle))*bondLength;
-        if (selectedAtom.numBonds > 4-bondType) { // too many bonds
+        if (selectedAtom.numBonds > maxBonds(selectedAtom.element)-bondType) { // too many bonds
           bondAngle = -1;
         }
       } else if (selectedAtom.length !== 0 && !bondMode) {
@@ -598,7 +601,7 @@ function draw() {
         bondAngle = 330;
       } else if (mousePressed) { // on mouse press, stop updating previewX1 and previewY1
         if (angleSnap) {
-          if (selectedAtom.numBonds > 4-bondType) { // too many bonds
+          if (selectedAtom.numBonds > maxBonds(selectedAtom.element)-bondType) { // too many bonds
             bondAngle = -1;
           } else {
             bondAngle = Math.floor((findBondAngle(previewX1,previewY1,cachedMouseX,mouseY)+15)/30)*30; // round bond angle to nearest 30 degrees
@@ -608,7 +611,7 @@ function draw() {
         } else {
           previewX2 = cachedMouseX;
           previewY2 = mouseY;
-          if (selectedAtom.numBonds > 4-bondType) { // too many bonds
+          if (selectedAtom.numBonds > maxBonds(selectedAtom.element)-bondType) { // too many bonds
             bondAngle = -1;
           } else {
             bondAngle = findBondAngle(previewX1,previewY1,cachedMouseX,mouseY);
@@ -662,7 +665,7 @@ function draw() {
 
         // render cyan/red destination dot
         if (destinationAtom.length !== 0) {
-          if (destinationAtom.numBonds <= 4-bondType && validBond) {
+          if (destinationAtom.numBonds <= maxBonds(destinationAtom.element)-bondType && validBond) {
             foreground.fill(48,227,255);
             foreground.circle(destinationAtom.x,destinationAtom.y,10);
             foreground.fill(255);
@@ -811,23 +814,6 @@ function angleSnapButtonOverlay(x,y,label,box) {
   }
 }
 
-function clearButton() {
-  background2.fill(230);
-  background2.rect(windowWidth-360,20,100,50);
-  background2.fill(0);
-  background2.text("CLEAR",windowWidth-360,20,100,50);
-}
-
-function clearButtonOverlay() {
-  if (selectedBox === 11) {
-    middleground.stroke(255);
-    middleground.rect(windowWidth-360,20,100,50);
-    middleground.stroke(0);
-  } else {
-    middleground.rect(windowWidth-360,20,100,50);
-  }
-}
-
 function bondButton(x,y,bonds) { // does not need an overlay version because lines are very fast to render
   if (bondType === bonds && bondMode) {
     middleground.fill(205);
@@ -877,14 +863,14 @@ function atomButtonOverlay(x,y,atom,box) {
   }
 }
 
-function reactionButton(x,y,reaction,box) {
+function thinButton(x,y,reaction,box) {
   background2.fill(230);
   background2.rect(x,y,100,50);
   background2.fill(0);
   background2.text(reaction,x,y,100,50);
 }
 
-function reactionButtonOverlay(x,y,reaction,box) {
+function thinButtonOverlay(x,y,reaction,box) {
   if (selectedBox === box) {
     middleground.stroke(255);
     middleground.rect(x,y,100,50);
@@ -926,23 +912,24 @@ function drawBackground() {
   atomButton(860,20,"Cl",10);
   background2.textSize(16);
   background2.textStyle(BOLD);
-  reactionButton(20,windowHeight-70,"H⁺,H₂O",19);
-  reactionButton(140,windowHeight-70,"PdCl₂,H₂O",20);
-  reactionButton(260,windowHeight-70,"POCl₃",21);/*
-  reactionButton(380,windowHeight-70,"KOH",22);*/
-  reactionButton(500,windowHeight-70,"HBr",23);
-  reactionButton(620,windowHeight-70,"HBr, H₂O₂",24);
-  reactionButton(740,windowHeight-70,"Br₂",25);
-  reactionButton(860,windowHeight-70,"Br₂, H₂O",26);
-  reactionButton(980,windowHeight-70,"H₂, Pd",27);
-  reactionButton(1100,windowHeight-70,"Hg(OAc)₂,H₂O,BH₄",28);
-  reactionButton(1220,windowHeight-70,"BH₃",29);
-  reactionButton(1340,windowHeight-70,"NaBH₄",30);
-  reactionButton(1460,windowHeight-70,"Swern",31);
-  reactionButton(1580,windowHeight-70,"PBr₃",32);
-  reactionButton(1700,windowHeight-70,"SOCl₂",33);
-  reactionButton(1820,windowHeight-70,"TsCl",34);
-  clearButton();
+  thinButton(20,windowHeight-70,"H⁺,H₂O",19);
+  thinButton(140,windowHeight-70,"PdCl₂,H₂O",20);
+  thinButton(260,windowHeight-70,"POCl₃",21);/*
+  thinButton(380,windowHeight-70,"KOH",22);*/
+  thinButton(500,windowHeight-70,"HBr",23);
+  thinButton(620,windowHeight-70,"HBr, H₂O₂",24);
+  thinButton(740,windowHeight-70,"Br₂",25);
+  thinButton(860,windowHeight-70,"Br₂, H₂O",26);
+  thinButton(980,windowHeight-70,"H₂, Pd",27);
+  thinButton(1100,windowHeight-70,"Hg(OAc)₂,H₂O,BH₄",28);
+  thinButton(1220,windowHeight-70,"BH₃",29);
+  thinButton(1340,windowHeight-70,"NaBH₄",30);
+  thinButton(1460,windowHeight-70,"Swern",31);
+  thinButton(1580,windowHeight-70,"PBr₃",32);
+  thinButton(1700,windowHeight-70,"SOCl₂",33);
+  thinButton(1820,windowHeight-70,"TsCl",34);
+  thinButton(windowWidth-360,20,"CLEAR",11);
+  thinButton(windowWidth-480,20,"RANDOM MOLECULE",12);
   angleSnapButton(windowWidth-240,20,"SNAP BONDS",5);
   angleSnapButton(windowWidth-120,20,"FREEFORM BONDS",4);
   background2.stroke(0);
@@ -983,7 +970,26 @@ function bond(x1,y1,x2,y2,num,frame) {
   }
 }
 
+function maxBonds(element) {
+  if (element === "C") {
+    return 4;
+  } else if (element === "N") {
+    return 3;
+  } else if (element === "O") {
+    return 2;
+  } else if (element === "Br" || element === "Cl" || element === "Ts" || element === "I" || element === "F" || element === "OTBS") {
+    return 1;
+  } else {
+    return -1;
+  }
+}
+
 function mouseClicked() {
+  clickButton(selectedBox);
+  return false;
+}
+
+function clickButton(selectedBox) {
   switch (selectedBox) {
     case 1:
       bondType = selectedBox;
@@ -1027,6 +1033,39 @@ function mouseClicked() {
       network = [];
       nextID = 0;
       break;
+    case 12:
+      let startingID = nextID;
+      network.push(new Atom(nextID, "C", windowWidth/2+Math.random()*windowWidth/10, windowHeight/2+Math.random()*windowHeight/10, bondType, false, 330, [], []));
+      nextID++;
+      let generating = true;
+      let randomAtom;
+      let randomNum;
+      let randomElement;
+      let randomBondNumber;
+      while (generating) {
+        randomAtom = network[startingID + Math.floor(Math.random() * (nextID-startingID))];
+        randomNum = Math.random();
+        if (randomNum < 0.9) {
+          randomElement = "C";
+        } else if (randomNum < 0.96) {
+          randomElement = "O";
+        } else {
+          randomElement = "N";
+        }
+        randomNum = Math.random();
+        if (randomNum < 0.8) {
+          randomBondNumber = 1;
+        } else if (randomNum < 0.92) {
+          randomBondNumber = 2;
+        } else {
+          randomBondNumber = 3;
+        }
+        randomAtom.addBond(randomElement, randomBondNumber);
+        if (Math.random() > 0.9) {
+          generating = false;
+        }
+      }
+      break;
     case 19:
       for (let i = 0; i < network.length; i++) {
         let currentAtom = network[i];
@@ -1056,7 +1095,7 @@ function mouseClicked() {
           let mostSubstitutedAtom = new Atom(0,"C",0,0,0,true,330,[],[]); // blank atom
           for (let j = 0; j < adjacentAtom.bondIdList.length; j++) { // look at the atoms attached to the adjacentAtom
             let adjacentAdjacentAtom = network[adjacentAtom.bondIdList[j]];
-            if (adjacentAdjacentAtom.element != "C" || adjacentAdjacentAtom.id === currentAtom.id || adjacentAdjacentAtom.numBonds > 3) {
+            if (adjacentAdjacentAtom.element != "C" || adjacentAdjacentAtom.id === currentAtom.id || adjacentAdjacentAtom.numBonds >= maxBonds(adjacentAdjacentAtom.element)) {
               continue;
             } else if (adjacentAdjacentAtom.isMoreSubstitutedThan(mostSubstitutedAtom)) {
               mostSubstitutedAtom = adjacentAdjacentAtom; // TODO: consider what happens when equally substituted
@@ -1198,7 +1237,7 @@ function mouseClicked() {
         }
         if (currentAtom.isHydroxyl(currentAtom)) {
           adjacentAtom = network[currentAtom.bondIdList[0]];
-          if (adjacentAtom.numBonds > 3) { // too many bonds to form another
+          if (adjacentAtom.numBonds >= maxBonds(adjacentAtom.element)) { // too many bonds to form another
             break;
           }
           currentAtom.bondTypeList[0] = 2;
@@ -1295,5 +1334,4 @@ function mouseClicked() {
   }
   renderFrame = true;
   renderMiddleground = true;
-  return false;
 }
