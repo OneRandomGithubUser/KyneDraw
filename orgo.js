@@ -36,6 +36,7 @@ var intro = true;
 var renderFrame = false;
 var renderMiddleground = false;
 var tip;
+var hackerman = false;
 var tips = [
   "Press the CLEAR button to clear all atoms on the screen",
   "Press the SNAP BONDS or FREEFORM BONDS to change the way bonds are made when clicking and dragging",
@@ -370,6 +371,11 @@ function draw() {
   try {
     let cachedMouseX = mouseX;
     let cachedMouseY = mouseY;
+    if (hackerman && frameCount%3 === 0) {
+      // this is a joke
+      clickButton(11);
+      clickButton(12);
+    }
 
     if (renderFrame) {
       background(255);
@@ -402,6 +408,8 @@ function draw() {
             selectBox(11); // CLEAR MOLECULE
           } else if (cachedMouseX > windowWidth-480 && cachedMouseX < windowWidth-380) {
             selectBox(12); // RANDOM MOLECULE
+          } else if (cachedMouseX > windowWidth-600 && cachedMouseX < windowWidth-500) {
+            selectBox(13); // HACKERMAN
           }
         }
       } else if (cachedMouseY > windowHeight-70 && cachedMouseY < windowHeight-20) {
@@ -474,6 +482,7 @@ function draw() {
         // render clear and random button overlay
         thinButtonOverlay(windowWidth-360,20,"CLEAR",11);
         thinButtonOverlay(windowWidth-480,20,"RANDOM MOLECULE",12);
+        thinButtonOverlay(windowWidth-600,20,"HACKERMAN",13);
         
         // render reaction button overlays
         thinButtonOverlay(20,windowHeight-70,"H⁺,H₂O",19);
@@ -935,6 +944,7 @@ function drawBackground() {
   thinButton(1820,windowHeight-70,"TsCl",34);
   thinButton(windowWidth-360,20,"CLEAR",11);
   thinButton(windowWidth-480,20,"RANDOM MOLECULE",12);
+  thinButton(windowWidth-600,20,"HACKERMAN",13);
   angleSnapButton(windowWidth-240,20,"SNAP BONDS",5);
   angleSnapButton(windowWidth-120,20,"FREEFORM BONDS",4);
   background2.stroke(0);
@@ -1050,12 +1060,14 @@ function clickButton(selectedBox) {
       while (generating) {
         randomAtom = network[startingID + Math.floor(Math.random() * (nextID-startingID))];
         randomNum = Math.random();
-        if (randomNum < 0.9) {
+        if (randomNum < 0.85) {
           randomElement = "C";
-        } else if (randomNum < 0.96) {
-          randomElement = "O";
-        } else {
+        } else if (randomNum < 0.94) {
+          randomElement = "O"
+        } else if (randomNum < 0.97) {
           randomElement = "N";
+        } else {
+          randomElement = "Br";
         }
         randomNum = Math.random();
         if (randomNum < 0.8) {
@@ -1070,6 +1082,9 @@ function clickButton(selectedBox) {
           generating = false;
         }
       }
+      break;
+    case 13:
+      hackerman = !hackerman;
       break;
     case 19:
       for (let i = 0; i < network.length; i++) {
