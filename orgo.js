@@ -1053,22 +1053,19 @@ function mouseClicked() {
         }
         if (currentAtom.isHydroxyl()) {
           let adjacentAtom = network[currentAtom.bondIdList[0]]; // carbon atom that the oxygen is attached to
-          if (adjacentAtom.numBonds > 3) {
-            // can't make a new bond if it's full
-            continue;
-          }
           let mostSubstitutedAtom = new Atom(0,"C",0,0,0,true,330,[],[]); // blank atom
           for (let j = 0; j < adjacentAtom.bondIdList.length; j++) { // look at the atoms attached to the adjacentAtom
-            let adajacentAdjacentAtom = network[adjacentAtom.bondIdList[j]];
-            if (adajacentAdjacentAtom.element != "C" || adajacentAdjacentAtom.id === currentAtom.id || adajacentAdjacentAtom.numBonds > 3) {
+            let adjacentAdjacentAtom = network[adjacentAtom.bondIdList[j]];
+            if (adjacentAdjacentAtom.element != "C" || adjacentAdjacentAtom.id === currentAtom.id || adjacentAdjacentAtom.numBonds > 3) {
               continue;
-            } else if (adajacentAdjacentAtom.isMoreSubstitutedThan(mostSubstitutedAtom)) {
-              mostSubstitutedAtom = adajacentAdjacentAtom; // TODO: consider what happens when equally substituted
+            } else if (adjacentAdjacentAtom.isMoreSubstitutedThan(mostSubstitutedAtom)) {
+              mostSubstitutedAtom = adjacentAdjacentAtom; // TODO: consider what happens when equally substituted
             }
           }
           if (!mostSubstitutedAtom.deleted) {
             // remove hydroxyl group (currentAtom)
             currentAtom.delete();
+            mostSubstitutedAtom.updateNextBondAngle();
             // add another bond to the mostSubstitutedAtom to the adjacentAtom
             for (let j = 0; j < mostSubstitutedAtom.bondIdList.length; j++) {
               if (mostSubstitutedAtom.bondIdList[j] === adjacentAtom.id) {
