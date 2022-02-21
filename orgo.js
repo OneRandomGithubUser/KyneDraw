@@ -82,7 +82,7 @@ class Atom {
 
   // returns false if it failed, true if it succeeded
   addBond(element, bondType) {
-    if (bondType + this.numBonds > maxBonds(this.element)) {
+    if (bondType + this.numBonds > maxBonds(this.element) || bondType > maxBonds(element)) {
       return false;
     } else {
       // TODO: if nextBondAngle is updated, add update function call here
