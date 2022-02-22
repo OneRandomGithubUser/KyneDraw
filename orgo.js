@@ -80,13 +80,21 @@ class Atom {
     return true;
   }
 
-  // returns false if it failed, true if it succeeded
   addBond(element, bondType) {
     if (bondType + this.numBonds > maxBonds(this.element) || bondType > maxBonds(element)) {
+      // bondType makes too many bonds for a valid molecule
       return false;
     } else {
-      // TODO: if nextBondAngle is updated, add update function call here
-      let bondAngle = this.nextBondAngle;
+      let bondAngle;
+      if (this.bondTypeList.length === 0) {
+        // lone atom
+        bondAngle = 330;
+      } else if (bondType === 3 || this.bondTypeList[0] === 3) {
+        // make linear triple bonds
+        bondAngle = (this.getBondAngles()[0]+180)%360;
+      } else {
+        bondAngle = this.nextBondAngle;
+      }
       let previewX2 = this.x + Math.cos(toRadians(360-bondAngle))*bondLength;
       let previewY2 = this.y + Math.sin(toRadians(360-bondAngle))*bondLength;
       let id2 = nextID;
@@ -95,7 +103,7 @@ class Atom {
       this.bondIdList.push(id2);
       this.bondTypeList.push(bondType);
       network.push(new Atom(id2, element, previewX2, previewY2, bondType, false, 0, [this.id], [bondType]));
-      this.nextBondAngle = this.calculateNextBondAngle();
+      this.updateNextBondAngle();
       network[id2].nextBondAngle = network[id2].calculateNextBondAngle();
       // then update the frame
       renderFrame = true;
@@ -106,6 +114,7 @@ class Atom {
   
   alkeneAddition(markovnikovElementToAdd, nonmarkovnikovElementToAdd) {
     if (this.element != "C" || this.isBenzene()) {
+      // current element must be a carbon and not part of a benzene ring
       return false;
     } else {
       let changed = false;
@@ -153,6 +162,7 @@ class Atom {
   
   alkeneAddition2(markovnikovElementToAdd, markovnikovNumBondsToAdd, nonmarkovnikovElementToAdd, nonmarkovnikovNumBondsToAdd) {
     if (this.element != "C" || this.isBenzene()) {
+      // current element must be a carbon and not part of a benzene ring
       return false;
     } else {
       let changed = false;
@@ -246,6 +256,14 @@ class Atom {
     }
     return ans;
   }
+
+  getBondAngles() {
+    let ans = [];
+    for (let i = 0; i < this.bondIdList.length; i++) {
+      ans.push(Math.round(findBondAngle(this.x, this.y, network[this.bondIdList[i]].x, network[this.bondIdList[i]].y)));
+    }
+    return ans;
+  }
   
   isHydroxyl() {
     return this.element === "O" && this.numBonds === 1 && network[this.bondIdList[0]].element === "C";
@@ -255,7 +273,7 @@ class Atom {
     return this.element === "O" && this.numBonds === 2 && this.bondIdList.length == 1 && network[this.bondIdList[0]].element === "C";
   }
 
-  isLeavingGroup() { // is ketone or aldehyde
+  isLeavingGroup() {
     return (this.element === "Br" || this.element === "Cl" || this.element === "F" || this.element === "I" || this.element === "Ts") && this.numBonds === 1 && this.bondIdList.length == 1 && network[this.bondIdList[0]].element === "C";
   }
 
@@ -293,10 +311,9 @@ class Atom {
   // TODO: this is really poorly written. but it works.
   calculateNextBondAngle() {
     let currentBondSectors = []; // ranges from 0 to 11 for each 30 degree sector, starting at -15 degrees
-    let currentBondAngles = [];
+    let currentBondAngles = this.getBondAngles();
     if (this.numBonds !== 0) {
       for (let i = 0; i < this.bondIdList.length; i++) {
-        currentBondAngles.push(Math.round(findBondAngle(this.x, this.y, network[this.bondIdList[i]].x, network[this.bondIdList[i]].y)));
         currentBondSectors.push(Math.floor((findBondAngle(this.x, this.y, network[this.bondIdList[i]].x, network[this.bondIdList[i]].y)+15)/30));
       }
     }
@@ -595,15 +612,23 @@ function draw() {
       }
 
       // calculate new bond angle
-      if (selectedAtom.length !== 0 && !mousePressed && bondMode) { // selectedAtom is previously defined in cyan selection dot area
-        bondAngle = selectedAtom.nextBondAngle;
+      if (selectedAtom.length !== 0 && !mousePressed && bondMode) {
+        if (selectedAtom.numBonds > maxBonds(selectedAtom.element)-bondType) {
+          // too many bonds
+          bondAngle = -1;
+        } else if (selectedAtom.bondTypeList.length === 0) {
+          // lone atom
+          bondAngle = 330;
+        } else if (bondType === 3 || selectedAtom.bondTypeList[0] === 3) {
+          // make linear triple bonds
+          bondAngle = (selectedAtom.getBondAngles()[0]+180)%360;
+        } else {
+          bondAngle = selectedAtom.nextBondAngle;
+        }
         previewX1 = selectedAtom.x;
         previewY1 = selectedAtom.y;
         previewX2 = selectedAtom.x + Math.cos(toRadians(360-bondAngle))*bondLength;
         previewY2 = selectedAtom.y + Math.sin(toRadians(360-bondAngle))*bondLength;
-        if (selectedAtom.numBonds > maxBonds(selectedAtom.element)-bondType) { // too many bonds
-          bondAngle = -1;
-        }
       } else if (selectedAtom.length !== 0 && !bondMode) {
         previewX1 = selectedAtom.x;
         previewY1 = selectedAtom.y;
