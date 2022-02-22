@@ -37,6 +37,7 @@ var renderFrame = false;
 var renderMiddleground = false;
 var tip;
 var hackerman = false;
+var selectedBond;
 var tips = [
   "Press the CLEAR button to clear all atoms on the screen",
   "Press the SNAP BONDS or FREEFORM BONDS to change the way bonds are made when clicking and dragging",
@@ -524,8 +525,14 @@ function draw() {
         middleground.fill(0);
       }
 
-      if (!mousePressed) {selectedAtom = [];} // selected atom when snap-on is in effect
+      // selected atom when snap-on is in effect
+      if (!mousePressed) {
+        selectedAtom = [];
+        selectedBond = [];
+      }
+
       closestDistance = selectionDistance;
+      let closestBondDistance = selectionDistance;
       validBond = true;
 
       // cycle through all atoms
@@ -601,12 +608,25 @@ function draw() {
           middleground.stroke(0);
         }
 
-        // calculate closest selected atom as long as the mouse is not pressed
+        // calculate closest selected atom/bond as long as the mouse is not pressed
+        // TODO: this algorithm can be made much more efficient
         if (!mousePressed) {
+          // find closest atom
           let distance = Math.sqrt((cachedMouseX-currentAtom.x)**2 + (cachedMouseY-currentAtom.y)**2);
           if (distance < closestDistance) {
             closestDistance = distance;
             selectedAtom = currentAtom;
+          }
+          if (selectedAtom.length === 0 && bondMode) {
+            // find closest bond if there is no closest atom
+            for (let j = 0; j < currentAtom.bondIdList.length; j++) {
+              let currentAtom2 = network[currentAtom.bondIdList[j]];
+              let distance = distanceToBond(cachedMouseX, cachedMouseY, currentAtom.x, currentAtom.y, currentAtom2.x, currentAtom2.y);
+              if (distance < closestBondDistance) {
+                closestBondDistance = distance;
+                selectedBond = [currentAtom, currentAtom2, currentAtom.bondTypeList[j]];
+              }
+            }
           }
         }
       }
@@ -675,6 +695,24 @@ function draw() {
         }
         foreground.circle(selectedAtom.x,selectedAtom.y,10);
         foreground.fill(255);
+      }
+
+      // highlight selected bond
+      if (selectedAtom.length === 0 && selectedBond.length !== 0 && bondMode) {
+        let color;
+        if (selectedBond[0].numBonds - selectedBond[2] + bondType > maxBonds(selectedBond[0].element) || selectedBond[1].numBonds - selectedBond[2] + bondType > maxBonds(selectedBond[1].element)) {
+          // don't change selected bond if it would cause too many bonds
+          color = [255,0,0];
+          highlightedBond(selectedBond[0].x, selectedBond[0].y, selectedBond[1].x, selectedBond[1].y, selectedBond[2], color, foreground);
+          bond(selectedBond[0].x, selectedBond[0].y, selectedBond[1].x, selectedBond[1].y, bondType, foreground);
+          selectedBond = [];
+        } else {
+          color = [48,227,255];
+          highlightedBond(selectedBond[0].x, selectedBond[0].y, selectedBond[1].x, selectedBond[1].y, selectedBond[2], color, foreground);
+          bond(selectedBond[0].x, selectedBond[0].y, selectedBond[1].x, selectedBond[1].y, bondType, foreground);
+        }
+        bondAngle = -1;
+        validBond = false;
       }
 
       if (bondMode) {
@@ -977,6 +1015,41 @@ function drawBackground() {
   background2.textStyle(NORMAL);
 }
 
+function distanceToBond(x, y, x1, y1, x2, y2) {
+
+  // taken from https://stackoverflow.com/questions/849211/shortest-distance-between-a-point-and-a-line-segment/6853926#6853926
+
+  var A = x - x1;
+  var B = y - y1;
+  var C = x2 - x1;
+  var D = y2 - y1;
+
+  var dot = A * C + B * D;
+  var len_sq = C * C + D * D;
+  var param = -1;
+  if (len_sq != 0) //in case of 0 length line
+      param = dot / len_sq;
+
+  var xx, yy;
+
+  if (param < 0) {
+    xx = x1;
+    yy = y1;
+  }
+  else if (param > 1) {
+    xx = x2;
+    yy = y2;
+  }
+  else {
+    xx = x1 + param * C;
+    yy = y1 + param * D;
+  }
+
+  var dx = x - xx;
+  var dy = y - yy;
+  return Math.sqrt(dx * dx + dy * dy);
+}
+
 function findBondAngle(x1,y1,x2,y2) {
   let ans;
   if (y1 === y2) {
@@ -994,6 +1067,14 @@ function findBondAngle(x1,y1,x2,y2) {
   if (ans < 0) {ans+=180;}
   if (-(y2-y1) < 0) {ans = (180+ans)%360;}
   return ans;
+}
+
+function highlightedBond(x1,y1,x2,y2,num,colorArray,frame) {
+  frame.stroke(colorArray);
+  frame.strokeWeight(3);
+  bond(x1,y1,x2,y2,num,frame);
+  frame.strokeWeight(1);
+  frame.stroke(0);
 }
 
 function bond(x1,y1,x2,y2,num,frame) {
@@ -1333,41 +1414,55 @@ function clickButton(selectedBox) {
     case 0: // when no box is selected
     if (bondMode) {
       element = "C";
-      // -1 means invalid bond TODO: change this, bondAngle is not needed elsewhere
-      if (bondAngle === -1 || !validBond) {
+      // -1 means invalid bond TODO: change this, bondAngle is not needed elsewhere anymore
+      if (selectedAtom.length === 0 && selectedBond.length !== 0 && selectedBond[2] !== bondType) {
+        // TODO: unoptimized
+        for (let i = 0; i < selectedBond[0].bondTypeList.length; i++) {
+          if (selectedBond[0].bondIdList[i] === selectedBond[1].id) {
+            selectedBond[0].bondTypeList[i] = bondType;
+            selectedBond[0].numBonds = selectedBond[0].numBonds - selectedBond[2] + bondType; // update numBonds
+          }
+        }
+        for (let i = 0; i < selectedBond[1].bondTypeList.length; i++) {
+          if (selectedBond[1].bondIdList[i] === selectedBond[0].id) {
+            selectedBond[1].bondTypeList[i] = bondType;
+            selectedBond[1].numBonds = selectedBond[1].numBonds - selectedBond[2] + bondType; // update numBonds
+          }
+        }
+      } else if (bondAngle === -1 || !validBond) {
         return false;
-      }
-      
-      let id1 = nextID;
-      if (selectedAtom.length !== 0) {
-        id1 = selectedAtom.id;
-      } else {        
-        nextID++;
-      }
-      let id2 = nextID;
-      if (destinationAtom.length !== 0) {
-        id2 = destinationAtom.id;
       } else {
-        nextID++;
-      }
+        let id1 = nextID;
+        if (selectedAtom.length !== 0) {
+          id1 = selectedAtom.id;
+        } else {        
+          nextID++;
+        }
+        let id2 = nextID;
+        if (destinationAtom.length !== 0) {
+          id2 = destinationAtom.id;
+        } else {
+          nextID++;
+        }
 
-      if (network.length<=id1) {
-        network.push(new Atom(id1, element, previewX1, previewY1, bondType, false, 0, [id2], [bondType]));
-      } else {
-        network[id1].numBonds += bondType;
-        network[id1].bondIdList.push(id2);
-        network[id1].bondTypeList.push(bondType);
+        if (network.length<=id1) {
+          network.push(new Atom(id1, element, previewX1, previewY1, bondType, false, 0, [id2], [bondType]));
+        } else {
+          network[id1].numBonds += bondType;
+          network[id1].bondIdList.push(id2);
+          network[id1].bondTypeList.push(bondType);
+        }
+        if (network.length<=id2) {
+          network.push(new Atom(id2, element, previewX2, previewY2, bondType, false, 0, [id1], [bondType]));
+        } else {
+          network[id2].numBonds += bondType;
+          network[id2].bondIdList.push(id1);
+          network[id2].bondTypeList.push(bondType);
+        }
+        network[id1].nextBondAngle = network[id1].calculateNextBondAngle();
+        network[id2].nextBondAngle = network[id2].calculateNextBondAngle();
+        break;
       }
-      if (network.length<=id2) {
-        network.push(new Atom(id2, element, previewX2, previewY2, bondType, false, 0, [id1], [bondType]));
-      } else {
-        network[id2].numBonds += bondType;
-        network[id2].bondIdList.push(id1);
-        network[id2].bondTypeList.push(bondType);
-      }
-      network[id1].nextBondAngle = network[id1].calculateNextBondAngle();
-      network[id2].nextBondAngle = network[id2].calculateNextBondAngle();
-      break;
     } else {
       if (!validBond) {
         break;
