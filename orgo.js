@@ -81,17 +81,21 @@ class Atom {
     return true;
   }
 
-  addBond(element, bondType) {
+  addBond(element, bondType, connectToExistingAtoms) {
     if (bondType + this.numBonds > maxBonds(this.element) || bondType > maxBonds(element)) {
       // bondType makes too many bonds for a valid molecule
       return false;
     } else {
       let bondAngle;
+      let closestDestinationAtom = [];
       if (this.bondTypeList.length === 0) {
         // lone atom
         bondAngle = 330;
       } else if (bondType === 3 || this.bondTypeList[0] === 3) {
         // make linear triple bonds
+        bondAngle = (this.getBondAngles()[0]+180)%360;
+      } else if (bondType === 2 && this.bondTypeList[0] === 2) {
+        // make linear allene
         bondAngle = (this.getBondAngles()[0]+180)%360;
       } else {
         bondAngle = this.nextBondAngle;
@@ -99,13 +103,46 @@ class Atom {
       let previewX2 = this.x + Math.cos(toRadians(360-bondAngle))*bondLength;
       let previewY2 = this.y + Math.sin(toRadians(360-bondAngle))*bondLength;
       let id2 = nextID;
-      nextID++;
+      // connect to an existing atom, ignoring element
+      closestDestinationAtom = findClosestDestinationAtom(previewX2,previewY2,[],network);
+      if (closestDestinationAtom.length !== 0) {
+        if (connectToExistingAtoms && closestDestinationAtom.numBonds + bondType < maxBonds(closestDestinationAtom.element)) {
+          this.bondIdList.push(closestDestinationAtom.id);
+          this.bondTypeList.push(bondType);
+          this.numBonds += bondType;
+          this.updateNextBondAngle();
+          closestDestinationAtom.bondIdList.push(this.id);
+          closestDestinationAtom.bondTypeList.push(bondType);
+          closestDestinationAtom.numBonds += bondType;
+          closestDestinationAtom.updateNextBondAngle();
+
+          // then update the frame
+          renderFrame = true;
+          renderMiddleground = true;
+          return true;
+        } else {
+          // if cannot connect to existing atoms, make the new bond somewhere else by simulating the next bond as if there were simBonds already on the atom
+          let simBonds = this.numBonds + 1;
+          while (simBonds < 12) {
+            bondAngle = this.calculateNextBondAngle2(simBonds);
+            previewX2 = this.x + Math.cos(toRadians(360-bondAngle))*bondLength;
+            previewY2 = this.y + Math.sin(toRadians(360-bondAngle))*bondLength;
+            closestDestinationAtom = findClosestDestinationAtom(previewX2,previewY2,[],network);
+            if (closestDestinationAtom.length === 0) {
+              break;
+            }
+            simBonds++;
+          }
+        }
+      }
       this.numBonds += bondType;
       this.bondIdList.push(id2);
       this.bondTypeList.push(bondType);
       network.push(new Atom(id2, element, previewX2, previewY2, bondType, false, 0, [this.id], [bondType]));
+      nextID++;
       this.updateNextBondAngle();
-      network[id2].nextBondAngle = network[id2].calculateNextBondAngle();
+      network[id2].updateNextBondAngle();
+
       // then update the frame
       renderFrame = true;
       renderMiddleground = true;
@@ -137,19 +174,19 @@ class Atom {
             if (this.isMoreStableCarbocationThan(atom2)) {
               for (let j = 0; j < reps; j++) {
                 if (markovnikovElementToAdd != "") {
-                  this.addBond(markovnikovElementToAdd, 1);
+                  this.addBond(markovnikovElementToAdd, 1, false);
                 }
                 if (nonmarkovnikovElementToAdd != "") {
-                  atom2.addBond(nonmarkovnikovElementToAdd, 1);
+                  atom2.addBond(nonmarkovnikovElementToAdd, 1, false);
                 }
               }
             } else {
               for (let j = 0; j < reps; j++) {
                 if (nonmarkovnikovElementToAdd != "") {
-                  this.addBond(nonmarkovnikovElementToAdd, 1);
+                  this.addBond(nonmarkovnikovElementToAdd, 1, false);
                 }
                 if (markovnikovElementToAdd != "") {
-                  atom2.addBond(markovnikovElementToAdd, 1);
+                  atom2.addBond(markovnikovElementToAdd, 1, false);
                 }
               }
             }
@@ -185,19 +222,19 @@ class Atom {
             if (this.isMoreStableCarbocationThan(atom2)) {
               for (let j = 0; j < reps; j++) {
                 if (markovnikovElementToAdd != "") {
-                  this.addBond(markovnikovElementToAdd, markovnikovNumBondsToAdd);
+                  this.addBond(markovnikovElementToAdd, markovnikovNumBondsToAdd, false);
                 }
                 if (nonmarkovnikovElementToAdd != "") {
-                  atom2.addBond(nonmarkovnikovElementToAdd, nonmarkovnikovNumBondsToAdd);
+                  atom2.addBond(nonmarkovnikovElementToAdd, nonmarkovnikovNumBondsToAdd, false);
                 }
               }
             } else {
               for (let j = 0; j < reps; j++) {
                 if (nonmarkovnikovElementToAdd != "") {
-                  this.addBond(nonmarkovnikovElementToAdd, nonmarkovnikovNumBondsToAdd);
+                  this.addBond(nonmarkovnikovElementToAdd, nonmarkovnikovNumBondsToAdd, false);
                 }
                 if (markovnikovElementToAdd != "") {
-                  atom2.addBond(markovnikovElementToAdd, markovnikovNumBondsToAdd);
+                  atom2.addBond(markovnikovElementToAdd, markovnikovNumBondsToAdd, false);
                 }
               }
             }
@@ -309,7 +346,7 @@ class Atom {
     return true;
   }
 
-  // TODO: this is really poorly written. but it works.
+  // TODO: this is really poorly written. but it works at least.
   calculateNextBondAngle() {
     let currentBondSectors = []; // ranges from 0 to 11 for each 30 degree sector, starting at -15 degrees
     let currentBondAngles = this.getBondAngles();
@@ -324,7 +361,9 @@ class Atom {
       case 1:
         let answer = (currentBondSectors[0]*30+120)%360
         let alternate = (currentBondSectors[0]*30+240)%360
-        if (Math.min(alternate%180,180-(alternate%180)) < Math.min(answer%180,180-(answer%180))) {answer = alternate;}
+        if (Math.min(alternate%180,180-(alternate%180)) < Math.min(answer%180,180-(answer%180))) {
+          answer = alternate;
+        }
         return answer;
       case 2:
         if (Math.abs(currentBondAngles[0] - currentBondAngles[1]) > 180) {
@@ -338,8 +377,7 @@ class Atom {
         } else if (!currentBondSectors.includes(2)) {
           return 60;
         } else {
-          for (let i = 0; i < 12
-            ; i++) {
+          for (let i = 0; i < 12; i++) {
             if (!currentBondSectors.includes(i)) {
               return i*30;
             }
@@ -348,6 +386,56 @@ class Atom {
         return -1;
       default:
         return -1;
+    }
+  }
+  
+  // calculateNextBondAngle but returns the calculated next bond angle as if the priority value was the number of bonds the atom already has, also handles what happens with more than 3 *fake* bonds
+  calculateNextBondAngle2(priority) {
+    let currentBondSectors = []; // ranges from 0 to 11 for each 30 degree sector, starting at -15 degrees
+    let currentBondAngles = this.getBondAngles();
+    if (this.numBonds !== 0) {
+      for (let i = 0; i < this.bondIdList.length; i++) {
+        currentBondSectors.push(Math.floor((findBondAngle(this.x, this.y, network[this.bondIdList[i]].x, network[this.bondIdList[i]].y)+15)/30));
+      }
+    }
+    if (priority === 0) {
+      return 330;
+    } else if (priority === 1) {
+      let answer = (currentBondSectors[0]*30+120)%360
+      let alternate = (currentBondSectors[0]*30+240)%360
+      if (Math.min(alternate%180,180-(alternate%180)) < Math.min(answer%180,180-(answer%180))) {
+        answer = alternate;
+      }
+      return answer;
+    } else if (priority === 2) {
+      if (Math.abs(currentBondAngles[0] - currentBondAngles[1]) > 180) {
+        return (Math.floor((currentBondAngles[0]+currentBondAngles[1])/2))%360;
+      } else {
+        return (Math.floor((currentBondAngles[0]+currentBondAngles[1])/2)+180)%360;
+      }
+    } else if (priority === 3) {
+      if (!currentBondSectors.includes(8) && !currentBondSectors.includes(9)) {
+        return 240;
+      } else if (!currentBondSectors.includes(2)) {
+        return 60;
+      } else {
+          for (let i = 0; i < 12; i++) {
+          if (!currentBondSectors.includes(i)) {
+            return i*30;
+          }
+        }
+      }
+      return -1;
+    } else if (priority > 3 && priority < 12) {
+      let ans = priority-3;
+      for (let i = 0; i < currentBondSectors.length; i++) {
+        if (currentBondSectors[i] <= ans) {
+          ans++;
+        }
+      }
+      return ans*30;
+    } else {
+      return Math.floor(Math.random*360);
     }
   }
 }
@@ -717,28 +805,7 @@ function draw() {
 
       if (bondMode) {
         // calculate destination atom
-        destinationAtom = [];
-        closestDistance = destinationDistance;
-        for (let i = 0; i < network.length; i++) {
-          let currentAtom = network[i];
-          let distance = Math.sqrt((previewX2-currentAtom.x)**2 + (previewY2-currentAtom.y)**2);
-          if (distance < destinationDistance && distance < closestDistance && validBond) {
-            if (selectedAtom.length !== 0) {
-              // check if the currentAtom is already bonded to the selectedAtom
-              for (let j = 0; j < selectedAtom.bondIdList.length; j++) {
-                if (selectedAtom.bondIdList[j] === currentAtom.id) {
-                  bondAngle = -1;
-                  validBond = false;
-                  destinationAtom = currentAtom;
-                }
-              }
-            }
-            if (validBond) {
-              closestDistance = distance;
-              destinationAtom = currentAtom;
-            }
-          }
-        }
+        destinationAtom = findClosestDestinationAtom(previewX2,previewY2,selectedAtom,network);
 
         // render cyan/red destination dot
         if (destinationAtom.length !== 0) {
@@ -819,7 +886,7 @@ function draw() {
   } catch (err) {
     // print error and debug message if something happens
     let errorMessage = document.createElement("p");
-    errorMessage.appendChild(document.createTextNode("An error has occured. Please send me a screenshot as well as what had just happened that caused the error. Thank you!\n"));
+    errorMessage.appendChild(document.createTextNode("An error has occured. Please send me a bug report including a screenshot as well as what had just happened that caused the error. Thank you!\n"));
     errorMessage.appendChild(document.createTextNode(err.stack+"\n")); // stack trace
     document.getElementById("error").appendChild(errorMessage);
     clear();
@@ -861,6 +928,34 @@ function selectBox(id) {
 function lineOffset(x1,y1,x2,y2,offset,frame) {
   let angle = findBondAngle(x1,y1,x2,y2);
   frame.line(x1-Math.sin(toRadians(angle))*offset, y1-Math.cos(toRadians(angle))*offset, x2-Math.sin(toRadians(angle))*offset, y2-Math.cos(toRadians(angle))*offset);
+}
+
+function findClosestDestinationAtom(x,y,selectedAtom,network) {
+  let closestDistance = destinationDistance;
+  let closestDestinationAtom = [];
+  let currentAtom;
+  let distance;
+  for (let i = 0; i < network.length; i++) {
+    currentAtom = network[i];
+    distance = Math.sqrt((x-currentAtom.x)**2 + (y-currentAtom.y)**2);
+    if (distance < destinationDistance && distance < closestDistance && validBond) {
+      if (selectedAtom.length !== 0) {
+        // check if the currentAtom is already bonded to the selectedAtom
+        for (let j = 0; j < selectedAtom.bondIdList.length; j++) {
+          if (selectedAtom.bondIdList[j] === currentAtom.id) {
+            bondAngle = -1;
+            validBond = false;
+            closestDestinationAtom = currentAtom;
+          }
+        }
+      }
+      if (validBond) {
+        closestDistance = distance;
+        closestDestinationAtom = currentAtom;
+      }
+    }
+  }
+  return closestDestinationAtom;
 }
 
 function angleSnapButton(x,y,label,box) {
@@ -1157,7 +1252,7 @@ function clickButton(selectedBox) {
       break;
     case 12:
       let startingID = nextID;
-      network.push(new Atom(nextID, "C", windowWidth/2+Math.random()*windowWidth/10, windowHeight/2+Math.random()*windowHeight/10, bondType, false, 330, [], []));
+      network.push(new Atom(nextID, "C", windowWidth/2+Math.random()*windowWidth/10, windowHeight/2+Math.random()*windowHeight/10, 0, false, 330, [], []));
       nextID++;
       let generating = true;
       let randomAtom;
@@ -1184,7 +1279,7 @@ function clickButton(selectedBox) {
         } else {
           randomBondNumber = 3;
         }
-        randomAtom.addBond(randomElement, randomBondNumber);
+        randomAtom.addBond(randomElement, randomBondNumber, true);
         if (Math.random() > 0.9) {
           generating = false;
         }
