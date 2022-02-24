@@ -38,6 +38,7 @@ var renderMiddleground = false;
 var tip;
 var hackerman = false;
 var selectedBond;
+var selectedMenu = -1;
 var tips = [
   "Press the CLEAR button to clear all atoms on the screen",
   "Press the SNAP BONDS or FREEFORM BONDS to change the way bonds are made when clicking and dragging",
@@ -48,21 +49,22 @@ var tips = [
   "Click on a reagent button to simulate a reaction",
   "This is a very simplified view of organic chemistry, don't expect this program to know everything",
   "Snap onto preexisting atoms to make bonds from that atom or to change the element of that atom",
-  "This website has been optimized for speed at the expense of memory usage"
+  "This website has been optimized for speed at the expense of memory usage",
+  "This web app does not yet support stereochemistry, charges, resonance, or E-Z configuration"
 ];
 // TODO: bad practice to make so many global variables
 
 // define the Atom class
 // TODO: possible performance improvements by caching functional groups, though too small to worry about right now
 class Atom {
-  constructor(id,element,x,y,numBonds,deleted,nextBondAngle,bondIdList,bondTypeList) {
+  constructor(id,element,x,y,numBonds,deleted,predictedNextBondAngle,bondIdList,bondTypeList) {
     this.id = id;
     this.element = element;
     this.x = x;
     this.y = y;
     this.numBonds = numBonds;
     this.deleted = deleted;
-    this.nextBondAngle = nextBondAngle;
+    this.predictedNextBondAngle = predictedNextBondAngle;
     this.bondIdList = bondIdList;
     this.bondTypeList = bondTypeList;
   }
@@ -86,20 +88,8 @@ class Atom {
       // bondType makes too many bonds for a valid molecule
       return false;
     } else {
-      let bondAngle;
+      let bondAngle = this.getNextBondAngle();
       let closestDestinationAtom = [];
-      if (this.bondTypeList.length === 0) {
-        // lone atom
-        bondAngle = 330;
-      } else if (bondType === 3 || this.bondTypeList[0] === 3) {
-        // make linear triple bonds
-        bondAngle = (this.getBondAngles()[0]+180)%360;
-      } else if (bondType === 2 && this.bondTypeList[0] === 2) {
-        // make linear allene
-        bondAngle = (this.getBondAngles()[0]+180)%360;
-      } else {
-        bondAngle = this.nextBondAngle;
-      }
       let previewX2 = this.x + Math.cos(toRadians(360-bondAngle))*bondLength;
       let previewY2 = this.y + Math.sin(toRadians(360-bondAngle))*bondLength;
       let id2 = nextID;
@@ -341,8 +331,23 @@ class Atom {
     }
   }
 
+  getNextBondAngle() {
+    if (this.bondTypeList.length === 0) {
+      // lone atom
+      return 330;
+    } else if (bondType === 3 || this.bondTypeList[0] === 3) {
+      // make linear triple bonds
+      return (this.getBondAngles()[0]+180)%360;
+    } else if (bondType === 2 && this.bondTypeList[0] === 2) {
+      // make linear allene
+      return (this.getBondAngles()[0]+180)%360;
+    } else {
+      return this.predictedNextBondAngle;
+    }
+  }
+
   updateNextBondAngle() {
-    this.nextBondAngle = this.calculateNextBondAngle();
+    this.predictedNextBondAngle = this.calculateNextBondAngle();
     return true;
   }
 
@@ -559,7 +564,7 @@ function draw() {
 
       if (renderMiddleground) {
         // set draw attributes common to these buttons to speed up performance
-        // yes, making these buttons are reinventing the wheel. therefore, TODO: make HTML buttons
+        // yes, making these buttons are reinventing the wheel. however, p5.js does something weird to HTML buttons. TODO: make HTML buttons
         middleground.clear();
         middleground.image(background2, 0, 0, windowWidth, windowHeight);
         middleground.fill(230);
@@ -724,14 +729,8 @@ function draw() {
         if (selectedAtom.numBonds > maxBonds(selectedAtom.element)-bondType) {
           // too many bonds
           bondAngle = -1;
-        } else if (selectedAtom.bondTypeList.length === 0) {
-          // lone atom
-          bondAngle = 330;
-        } else if (bondType === 3 || selectedAtom.bondTypeList[0] === 3) {
-          // make linear triple bonds
-          bondAngle = (selectedAtom.getBondAngles()[0]+180)%360;
         } else {
-          bondAngle = selectedAtom.nextBondAngle;
+          bondAngle = selectedAtom.getNextBondAngle();
         }
         previewX1 = selectedAtom.x;
         previewY1 = selectedAtom.y;
@@ -1554,8 +1553,8 @@ function clickButton(selectedBox) {
           network[id2].bondIdList.push(id1);
           network[id2].bondTypeList.push(bondType);
         }
-        network[id1].nextBondAngle = network[id1].calculateNextBondAngle();
-        network[id2].nextBondAngle = network[id2].calculateNextBondAngle();
+        network[id1].predictedNextBondAngle = network[id1].calculateNextBondAngle();
+        network[id2].predictedNextBondAngle = network[id2].calculateNextBondAngle();
         break;
       }
     } else {
@@ -1565,7 +1564,7 @@ function clickButton(selectedBox) {
         selectedAtom.element = element;
       } else {
         network.push(new Atom(nextID, element, previewX1, previewY1, 0, false, 0, [], []));
-        network[nextID].nextBondAngle = network[nextID].calculateNextBondAngle();
+        network[nextID].predictedNextBondAngle = network[nextID].calculateNextBondAngle();
         nextID++;
       }
     }
