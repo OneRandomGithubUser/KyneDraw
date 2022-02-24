@@ -88,7 +88,7 @@ class Atom {
       // bondType makes too many bonds for a valid molecule
       return false;
     } else {
-      let bondAngle = this.getNextBondAngle();
+      let bondAngle = this.getNextBondAngle(bondType);
       let closestDestinationAtom = [];
       let previewX2 = this.x + Math.cos(toRadians(360-bondAngle))*bondLength;
       let previewY2 = this.y + Math.sin(toRadians(360-bondAngle))*bondLength;
@@ -331,14 +331,14 @@ class Atom {
     }
   }
 
-  getNextBondAngle() {
-    if (this.bondTypeList.length === 0) {
+  getNextBondAngle(bondType) {
+    if (this.numBonds === 0) {
       // lone atom
       return 330;
-    } else if (bondType === 3 || this.bondTypeList[0] === 3) {
+    } else if (bondType === 3 || this.bondTypeList.includes(3)) {
       // make linear triple bonds
       return (this.getBondAngles()[0]+180)%360;
-    } else if (bondType === 2 && this.bondTypeList[0] === 2) {
+    } else if (bondType === 2 && this.bondTypeList.includes(2)) {
       // make linear allene
       return (this.getBondAngles()[0]+180)%360;
     } else {
@@ -730,7 +730,7 @@ function draw() {
           // too many bonds
           bondAngle = -1;
         } else {
-          bondAngle = selectedAtom.getNextBondAngle();
+          bondAngle = selectedAtom.getNextBondAngle(bondType);
         }
         previewX1 = selectedAtom.x;
         previewY1 = selectedAtom.y;
@@ -920,8 +920,17 @@ function toDegrees(angle) {
 function selectBox(id) {
   if (selectedBox != id) {
     selectedBox = id;
+    renderFrame = true;
     renderMiddleground = true;
-  } 
+  }
+}
+
+function selectMenu(id) {
+  if (selectedMenu != id) {
+    selectedMenu = id;
+    renderFrame = true;
+    renderMiddleground = true;
+  }
 }
 
 function lineOffset(x1,y1,x2,y2,offset,frame) {
