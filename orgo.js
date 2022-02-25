@@ -19,7 +19,7 @@ const selectionDistance = 15;
 const destinationDistance = 5;
 var mousePressed = false;
 var selectedBox = 0;
-const minWidth = 1920;
+const minWidth = 1580;
 const minHeight = 210;
 let windowHeight = 0;
 let windowLength = 0;
@@ -455,18 +455,18 @@ function preload() {
 function setup() {
   // createCanvas must be the first statement
   // background2: static UI elements
-  // middleground: background2, preexisting bonds, atoms, and dynamic UI elements
+  // middleground: background2, preexisting bonds and atoms
   // foreground: preview bond/atom, snap indicators
-  windowWidth = Math.max(window.innerWidth,minWidth);
-  windowHeight = Math.max(window.innerHeight,minHeight);
+  windowWidth = Math.max(window.innerWidth-20,minWidth);
+  windowHeight = Math.max(window.innerHeight-20,minHeight);
   createCanvas(windowWidth,windowHeight);
   textFont(font);
   middleground = createGraphics(windowWidth,windowHeight);
-  background2 = createGraphics(windowWidth,windowHeight);
   foreground = createGraphics(windowWidth,windowHeight);
-  background2.textAlign(CENTER, CENTER);
-  background2.clear();
-  drawBackground();
+  background2 = createGraphics(windowWidth,windowHeight);
+  background2.textSize(48);
+  background2.textAlign(RIGHT, BOTTOM);
+  background2.text("KyneDraw", windowWidth-20, windowHeight-20);
   middleground.stroke(0); // Set line drawing color to black
   middleground.textSize(20);
   middleground.textAlign(CENTER, CENTER);
@@ -611,6 +611,8 @@ function draw() {
                   label = "N⁺"
                   break;*/
               }
+            } else if ((label === "Br" || label === "Cl" || label === "I" || label === "F" || label === "Ts") && currentAtom.numBonds === 0) {
+              label += "⁻";
             }
             if (label !== "") {
               middleground.fill(255);
@@ -899,17 +901,23 @@ function drawBackground() {
     resizeCanvas(windowWidth,windowHeight);
     var newGraphics = createGraphics(windowWidth,windowHeight);
     background2 = newGraphics;
-    background2.textAlign(CENTER, CENTER);
+    background2.textSize(48);
+    background2.textAlign(RIGHT, BOTTOM);
+    background2.text("KyneDraw", windowWidth-20, windowHeight-20);
+    newGraphics.remove();
     var newGraphics = createGraphics(windowWidth,windowHeight);
     middleground = newGraphics;
+    newGraphics.remove();
+    middleground.textSize(20);
     middleground.textAlign(CENTER, CENTER);
     var newGraphics = createGraphics(windowWidth,windowHeight);
     foreground = newGraphics;
+    newGraphics.remove();
+    middleground.textSize(20);
     foreground.textAlign(CENTER, CENTER);
   }
   renderFrame = true;
   renderMiddleground = true;
-  background2.clear();
 }
 
 function distanceToBond(x, y, x1, y1, x2, y2) {
