@@ -489,19 +489,19 @@ function draw() {
       clickButton(12);
     }
 
+    if (somethingClicked) {
+      if (buttonClicked) {
+        buttonClicked = false;
+      } else {
+        selectBox(0);
+      }
+      clickButton(selectedBox);
+      somethingClicked = false;
+    }
+
     if (renderFrame) {
       background(255);
       foreground.clear();
-
-      if (somethingClicked) {
-        if (buttonClicked) {
-          buttonClicked = false;
-        } else {
-          selectBox(0);
-        }
-        clickButton(selectedBox);
-        somethingClicked = false;
-      }
 
       if (renderMiddleground) {
         middleground.clear();
@@ -807,14 +807,12 @@ function toDegrees(angle) {
 }
 
 function selectBox(id) {
-  if (selectedBox != id) {
-    if (id !== 0) {
-      buttonClicked = true;
-    }
-    selectedBox = id;
-    renderFrame = true;
-    renderMiddleground = true;
+  if (id !== 0) {
+    buttonClicked = true;
   }
+  selectedBox = id;
+  renderFrame = true;
+  renderMiddleground = true;
 }
 
 function lineOffset(x1,y1,x2,y2,offset,frame) {
