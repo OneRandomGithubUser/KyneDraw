@@ -38,7 +38,6 @@ var renderMiddleground = false;
 var tip;
 var hackerman = false;
 var selectedBond;
-var selectedMenu = -1;
 var tips = [
   "Press the CLEAR button to clear all atoms on the screen",
   "Press the SNAP BONDS or FREEFORM BONDS to change the way bonds are made when clicking and dragging",
@@ -483,7 +482,7 @@ function draw() {
     let cachedMouseX = mouseX;
     let cachedMouseY = mouseY;
     if (hackerman && frameCount%3 === 0) {
-      // this is a joke
+      // this is a joke feature
       clickButton(11);
       clickButton(12);
     }
@@ -1211,7 +1210,6 @@ function maxBonds(element) {
 
 function mouseClicked() {
   clickButton(selectedBox);
-  return false;
 }
 
 function clickButton(selectedBox) {

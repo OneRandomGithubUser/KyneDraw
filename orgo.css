@@ -2,40 +2,122 @@ body {
     margin: 0 !important;
     padding: 0 !important;
     font-family: Arial, sans-serif;
-    text-align: center;
 }
 
-/* leftover testing from button improvement attempts */
-.button {
-    background-color: #E6E6F0;
-    border: 1px black;
-    color: black;
-    text-align: center;
-    text-decoration: none;
-    position: absolute;
-    transition-duration: 0.1s;
-    accent-color: #CDCDE0;
+/* Adapted from https://stackoverflow.com/a/16243163 */
+
+.button,
+.selectable-button label,
+.selectable-button input {
+  font-size: 16px;
+  font-weight: bold;
+  text-align: center;
+  align-items: center;
+  justify-content: center;
+  position: absolute;
+  display: flex;
+  border: 1px solid black;
+  padding: 0;
+  cursor: pointer;
+  background: #E6E6EA;
+  transition-duration: 0.15s;
 }
 
-.button:hover {
-    border: white;
+.selectable-button input[type="radio"],
+.selectable-button input[type="checkbox"] {
+  display: none;
 }
 
-.radioButton:checked {
-    background-color: #CDCDE0;
+.button:hover,
+.selectable-button label:hover {
+  border: 1px solid white;
 }
 
-.bondButton {
-    height: 100px;
-    width: 100px;
+.selectable-button input[type="radio"]:checked + label,
+.selectable-button input[type="checkbox"]:checked + label {
+  background: #CDCDD6;
 }
 
-.atomButton {
-    height: 100px;
-    width: 100px;
+.square-button,
+.square label,
+.square input {
+  width: 100px;
+  height: 100px;
 }
 
-.reactionButton {
-    height: 50px;
-    width: 100px;
+.thin-button,
+.thin label,
+.thin input {
+  width: 100px;
+  height: 50px;
+}
+
+.atomLabel {
+  font-weight: normal !important;
+  font-size: 48px !important;
+}
+
+#single {
+  top: 20px;
+  left: 20px;
+}
+
+#double {
+  top: 20px;
+  left: 140px;
+}
+
+#triple {
+  top: 20px;
+  left: 260px;
+}
+
+#carbon {
+  top: 20px;
+  left: 380px;
+}
+
+#oxygen {
+  top: 20px;
+  left: 500px;
+}
+
+#nitrogen {
+  top: 20px;
+  left: 620px;
+}
+
+#bromine {
+  top: 20px;
+  left: 740px;
+}
+
+#chlorine {
+  top: 20px;
+  left: 860px;
+}
+
+#freeform {
+  top: 20px;
+  right: 20px;
+}
+
+#snap {
+  top: 20px;
+  right: 140px;
+}
+
+#clear {
+  top: 20px;
+  right: 260px;
+}
+
+#random {
+  top: 20px;
+  right: 380px;
+}
+
+#hackerman {
+  top: 20px;
+  right: 500px;
 }
