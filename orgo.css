@@ -5,7 +5,7 @@ body {
     -webkit-tap-highlight-color: transparent; /* apparently does not work with Firefox mobile */
 }
 
-#js-warning {
+.warning {
     position: fixed;
     width: 100%;
     height: 100%;

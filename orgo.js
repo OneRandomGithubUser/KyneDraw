@@ -38,6 +38,7 @@ var renderMiddleground = false;
 var tip;
 var hackerman = false;
 var selectedBond;
+var somethingClicked = false;
 var buttonClicked = false;
 var tips = [
   "Press the CLEAR button to clear all atoms on the screen",
@@ -492,49 +493,14 @@ function draw() {
       background(255);
       foreground.clear();
 
-      if (buttonClicked) {
-        clickButton(selectedBox);
-        buttonClicked = false;
-      }
-
-      // update UI once they are moused over
-      if (cachedMouseY > windowHeight-70 && cachedMouseY < windowHeight-20) {
-        if (cachedMouseX < 120 && cachedMouseX > 20) {
-          selectBox(19);
-        } else if (cachedMouseX < 240 && cachedMouseX > 140) {
-          selectBox(20);
-        } else if (cachedMouseX < 360 && cachedMouseX > 260) {
-          selectBox(21);
-        } else if (cachedMouseX < 480 && cachedMouseX > 380) {
-          selectBox(22);
-        } else if (cachedMouseX < 600 && cachedMouseX > 500) {
-          selectBox(23);
-        } else if (cachedMouseX < 720 && cachedMouseX > 620) {
-          selectBox(24);
-        } else if (cachedMouseX < 840 && cachedMouseX > 740) {
-          selectBox(25);
-        } else if (cachedMouseX < 960 && cachedMouseX > 860) {
-          selectBox(26);
-        } else if (cachedMouseX < 1080 && cachedMouseX > 980) {
-          selectBox(27);
-        } else if (cachedMouseX < 1200 && cachedMouseX > 1100) {
-          selectBox(28);
-        } else if (cachedMouseX < 1320 && cachedMouseX > 1220) {
-          selectBox(29);
-        } else if (cachedMouseX < 1440 && cachedMouseX > 1340) {
-          selectBox(30);
-        } else if (cachedMouseX < 1560 && cachedMouseX > 1460) {
-          selectBox(31);
-        } else if (cachedMouseX < 1680 && cachedMouseX > 1580) {
-          selectBox(32);
-        } else if (cachedMouseX < 1800 && cachedMouseX > 1700) {
-          selectBox(33);
-        } else if (cachedMouseX < 1920 && cachedMouseX > 1820) {
-          selectBox(34);
+      if (somethingClicked) {
+        if (buttonClicked) {
+          buttonClicked = false;
+        } else {
+          selectBox(0);
         }
-      } else if (selectedBox != 0) {
-        selectedBox = 0;
-        renderMiddleground = true;
+        clickButton(selectedBox);
+        somethingClicked = false;
       }
 
       if (renderMiddleground) {
@@ -825,7 +791,6 @@ function mouseDragged() {
 
 function mouseMoved() {
   renderFrame = true;
-  return false;
 }
 
 function mouseReleased() {
@@ -843,15 +808,10 @@ function toDegrees(angle) {
 
 function selectBox(id) {
   if (selectedBox != id) {
+    if (id !== 0) {
+      buttonClicked = true;
+    }
     selectedBox = id;
-    renderFrame = true;
-    renderMiddleground = true;
-  }
-}
-
-function selectMenu(id) {
-  if (selectedMenu != id) {
-    selectedMenu = id;
     renderFrame = true;
     renderMiddleground = true;
   }
@@ -1012,7 +972,7 @@ function maxBonds(element) {
 }
 
 function mouseClicked() {
-  buttonClicked = true;
+  somethingClicked = true;
 }
 
 function clickButton(selectedBox) {
