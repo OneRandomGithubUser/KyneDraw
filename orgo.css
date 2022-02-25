@@ -160,7 +160,7 @@ body {
   left: 240px;
 }
 
-#wacker-oxidation {
+#ring-metathesis {
   bottom: 70px;
   left: 240px;
 }
@@ -202,6 +202,11 @@ body {
 
 #hydroboration {
   bottom: 470px;
+  left: 240px;
+}
+
+#wacker-oxidation {
+  bottom: 520px;
   left: 240px;
 }
 

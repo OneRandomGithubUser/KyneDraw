@@ -236,6 +236,17 @@ class Atom {
       return changed;
     }
   }
+
+  createBond(atom2, bondType) {
+    this.bondIdList.push(atom2.id);
+    atom2.bondIdList.push(this.id);
+    this.bondTypeList.push(bondType);
+    atom2.bondTypeList.push(bondType);
+    this.updateNextBondAngle();
+    atom2.updateNextBondAngle();
+    this.numBonds += bondType;
+    atom2.numBonds += bondType;
+  }
   
   updateNumBonds() {
     let numBonds = 0;
@@ -531,7 +542,10 @@ function draw() {
           if (currentAtom.numBonds !== 0) {
             for (let j = 0; j < currentAtom.bondIdList.length; j++) {
               if (currentAtom.bondIdList[j] > currentAtom.id) {
-                bond(currentAtom.x, currentAtom.y, network[currentAtom.bondIdList[j]].x, network[currentAtom.bondIdList[j]].y, currentAtom.bondTypeList[j], middleground);
+                let adjacentAtom = network[currentAtom.bondIdList[j]];
+                if (!adjacentAtom.deleted) {
+                  bond(currentAtom.x, currentAtom.y, adjacentAtom.x, adjacentAtom.y, currentAtom.bondTypeList[j], middleground);
+                }
               }
             }
           }
@@ -604,10 +618,12 @@ function draw() {
             // find closest bond if there is no closest atom
             for (let j = 0; j < currentAtom.bondIdList.length; j++) {
               let currentAtom2 = network[currentAtom.bondIdList[j]];
-              let distance = distanceToBond(cachedMouseX, cachedMouseY, currentAtom.x, currentAtom.y, currentAtom2.x, currentAtom2.y);
-              if (distance < closestBondDistance) {
-                closestBondDistance = distance;
-                selectedBond = [currentAtom, currentAtom2, currentAtom.bondTypeList[j]];
+              if (!currentAtom2.deleted) {
+                let distance = distanceToBond(cachedMouseX, cachedMouseY, currentAtom.x, currentAtom.y, currentAtom2.x, currentAtom2.y);
+                if (distance < closestBondDistance) {
+                  closestBondDistance = distance;
+                  selectedBond = [currentAtom, currentAtom2, currentAtom.bondTypeList[j]];
+                }
               }
             }
           }
@@ -1280,6 +1296,37 @@ function clickButton(selectedBox) {
           continue;
         }
         currentAtom.alkeneAddition("O","");
+      }
+      break;
+    case 36:
+      // TODO: several possible products
+      let terminalAlkenes = [];
+      for (let i = 0; i < network.length; ++i) {
+        let currentAtom = network[i];
+        if (currentAtom.deleted) {
+          continue;
+        }
+        if (currentAtom.numBonds === 2 && currentAtom.bondIdList.length === 1 && currentAtom.element === "C") {
+          let adjacentAtom = network[currentAtom.bondIdList[0]];
+          if (adjacentAtom.element === "C") {
+            terminalAlkenes.push([currentAtom,adjacentAtom]);
+          }
+        }
+      }
+      if (terminalAlkenes.length >= 2) {
+        for (let i = 0; i < terminalAlkenes.length; i+=2) {
+          let currentAtom1 = terminalAlkenes[i][0];
+          let adjacentAtom1 = terminalAlkenes[i][1];
+          let currentAtom2 = terminalAlkenes[i+1][0];
+          let adjacentAtom2 = terminalAlkenes[i+1][1];
+          if (adjacentAtom1.bondIdList.includes(adjacentAtom2.id)) {
+            // doeesn't work on but-1,3-ene
+            continue;
+          }
+          currentAtom1.delete();
+          currentAtom2.delete();
+          adjacentAtom1.createBond(adjacentAtom2, 2);
+        }
       }
       break;
     case 0: // when no box is selected
