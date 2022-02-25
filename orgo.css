@@ -52,6 +52,21 @@ body {
   height: 50px;
 }
 
+.long-button,
+.long label,
+.long input {
+  width: 200px;
+  height: 50px;
+}
+
+.dropdown:hover .dropdown-content {
+  display: flex;
+}
+
+.dropdown-content {
+  display: none;
+}
+
 .atomLabel {
   font-weight: normal !important;
   font-size: 48px !important;
@@ -120,4 +135,94 @@ body {
 #hackerman {
   top: 20px;
   right: 500px;
+}
+
+#sn-e {
+  bottom: 20px;
+  left: 20px;
+}
+
+#alkene-addition {
+  bottom: 20px;
+  left: 240px;
+}
+
+#wacker-oxidation {
+  bottom: 70px;
+  left: 240px;
+}
+
+#hbr-addition {
+  bottom: 120px;
+  left: 240px;
+}
+
+#radical-hbr {
+  bottom: 170px;
+  left: 240px;
+}
+
+#halogenation {
+  bottom: 220px;
+  left: 240px;
+}
+
+#halohydrin-formation {
+  bottom: 270px;
+  left: 240px;
+}
+
+#hydrogenation {
+  bottom: 320px;
+  left: 240px;
+}
+
+#acid-hydration {
+  bottom: 370px;
+  left: 240px;
+}
+
+#oxymercuration {
+  bottom: 420px;
+  left: 240px;
+}
+
+#hydroboration {
+  bottom: 470px;
+  left: 240px;
+}
+
+#alcohol-reactions {
+  bottom: 20px;
+  left: 460px;
+}
+
+#dehydration {
+  bottom: 70px;
+  left: 460px;
+}
+
+#weak-reduction {
+  bottom: 120px;
+  left: 460px;
+}
+
+#weak-oxidation {
+  bottom: 170px;
+  left: 460px;
+}
+
+#bromination {
+  bottom: 220px;
+  left: 460px;
+}
+
+#chlorination {
+  bottom: 270px;
+  left: 460px;
+}
+
+#tosylation {
+  bottom: 320px;
+  left: 460px;
 }

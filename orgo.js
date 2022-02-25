@@ -38,6 +38,7 @@ var renderMiddleground = false;
 var tip;
 var hackerman = false;
 var selectedBond;
+var buttonClicked = false;
 var tips = [
   "Press the CLEAR button to clear all atoms on the screen",
   "Press the SNAP BONDS or FREEFORM BONDS to change the way bonds are made when clicking and dragging",
@@ -467,7 +468,7 @@ function setup() {
   background2.clear();
   drawBackground();
   middleground.stroke(0); // Set line drawing color to black
-  middleground.textSize(16);
+  middleground.textSize(20);
   middleground.textAlign(CENTER, CENTER);
   foreground.textSize(16);
   foreground.textAlign(CENTER, CENTER);
@@ -491,38 +492,13 @@ function draw() {
       background(255);
       foreground.clear();
 
+      if (buttonClicked) {
+        clickButton(selectedBox);
+        buttonClicked = false;
+      }
+
       // update UI once they are moused over
-      if (cachedMouseY < 120 && cachedMouseY > 20) {
-        if (cachedMouseX < 120 && cachedMouseX > 20) {
-          selectBox(1); // single bond
-        } else if (cachedMouseX < 240 && cachedMouseX > 140) {
-          selectBox(2); // double bond
-        } else if (cachedMouseX < 360 && cachedMouseX > 260) {
-          selectBox(3); // triple bond
-        } else if (cachedMouseX < 480 && cachedMouseX > 380) {
-          selectBox(6); // C
-        } else if (cachedMouseX < 600 && cachedMouseX > 500) {
-          selectBox(7); // O
-        } else if (cachedMouseX < 720 && cachedMouseX > 620) {
-          selectBox(8); // N
-        } else if (cachedMouseX < 840 && cachedMouseX > 740) {
-          selectBox(9); // Br
-        } else if (cachedMouseX < 960 && cachedMouseX > 860) {
-          selectBox(10); // Cl
-        } else if (cachedMouseY < 70) {
-          if (cachedMouseX > windowWidth-120 && cachedMouseX < windowWidth-20) {
-            selectBox(4); // FREEFORM BONDS
-          } else if (cachedMouseX > windowWidth-240 && cachedMouseX < windowWidth-140) {
-            selectBox(5); // SNAP BONDS
-          } else if (cachedMouseX > windowWidth-360 && cachedMouseX < windowWidth-260) {
-            selectBox(11); // CLEAR MOLECULE
-          } else if (cachedMouseX > windowWidth-480 && cachedMouseX < windowWidth-380) {
-            selectBox(12); // RANDOM MOLECULE
-          } else if (cachedMouseX > windowWidth-600 && cachedMouseX < windowWidth-500) {
-            selectBox(13); // HACKERMAN
-          }
-        }
-      } else if (cachedMouseY > windowHeight-70 && cachedMouseY < windowHeight-20) {
+      if (cachedMouseY > windowHeight-70 && cachedMouseY < windowHeight-20) {
         if (cachedMouseX < 120 && cachedMouseX > 20) {
           selectBox(19);
         } else if (cachedMouseX < 240 && cachedMouseX > 140) {
@@ -562,59 +538,8 @@ function draw() {
       }
 
       if (renderMiddleground) {
-        // set draw attributes common to these buttons to speed up performance
-        // yes, making these buttons are reinventing the wheel. however, p5.js does something weird to HTML buttons. TODO: make HTML buttons
         middleground.clear();
         middleground.image(background2, 0, 0, windowWidth, windowHeight);
-        middleground.fill(230);
-
-        // render bond button overlays
-        bondButton(20,20,1);
-        bondButton(140,20,2);
-        bondButton(260,20,3);
-
-        // render atom button overlays
-        middleground.noFill();
-        middleground.textSize(48);
-        middleground.textStyle(NORMAL);
-        atomButtonOverlay(380,20,"C",6);
-        atomButtonOverlay(500,20,"O",7);
-        atomButtonOverlay(620,20,"N",8);
-        atomButtonOverlay(740,20,"Br",9);
-        atomButtonOverlay(860,20,"Cl",10);
-
-        // render angle snap button overlays
-        middleground.textSize(16);
-        middleground.textStyle(BOLD);
-        angleSnapButtonOverlay(windowWidth-240,20,"SNAP BONDS",5);
-        angleSnapButtonOverlay(windowWidth-120,20,"FREEFORM BONDS",4);
-
-        // render clear and random button overlay
-        thinButtonOverlay(windowWidth-360,20,"CLEAR",11);
-        thinButtonOverlay(windowWidth-480,20,"RANDOM MOLECULE",12);
-        thinButtonOverlay(windowWidth-600,20,"HACKERMAN",13);
-        
-        // render reaction button overlays
-        thinButtonOverlay(20,windowHeight-70,"H⁺,H₂O",19);
-        thinButtonOverlay(140,windowHeight-70,"PdCl₂,H₂O",20);
-        thinButtonOverlay(260,windowHeight-70,"POCl₃",21);/*
-        thinButtonOverlay(380,windowHeight-70,"KOH",22);*/
-        thinButtonOverlay(500,windowHeight-70,"HBr",23);
-        thinButtonOverlay(620,windowHeight-70,"HBr, H₂O₂",24);
-        thinButtonOverlay(740,windowHeight-70,"Br₂",25);
-        thinButtonOverlay(860,windowHeight-70,"Br₂, H₂O",26);
-        thinButtonOverlay(980,windowHeight-70,"H₂, Pd",27);
-        thinButtonOverlay(1100,windowHeight-70,"Hg(OAc)₂,H₂O,BH₄",28);
-        thinButtonOverlay(1220,windowHeight-70,"BH₃",29);
-        thinButtonOverlay(1340,windowHeight-70,"NaBH₄",30);
-        thinButtonOverlay(1460,windowHeight-70,"Swern",31);
-        thinButtonOverlay(1580,windowHeight-70,"PBr₃",32);
-        thinButtonOverlay(1700,windowHeight-70,"SOCl₂",33);
-        thinButtonOverlay(1820,windowHeight-70,"TsCl",34);
-
-        middleground.textStyle(NORMAL);
-        middleground.stroke(0);
-        middleground.fill(0);
       }
 
       // selected atom when snap-on is in effect
@@ -636,8 +561,6 @@ function draw() {
         }
 
         if (renderMiddleground) {
-          middleground.textSize(20);
-
           // render preexisting bonds
           if (currentAtom.numBonds !== 0) {
             for (let j = 0; j < currentAtom.bondIdList.length; j++) {
@@ -965,100 +888,6 @@ function findClosestDestinationAtom(x,y,selectedAtom,network) {
   return closestDestinationAtom;
 }
 
-function angleSnapButton(x,y,label,box) {
-  background2.fill(230);
-  background2.rect(x,y,100,50);
-  background2.fill(0);
-  background2.text(label,x,y,100,50);
-}
-
-function angleSnapButtonOverlay(x,y,label,box) {
-  if (selectedBox === box) {
-    middleground.stroke(255);
-    middleground.rect(x,y,100,50);
-    middleground.noStroke();
-    middleground.text(label,x,y,100,50);
-    middleground.stroke(0);
-    middleground.noFill();
-  } else if (angleSnap && box === 5 || !angleSnap && box === 4) {
-    middleground.fill(205);
-    middleground.rect(x,y,100,50);
-    middleground.noStroke();
-    middleground.fill(0);
-    middleground.text(label,x,y,100,50);
-    middleground.stroke(0);
-    middleground.noFill();
-  } else {
-    middleground.rect(x,y,100,50);
-  }
-}
-
-function bondButton(x,y,bonds) { // does not need an overlay version because lines are very fast to render
-  if (bondType === bonds && bondMode) {
-    middleground.fill(205);
-  }
-  if (selectedBox === bonds) {
-    middleground.stroke(255);
-    middleground.rect(x,y,100,100);
-    middleground.stroke(0);
-  } else {
-    middleground.rect(x,y,100,100);
-  }
-  if (bondType === bonds && bondMode) {
-    middleground.fill(230);
-  }
-  bond(x+50-Math.cos(toRadians(30))*bondLength/2,y+50-Math.sin(toRadians(30))*bondLength/2,x+50+Math.cos(toRadians(30))*bondLength/2,y+50+Math.sin(toRadians(30))*bondLength/2,bonds,middleground);
-}
-
-function atomButton(x,y,atom,box) {
-  background2.fill(230);
-  background2.rect(x,y,100,100);
-  background2.fill(0);
-  background2.text(atom,x,y,100,100);
-}
-
-function atomButtonOverlay(x,y,atom,box) {
-  if (selectedBox === box) {    
-    middleground.stroke(255);
-    if (element === atom && !bondMode) {
-      middleground.fill(205);
-    }
-    middleground.rect(x,y,100,100);
-    middleground.noStroke();
-    middleground.fill(0);
-    middleground.text(atom,x,y,100,100);
-    middleground.stroke(0);
-    middleground.noFill();
-  } else if (element === atom && !bondMode) {
-    middleground.fill(205);
-    middleground.rect(x,y,100,100);
-    middleground.noStroke();
-    middleground.fill(0);
-    middleground.text(atom,x,y,100,100);
-    middleground.stroke(0);
-    middleground.noFill();
-  } else {
-    middleground.rect(x,y,100,100);
-  }
-}
-
-function thinButton(x,y,reaction,box) {
-  background2.fill(230);
-  background2.rect(x,y,100,50);
-  background2.fill(0);
-  background2.text(reaction,x,y,100,50);
-}
-
-function thinButtonOverlay(x,y,reaction,box) {
-  if (selectedBox === box) {
-    middleground.stroke(255);
-    middleground.rect(x,y,100,50);
-  } else {
-    middleground.stroke(0);
-    middleground.rect(x,y,100,50);
-  }
-}
-
 function windowResized() {
   drawBackground();
 }
@@ -1080,41 +909,7 @@ function drawBackground() {
   }
   renderFrame = true;
   renderMiddleground = true;
-
   background2.clear();
-  background2.noStroke();
-  background2.textSize(48);
-  atomButton(380,20,"C",6);
-  atomButton(500,20,"O",7);
-  atomButton(620,20,"N",8);
-  atomButton(740,20,"Br",9);
-  atomButton(860,20,"Cl",10);
-  background2.textSize(16);
-  background2.textStyle(BOLD);
-  thinButton(20,windowHeight-70,"H⁺,H₂O",19);
-  thinButton(140,windowHeight-70,"PdCl₂,H₂O",20);
-  thinButton(260,windowHeight-70,"POCl₃",21);/*
-  thinButton(380,windowHeight-70,"KOH",22);*/
-  thinButton(500,windowHeight-70,"HBr",23);
-  thinButton(620,windowHeight-70,"HBr, H₂O₂",24);
-  thinButton(740,windowHeight-70,"Br₂",25);
-  thinButton(860,windowHeight-70,"Br₂, H₂O",26);
-  thinButton(980,windowHeight-70,"H₂, Pd",27);
-  thinButton(1100,windowHeight-70,"Hg(OAc)₂,H₂O,BH₄",28);
-  thinButton(1220,windowHeight-70,"BH₃",29);
-  thinButton(1340,windowHeight-70,"NaBH₄",30);
-  thinButton(1460,windowHeight-70,"Swern",31);
-  thinButton(1580,windowHeight-70,"PBr₃",32);
-  thinButton(1700,windowHeight-70,"SOCl₂",33);
-  thinButton(1820,windowHeight-70,"TsCl",34);
-  thinButton(windowWidth-360,20,"CLEAR",11);
-  thinButton(windowWidth-480,20,"RANDOM MOLECULE",12);
-  // TODO: when buttons are changed to HTML, make hackerman button selectable
-  thinButton(windowWidth-600,20,"HACKERMAN",13);
-  angleSnapButton(windowWidth-240,20,"SNAP BONDS",5);
-  angleSnapButton(windowWidth-120,20,"FREEFORM BONDS",4);
-  background2.stroke(0);
-  background2.textStyle(NORMAL);
 }
 
 function distanceToBond(x, y, x1, y1, x2, y2) {
@@ -1209,7 +1004,7 @@ function maxBonds(element) {
 }
 
 function mouseClicked() {
-  clickButton(selectedBox);
+  buttonClicked = true;
 }
 
 function clickButton(selectedBox) {
@@ -1510,6 +1305,15 @@ function clickButton(selectedBox) {
         if (currentAtom.isHydroxyl()) {
           currentAtom.element = "Ts";
         }
+      }
+      break;
+    case 35:
+      for (let i = 0; i < network.length; i++) {
+        let currentAtom = network[i];
+        if (currentAtom.deleted) {
+          continue;
+        }
+        currentAtom.alkeneAddition("O","");
       }
       break;
     case 0: // when no box is selected
