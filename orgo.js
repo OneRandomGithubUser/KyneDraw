@@ -1329,6 +1329,38 @@ function clickButton(selectedBox) {
         }
       }
       break;
+    case 37:
+      // TODO: several possible products
+      for (let i = 0; i < network.length; ++i) {
+        let currentAtom = network[i];
+        if (currentAtom.deleted || currentAtom.element !== "C") {
+          continue;
+        }
+        for (let i = 0; i < currentAtom.bondTypeList.length; ++i) {
+          if (currentAtom.bondTypeList[i] === 3) {
+            currentAtom.bondTypeList[i] = 2;
+            let adjacentAtom = network[currentAtom.bondIdList[i]];
+            adjacentAtom.bondTypeList[adjacentAtom.bondIdList.indexOf(currentAtom.id)] = 2;
+          }
+        }
+      }
+      break;
+    case 38:
+      // TODO: several possible products
+      for (let i = 0; i < network.length; ++i) {
+        let currentAtom = network[i];
+        if (currentAtom.deleted || currentAtom.element !== "C") {
+          continue;
+        }
+        for (let i = 0; i < currentAtom.bondTypeList.length; ++i) {
+          if (currentAtom.bondTypeList[i] === 3) {
+            currentAtom.bondTypeList[i] = 2;
+            let adjacentAtom = network[currentAtom.bondIdList[i]];
+            adjacentAtom.bondTypeList[adjacentAtom.bondIdList.indexOf(currentAtom.id)] = 2;
+          }
+        }
+      }
+      break;
     case 0: // when no box is selected
     if (bondMode) {
       element = "C";

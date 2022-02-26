@@ -190,57 +190,73 @@ body {
   left: 240px;
 }
 
-#acid-hydration {
+#cis-hydrogenation {
   bottom: 370px;
   left: 240px;
 }
 
-#oxymercuration {
+#trans-hydrogenation {
   bottom: 420px;
   left: 240px;
 }
 
-#hydroboration {
-  bottom: 470px;
-  left: 240px;
-}
 
-#wacker-oxidation {
-  bottom: 520px;
-  left: 240px;
-}
-
-#alcohol-reactions {
+#alkene-oxidation {
   bottom: 20px;
   left: 460px;
 }
 
+#acid-hydration {
+  bottom: 370px;
+  left: 460px;
+}
+
+#oxymercuration {
+  bottom: 420px;
+  left: 460px;
+}
+
+#hydroboration {
+  bottom: 470px;
+  left: 460px;
+}
+
+#wacker-oxidation {
+  bottom: 520px;
+  left: 460px;
+}
+
+#alcohol-reactions {
+  bottom: 20px;
+  left: 680px;
+}
+
 #dehydration {
   bottom: 70px;
-  left: 460px;
+  left: 680px;
 }
 
 #weak-reduction {
   bottom: 120px;
-  left: 460px;
+  left: 680px;
 }
 
 #weak-oxidation {
   bottom: 170px;
-  left: 460px;
+  left: 680px;
 }
 
 #bromination {
   bottom: 220px;
-  left: 460px;
+  left: 680px;
 }
 
 #chlorination {
   bottom: 270px;
-  left: 460px;
+  left: 680px;
 }
 
 #tosylation {
   bottom: 320px;
-  left: 460px;
+  left: 680px;
 }
