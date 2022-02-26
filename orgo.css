@@ -201,19 +201,27 @@ body {
   left: 460px;
 }
 #acid-hydration {
-  bottom: 370px;
+  bottom: 70px;
   left: 460px;
 }
 #oxymercuration {
-  bottom: 420px;
+  bottom: 120px;
   left: 460px;
 }
 #hydroboration {
-  bottom: 470px;
+  bottom: 170px;
   left: 460px;
 }
 #wacker-oxidation {
-  bottom: 520px;
+  bottom: 220px;
+  left: 460px;
+}
+#alkyne-hydration {
+  bottom: 270px;
+  left: 460px;
+}
+#alkyne-hydroboration {
+  bottom: 320px;
   left: 460px;
 }
 

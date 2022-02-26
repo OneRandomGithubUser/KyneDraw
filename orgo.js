@@ -188,6 +188,49 @@ class Atom {
       return changed;
     }
   }
+  
+  alkyneAddition(markovnikovElementToAdd, nonmarkovnikovElementToAdd, optionalMarkovnikovNumBondsToAdd = 1, optionalNonmarkovnikovNumBondsToAdd = 1) {
+    if (this.element != "C") {
+      // current element must be a carbon
+      return false;
+    } else {
+      let changed = false;
+      for (let i = 0; i < this.bondTypeList.length; i++) {
+        if (this.bondTypeList[i] === 3) {
+          let atom2 = network[this.bondIdList[i]];
+          if (atom2.element === "C") {
+            this.bondTypeList[i]-=2;
+            this.numBonds-=2;
+            this.updateNextBondAngle();
+            for (let j = 0; j < atom2.bondIdList.length; j++) {
+              if (atom2.bondIdList[j] === this.id) {
+                atom2.bondTypeList[j]-=2;
+                atom2.numBonds-=2;
+              }
+            }
+            atom2.updateNextBondAngle();
+            if (this.isMoreStableCarbocationThan(atom2)) {
+              if (markovnikovElementToAdd != "") {
+                this.addBond(markovnikovElementToAdd, optionalMarkovnikovNumBondsToAdd, false);
+              }
+              if (nonmarkovnikovElementToAdd != "") {
+                atom2.addBond(nonmarkovnikovElementToAdd, optionalNonmarkovnikovNumBondsToAdd, false);
+              }
+            } else {
+              if (nonmarkovnikovElementToAdd != "") {
+                this.addBond(nonmarkovnikovElementToAdd, optionalNonmarkovnikovNumBondsToAdd, false);
+              }
+              if (markovnikovElementToAdd != "") {
+                atom2.addBond(markovnikovElementToAdd, optionalMarkovnikovNumBondsToAdd, false);
+              }
+            }
+            changed = true;
+          }
+        }
+      }
+      return changed;
+    }
+  }
 
   createBond(atom2, bondType) {
     this.bondIdList.push(atom2.id);
@@ -1264,8 +1307,10 @@ function clickButton(selectedBox) {
         }
         for (let j = 0; j < currentAtom.bondTypeList.length; ++j) {
           if (currentAtom.bondTypeList[j] === 3) {
+            currentAtom.numBonds--;
             currentAtom.bondTypeList[j] = 2;
             let adjacentAtom = network[currentAtom.bondIdList[j]];
+            adjacentAtom.numBonds--;
             adjacentAtom.bondTypeList[adjacentAtom.bondIdList.indexOf(currentAtom.id)] = 2;
           }
         }
@@ -1280,8 +1325,10 @@ function clickButton(selectedBox) {
         }
         for (let j = 0; j < currentAtom.bondTypeList.length; ++j) {
           if (currentAtom.bondTypeList[j] === 3) {
+            currentAtom.numBonds--;
             currentAtom.bondTypeList[j] = 2;
             let adjacentAtom = network[currentAtom.bondIdList[j]];
+            adjacentAtom.numBonds--;
             adjacentAtom.bondTypeList[adjacentAtom.bondIdList.indexOf(currentAtom.id)] = 2;
           }
         }
@@ -1314,11 +1361,35 @@ function clickButton(selectedBox) {
             }
             let newID = nextID;
             currentAtom.bondTypeList[j]--;
+            currentAtom.numBonds--;
             currentAtom.addBond("C", 1, false, bondAngle + 60*Math.sign(side1-side2));
             adjacentAtom.bondTypeList[adjacentAtom.bondIdList.indexOf(currentAtom.id)]--;
+            adjacentAtom.numBonds--;
             adjacentAtom.createBond(network[newID], 1);
             // does not repeat for alkynes? I think
           }
+        }
+      }
+      break;
+    case 40:
+      for (let i = 0; i < network.length; ++i) {
+        let currentAtom = network[i];
+        if (currentAtom.deleted || currentAtom.element !== "C") {
+          continue;
+        }
+        for (let j = 0; j < currentAtom.bondTypeList.length; ++j) {
+          currentAtom.alkyneAddition("O","",2,1);
+        }
+      }
+      break;
+    case 41:
+      for (let i = 0; i < network.length; ++i) {
+        let currentAtom = network[i];
+        if (currentAtom.deleted || currentAtom.element !== "C") {
+          continue;
+        }
+        for (let j = 0; j < currentAtom.bondTypeList.length; ++j) {
+          currentAtom.alkyneAddition("","O",1,2);
         }
       }
       break;
