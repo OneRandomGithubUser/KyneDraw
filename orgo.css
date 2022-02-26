@@ -245,27 +245,39 @@ body {
   bottom: 20px;
   left: 680px;
 }
-#dehydration {
+#gringard-formation {
   bottom: 70px;
   left: 680px;
 }
-#weak-reduction {
+#organolithiate-formation {
   bottom: 120px;
   left: 680px;
 }
-#weak-oxidation {
+#organocopper-formation {
   bottom: 170px;
   left: 680px;
 }
-#bromination {
+#dehydration {
   bottom: 220px;
   left: 680px;
 }
-#chlorination {
+#weak-reduction {
   bottom: 270px;
   left: 680px;
 }
-#tosylation {
+#weak-oxidation {
   bottom: 320px;
+  left: 680px;
+}
+#bromination {
+  bottom: 370px;
+  left: 680px;
+}
+#chlorination {
+  bottom: 420px;
+  left: 680px;
+}
+#tosylation {
+  bottom: 470px;
   left: 680px;
 }

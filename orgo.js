@@ -340,6 +340,14 @@ class Atom {
     return (this.element === "Br" || this.element === "Cl" || this.element === "F" || this.element === "I" || this.element === "Ts") && this.numBonds === 1 && this.bondIdList.length == 1 && network[this.bondIdList[0]].element === "C";
   }
 
+  isHalide() {
+    return (this.element === "Br" || this.element === "Cl" || this.element === "F" || this.element === "I") && this.numBonds === 1 && this.bondIdList.length == 1 && network[this.bondIdList[0]].element === "C";
+  }
+
+  isLithiate() {
+    return (this.element === "Li") && this.numBonds === 1 && this.bondIdList.length == 1 && network[this.bondIdList[0]].element === "C";
+  }
+
   isBenzene() {
     return this.isBenzeneHelper(0, this.id);
   }
@@ -1539,6 +1547,39 @@ function clickButton(selectedBox) {
               }
             }
           }
+        }
+      }
+      break;
+    case 46:
+      for (let i = 0; i < network.length; i++) {
+        let currentAtom = network[i];
+        if (currentAtom.deleted) {
+          continue;
+        }
+        if (currentAtom.isHalide()) {
+          currentAtom.element = "Mg" + currentAtom.element;
+        }
+      }
+      break;
+    case 47:
+      for (let i = 0; i < network.length; i++) {
+        let currentAtom = network[i];
+        if (currentAtom.deleted) {
+          continue;
+        }
+        if (currentAtom.isHalide()) {
+          currentAtom.element = "Li";
+        }
+      }
+      break;
+    case 48:
+      for (let i = 0; i < network.length; i++) {
+        let currentAtom = network[i];
+        if (currentAtom.deleted) {
+          continue;
+        }
+        if (currentAtom.isLithiate()) {
+          currentAtom.element = "CuLi*";
         }
       }
       break;
