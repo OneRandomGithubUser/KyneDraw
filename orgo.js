@@ -84,12 +84,12 @@ class Atom {
     return true;
   }
 
-  addBond(element, bondType, connectToExistingAtoms) {
+  addBond(element, bondType, connectToExistingAtoms, optionalBondAngle = this.getNextBondAngle(bondType)) {
     if (bondType + this.numBonds > maxBonds(this.element) || bondType > maxBonds(element)) {
       // bondType makes too many bonds for a valid molecule
       return false;
     } else {
-      let bondAngle = this.getNextBondAngle(bondType);
+      let bondAngle = optionalBondAngle;
       let closestDestinationAtom = [];
       let previewX2 = this.x + Math.cos(toRadians(360-bondAngle))*bondLength;
       let previewY2 = this.y + Math.sin(toRadians(360-bondAngle))*bondLength;
@@ -115,7 +115,7 @@ class Atom {
           // if cannot connect to existing atoms, make the new bond somewhere else by simulating the next bond as if there were simBonds already on the atom
           let simBonds = this.numBonds + 1;
           while (simBonds < 12) {
-            bondAngle = this.calculateNextBondAngle2(simBonds);
+            bondAngle = this.calculateNextBondAngle(simBonds);
             previewX2 = this.x + Math.cos(toRadians(360-bondAngle))*bondLength;
             previewY2 = this.y + Math.sin(toRadians(360-bondAngle))*bondLength;
             closestDestinationAtom = findClosestDestinationAtom(previewX2,previewY2,[],network);
@@ -141,7 +141,7 @@ class Atom {
     }
   }
   
-  alkeneAddition(markovnikovElementToAdd, nonmarkovnikovElementToAdd) {
+  alkeneAddition(markovnikovElementToAdd, nonmarkovnikovElementToAdd, optionalMarkovnikovNumBondsToAdd = 1, optionalNonmarkovnikovNumBondsToAdd = 1) {
     if (this.element != "C" || this.isBenzene()) {
       // current element must be a carbon and not part of a benzene ring
       return false;
@@ -165,67 +165,19 @@ class Atom {
             if (this.isMoreStableCarbocationThan(atom2)) {
               for (let j = 0; j < reps; j++) {
                 if (markovnikovElementToAdd != "") {
-                  this.addBond(markovnikovElementToAdd, 1, false);
+                  this.addBond(markovnikovElementToAdd, optionalMarkovnikovNumBondsToAdd, false);
                 }
                 if (nonmarkovnikovElementToAdd != "") {
-                  atom2.addBond(nonmarkovnikovElementToAdd, 1, false);
+                  atom2.addBond(nonmarkovnikovElementToAdd, optionalNonmarkovnikovNumBondsToAdd, false);
                 }
               }
             } else {
               for (let j = 0; j < reps; j++) {
                 if (nonmarkovnikovElementToAdd != "") {
-                  this.addBond(nonmarkovnikovElementToAdd, 1, false);
+                  this.addBond(nonmarkovnikovElementToAdd, optionalNonmarkovnikovNumBondsToAdd, false);
                 }
                 if (markovnikovElementToAdd != "") {
-                  atom2.addBond(markovnikovElementToAdd, 1, false);
-                }
-              }
-            }
-            changed = true;
-          }
-        }
-      }
-      return changed;
-    }
-  }
-  
-  alkeneAddition2(markovnikovElementToAdd, markovnikovNumBondsToAdd, nonmarkovnikovElementToAdd, nonmarkovnikovNumBondsToAdd) {
-    if (this.element != "C" || this.isBenzene()) {
-      // current element must be a carbon and not part of a benzene ring
-      return false;
-    } else {
-      let changed = false;
-      for (let i = 0; i < this.bondTypeList.length; i++) {
-        let reps = this.bondTypeList[i]-1; // number of times to repeat bond addition. reps = 1 if alkene, reps = 2 if alkyne
-        if (reps === 1 || reps === 2) { // find the alkene/alkyne(s)
-          let atom2 = network[this.bondIdList[i]];
-          if (atom2.element === "C") {
-            this.bondTypeList[i] -= reps;
-            this.numBonds -= reps;
-            this.updateNextBondAngle();
-            for (let j = 0; j < atom2.bondIdList.length; j++) {
-              if (atom2.bondIdList[j] === this.id) {
-                atom2.bondTypeList[j] -= reps;
-                atom2.numBonds -= reps;
-              }
-            }
-            atom2.updateNextBondAngle();
-            if (this.isMoreStableCarbocationThan(atom2)) {
-              for (let j = 0; j < reps; j++) {
-                if (markovnikovElementToAdd != "") {
-                  this.addBond(markovnikovElementToAdd, markovnikovNumBondsToAdd, false);
-                }
-                if (nonmarkovnikovElementToAdd != "") {
-                  atom2.addBond(nonmarkovnikovElementToAdd, nonmarkovnikovNumBondsToAdd, false);
-                }
-              }
-            } else {
-              for (let j = 0; j < reps; j++) {
-                if (nonmarkovnikovElementToAdd != "") {
-                  this.addBond(nonmarkovnikovElementToAdd, nonmarkovnikovNumBondsToAdd, false);
-                }
-                if (markovnikovElementToAdd != "") {
-                  atom2.addBond(markovnikovElementToAdd, markovnikovNumBondsToAdd, false);
+                  atom2.addBond(markovnikovElementToAdd, optionalMarkovnikovNumBondsToAdd, false);
                 }
               }
             }
@@ -364,7 +316,8 @@ class Atom {
   }
 
   // TODO: this is really poorly written. but it works at least.
-  calculateNextBondAngle() {
+  // optionalPriority is the number of preexisting bonds that this function will pretend that the atom has
+  calculateNextBondAngle(optionalPriority = this.bondIdList.length) {
     let currentBondSectors = []; // ranges from 0 to 11 for each 30 degree sector, starting at -15 degrees
     let currentBondAngles = this.getBondAngles();
     if (this.numBonds !== 0) {
@@ -372,7 +325,7 @@ class Atom {
         currentBondSectors.push(Math.floor((findBondAngle(this.x, this.y, network[this.bondIdList[i]].x, network[this.bondIdList[i]].y)+15)/30));
       }
     }
-    switch (currentBondSectors.length) {
+    switch (optionalPriority) {
       case 0:
         return 330;
       case 1:
@@ -402,57 +355,13 @@ class Atom {
         }
         return -1;
       default:
-        return -1;
-    }
-  }
-  
-  // calculateNextBondAngle but returns the calculated next bond angle as if the priority value was the number of bonds the atom already has, also handles what happens with more than 3 *fake* bonds
-  calculateNextBondAngle2(priority) {
-    let currentBondSectors = []; // ranges from 0 to 11 for each 30 degree sector, starting at -15 degrees
-    let currentBondAngles = this.getBondAngles();
-    if (this.numBonds !== 0) {
-      for (let i = 0; i < this.bondIdList.length; i++) {
-        currentBondSectors.push(Math.floor((findBondAngle(this.x, this.y, network[this.bondIdList[i]].x, network[this.bondIdList[i]].y)+15)/30));
-      }
-    }
-    if (priority === 0) {
-      return 330;
-    } else if (priority === 1) {
-      let answer = (currentBondSectors[0]*30+120)%360
-      let alternate = (currentBondSectors[0]*30+240)%360
-      if (Math.min(alternate%180,180-(alternate%180)) < Math.min(answer%180,180-(answer%180))) {
-        answer = alternate;
-      }
-      return answer;
-    } else if (priority === 2) {
-      if (Math.abs(currentBondAngles[0] - currentBondAngles[1]) > 180) {
-        return (Math.floor((currentBondAngles[0]+currentBondAngles[1])/2))%360;
-      } else {
-        return (Math.floor((currentBondAngles[0]+currentBondAngles[1])/2)+180)%360;
-      }
-    } else if (priority === 3) {
-      if (!currentBondSectors.includes(8) && !currentBondSectors.includes(9)) {
-        return 240;
-      } else if (!currentBondSectors.includes(2)) {
-        return 60;
-      } else {
-          for (let i = 0; i < 12; i++) {
-          if (!currentBondSectors.includes(i)) {
-            return i*30;
+        let ans = optionalPriority-3;
+        for (let i = 0; i < currentBondSectors.length; i++) {
+          if (currentBondSectors[i] <= ans) {
+            ans++;
           }
         }
-      }
-      return -1;
-    } else if (priority > 3 && priority < 12) {
-      let ans = priority-3;
-      for (let i = 0; i < currentBondSectors.length; i++) {
-        if (currentBondSectors[i] <= ans) {
-          ans++;
-        }
-      }
-      return ans*30;
-    } else {
-      return Math.floor(Math.random*360);
+        return ans*30;
     }
   }
 }
@@ -1086,7 +995,7 @@ function clickButton(selectedBox) {
         if (currentAtom.deleted) {
           continue;
         }
-        currentAtom.alkeneAddition2("O",2,"",1);
+        currentAtom.alkeneAddition2("O","",2,1);
       }
       break;
     case 21:
@@ -1409,8 +1318,8 @@ function clickButton(selectedBox) {
           network[id2].bondIdList.push(id1);
           network[id2].bondTypeList.push(bondType);
         }
-        network[id1].predictedNextBondAngle = network[id1].calculateNextBondAngle();
-        network[id2].predictedNextBondAngle = network[id2].calculateNextBondAngle();
+        network[id1].updateNextBondAngle();
+        network[id2].updateNextBondAngle();
         break;
       }
     } else {
@@ -1420,7 +1329,7 @@ function clickButton(selectedBox) {
         selectedAtom.element = element;
       } else {
         network.push(new Atom(nextID, element, previewX1, previewY1, 0, false, 0, [], []));
-        network[nextID].predictedNextBondAngle = network[nextID].calculateNextBondAngle();
+        network[nextID].updateNextBondAngle();
         nextID++;
       }
     }
