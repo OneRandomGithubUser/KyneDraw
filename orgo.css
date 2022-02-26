@@ -159,68 +159,59 @@ body {
   bottom: 20px;
   left: 240px;
 }
-
 #ring-metathesis {
   bottom: 70px;
   left: 240px;
 }
-
 #hbr-addition {
   bottom: 120px;
   left: 240px;
 }
-
 #radical-hbr {
   bottom: 170px;
   left: 240px;
 }
-
 #halogenation {
   bottom: 220px;
   left: 240px;
 }
-
 #halohydrin-formation {
   bottom: 270px;
   left: 240px;
 }
-
 #hydrogenation {
   bottom: 320px;
   left: 240px;
 }
-
 #cis-hydrogenation {
   bottom: 370px;
   left: 240px;
 }
-
 #trans-hydrogenation {
   bottom: 420px;
   left: 240px;
 }
-
+#cyclopropanation {
+  bottom: 470px;
+  left: 240px;
+}
 
 #alkene-oxidation {
   bottom: 20px;
   left: 460px;
 }
-
 #acid-hydration {
   bottom: 370px;
   left: 460px;
 }
-
 #oxymercuration {
   bottom: 420px;
   left: 460px;
 }
-
 #hydroboration {
   bottom: 470px;
   left: 460px;
 }
-
 #wacker-oxidation {
   bottom: 520px;
   left: 460px;
@@ -230,32 +221,26 @@ body {
   bottom: 20px;
   left: 680px;
 }
-
 #dehydration {
   bottom: 70px;
   left: 680px;
 }
-
 #weak-reduction {
   bottom: 120px;
   left: 680px;
 }
-
 #weak-oxidation {
   bottom: 170px;
   left: 680px;
 }
-
 #bromination {
   bottom: 220px;
   left: 680px;
 }
-
 #chlorination {
   bottom: 270px;
   left: 680px;
 }
-
 #tosylation {
   bottom: 320px;
   left: 680px;

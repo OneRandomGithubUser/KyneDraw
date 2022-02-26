@@ -252,11 +252,15 @@ class Atom {
   getBondAngles() {
     let ans = [];
     for (let i = 0; i < this.bondIdList.length; i++) {
-      ans.push(Math.round(findBondAngle(this.x, this.y, network[this.bondIdList[i]].x, network[this.bondIdList[i]].y)));
+      ans.push(Math.round(this.findBondAngleWith(network[this.bondIdList[i]])));
     }
     return ans;
   }
   
+  findBondAngleWith(atom2) {
+    return findBondAngle(this.x, this.y, atom2.x, atom2.y);
+  }
+    
   isHydroxyl() {
     return this.element === "O" && this.numBonds === 1 && network[this.bondIdList[0]].element === "C";
   }
@@ -295,6 +299,14 @@ class Atom {
     }
   }
 
+  distanceToBondOf(atom1, atom2) {
+    return distanceToBond(this.x, this.y, atom1.x, atom1.y, atom2.x, atom2.y);
+  }
+
+  sideOfBondOf(atom1, atom2) {
+    return sideOfBond(this.x, this.y, atom1.x, atom1.y, atom2.x, atom2.y);
+  }  
+
   getNextBondAngle(bondType) {
     if (this.numBonds === 0) {
       // lone atom
@@ -322,7 +334,7 @@ class Atom {
     let currentBondAngles = this.getBondAngles();
     if (this.numBonds !== 0) {
       for (let i = 0; i < this.bondIdList.length; i++) {
-        currentBondSectors.push(Math.floor((findBondAngle(this.x, this.y, network[this.bondIdList[i]].x, network[this.bondIdList[i]].y)+15)/30));
+        currentBondSectors.push(Math.floor((this.findBondAngleWith(network[this.bondIdList[i]])+15)/30));
       }
     }
     switch (optionalPriority) {
@@ -838,6 +850,11 @@ function distanceToBond(x, y, x1, y1, x2, y2) {
   return Math.sqrt(dx * dx + dy * dy);
 }
 
+function sideOfBond(x, y, x1, y1, x2, y2) {
+  // this is the cross product of AB and AP, where A is x1,y1, B is x2,y2, and P is x,y
+  return (x-x1)*(y2-y1) - (y-y1)*(x2-x1);
+}
+
 function findBondAngle(x1,y1,x2,y2) {
   let ans;
   if (y1 === y2) {
@@ -1245,10 +1262,10 @@ function clickButton(selectedBox) {
         if (currentAtom.deleted || currentAtom.element !== "C") {
           continue;
         }
-        for (let i = 0; i < currentAtom.bondTypeList.length; ++i) {
-          if (currentAtom.bondTypeList[i] === 3) {
-            currentAtom.bondTypeList[i] = 2;
-            let adjacentAtom = network[currentAtom.bondIdList[i]];
+        for (let j = 0; j < currentAtom.bondTypeList.length; ++j) {
+          if (currentAtom.bondTypeList[j] === 3) {
+            currentAtom.bondTypeList[j] = 2;
+            let adjacentAtom = network[currentAtom.bondIdList[j]];
             adjacentAtom.bondTypeList[adjacentAtom.bondIdList.indexOf(currentAtom.id)] = 2;
           }
         }
@@ -1261,11 +1278,46 @@ function clickButton(selectedBox) {
         if (currentAtom.deleted || currentAtom.element !== "C") {
           continue;
         }
-        for (let i = 0; i < currentAtom.bondTypeList.length; ++i) {
-          if (currentAtom.bondTypeList[i] === 3) {
-            currentAtom.bondTypeList[i] = 2;
-            let adjacentAtom = network[currentAtom.bondIdList[i]];
+        for (let j = 0; j < currentAtom.bondTypeList.length; ++j) {
+          if (currentAtom.bondTypeList[j] === 3) {
+            currentAtom.bondTypeList[j] = 2;
+            let adjacentAtom = network[currentAtom.bondIdList[j]];
             adjacentAtom.bondTypeList[adjacentAtom.bondIdList.indexOf(currentAtom.id)] = 2;
+          }
+        }
+      }
+      break;
+    case 39:
+      for (let i = 0; i < network.length; ++i) {
+        let currentAtom = network[i];
+        if (currentAtom.deleted || currentAtom.element !== "C") {
+          continue;
+        }
+        for (let j = 0; j < currentAtom.bondTypeList.length; ++j) {
+          if (currentAtom.bondTypeList[j] === 2 || currentAtom.bondTypeList[j] === 3) {
+            // count number of atoms within a region of 1.1 bondLength from the bond on either side
+            let adjacentAtom = network[currentAtom.bondIdList[j]];
+            let side1 = 0;
+            let side2 = 0;
+            let bondAngle = currentAtom.findBondAngleWith(adjacentAtom);
+            // TODO: yuck, O(n^2)
+            for (let k = 0; k < network.length; ++k) {
+              let currentAtom2 = network[k];
+              if (currentAtom2.distanceToBondOf(currentAtom, adjacentAtom) < 1.1 * bondLength) {
+                let side = currentAtom2.sideOfBondOf(currentAtom, adjacentAtom);
+                if (side < 0) {
+                  side1++;
+                } else if (side > 0) {
+                  side2++;
+                }
+              }
+            }
+            let newID = nextID;
+            currentAtom.bondTypeList[j]--;
+            currentAtom.addBond("C", 1, false, bondAngle + 60*Math.sign(side1-side2));
+            adjacentAtom.bondTypeList[adjacentAtom.bondIdList.indexOf(currentAtom.id)]--;
+            adjacentAtom.createBond(network[newID], 1);
+            // does not repeat for alkynes? I think
           }
         }
       }
