@@ -212,16 +212,32 @@ body {
   bottom: 170px;
   left: 460px;
 }
-#wacker-oxidation {
+#alkyne-hydration {
   bottom: 220px;
   left: 460px;
 }
-#alkyne-hydration {
+#alkyne-hydroboration {
   bottom: 270px;
   left: 460px;
 }
-#alkyne-hydroboration {
+#epoxidation {
   bottom: 320px;
+  left: 460px;
+}
+#dihydroxylation {
+  bottom: 370px;
+  left: 460px;
+}
+#wacker-oxidation {
+  bottom: 420px;
+  left: 460px;
+}
+#ozonolysis {
+  bottom: 470px;
+  left: 460px;
+}
+#oxidative-cleavage {
+  bottom: 520px;
   left: 460px;
 }
 
