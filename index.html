@@ -8,7 +8,7 @@
     <script src="p5.min.js"></script>
     <script src="orgo.js"></script>
     <meta charset="utf-8"/>
-    <meta name = "viewport" content = "width=device-width, minimum-scale=1.0, maximum-scale = 1.0, user-scalable = no">
+    <meta name = "viewport" content = "minimum-scale=1.0, maximum-scale = 1.0, user-scalable = no">
   </head>
   <body>
     <main>
@@ -89,10 +89,14 @@
           <button class="button long-button" id="organocopper-formation" onclick="selectBox(48)"><p>Formation of Organocopper<br>CuCN</p></button>
           <button class="button long-button" id="dehydration" onclick="selectBox(21)"><p>Dehydration<br>POCl<sub>3</sub></p></button>
           <button class="button long-button" id="weak-reduction" onclick="selectBox(30)"><p>Weak Reduction<br>NaBH<sub>4</sub></p></button>
+          <button class="button long-button" id="strong-reduction" onclick="selectBox(49)"><p>Strong Reduction<br>LAH (LiAlH<sub>4</sub>)</p></button>
           <button class="button long-button" id="weak-oxidation" onclick="selectBox(31)"><p>Weak Oxidation<br>PCC/PDC/Swern</p></button>
+          <button class="button long-button" id="jones-oxidation" onclick="selectBox(50)"><p>Jones (Strong) Oxidation (unfinished)<br>CrO<sub>3</sub>, H<sup>+</sup> or Na<sub>2</sub>Cr<sub>2</sub>O<sub>7</sub>, H<sup>+</sup></p></button>
           <button class="button long-button" id="bromination" onclick="selectBox(32)"><p>Bromination<br>PBr<sub>3</sub></p></button>
           <button class="button long-button" id="chlorination" onclick="selectBox(33)"><p>Chlorination<br>SOCl<sub>2</sub></p></button>
           <button class="button long-button" id="tosylation" onclick="selectBox(34)"><p>Tosylation<br>TsCl</p></button>
+          <button class="button long-button" id="hydroxyl-protection" onclick="selectBox(51)"><p>Protection of Hydroxyl<br>TBSCl, Et<sub>3</sub>N</p></button>
+          <button class="button long-button" id="hydroxyl-unprotection" onclick="selectBox(52)"><p>Unprotection of Hydroxyl<br>TBAF</p></button>
         </div>
       </div>
     </main>

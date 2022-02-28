@@ -20,7 +20,7 @@ const destinationDistance = 5;
 var mousePressed = false;
 var selectedBox = 0;
 const minWidth = 1580;
-const minHeight = 210;
+const minHeight = 810;
 let windowHeight = 0;
 let windowLength = 0;
 let previousWindowHeight = 0;
@@ -330,6 +330,10 @@ class Atom {
     
   isHydroxyl() {
     return this.element === "O" && this.numBonds === 1 && network[this.bondIdList[0]].element === "C";
+  }
+
+  isProtectedHydroxyl() {
+    return this.element === "OTBS" && this.numBonds === 1 && network[this.bondIdList[0]].element === "C";
   }
 
   isKetone() { // is ketone or aldehyde
@@ -1207,25 +1211,25 @@ function clickButton(selectedBox) {
           }
         }
       }
-      case 28:
-        for (let i = 0; i < network.length; i++) {
-          let currentAtom = network[i];
-          if (currentAtom.deleted) {
-            continue;
-          }
-          currentAtom.alkeneAddition("O","O");
+    case 28:
+      for (let i = 0; i < network.length; i++) {
+        let currentAtom = network[i];
+        if (currentAtom.deleted) {
+          continue;
         }
-        break;
-      case 29:
-        for (let i = 0; i < network.length; i++) {
-          let currentAtom = network[i];
-          if (currentAtom.deleted) {
-            continue;
-          }
-          currentAtom.alkeneAddition("","O");
+        currentAtom.alkeneAddition("O","O");
+      }
+      break;
+    case 29:
+      for (let i = 0; i < network.length; i++) {
+        let currentAtom = network[i];
+        if (currentAtom.deleted) {
+          continue;
         }
-        break;
-      case 30:
+        currentAtom.alkeneAddition("","O");
+      }
+      break;
+    case 30:
       for (let i = 0; i < network.length; i++) {
         let currentAtom = network[i];
         if (currentAtom.deleted) {
@@ -1446,8 +1450,8 @@ function clickButton(selectedBox) {
           continue;
         }
         for (let j = 0; j < currentAtom.bondTypeList.length; ++j) {
-          if (currentAtom.bondTypeList[j] === 2 || currentAtom.bondTypeList[j] === 3) {
-            // count number of atoms within a region of 1.1 bondLength from the bond on either side
+          if (currentAtom.bondTypeList[j] === 2) {
+            // only occurs for alkenes, count number of atoms within a region of 1.1 bondLength from the bond on either side
             let adjacentAtom = network[currentAtom.bondIdList[j]];
             let side1 = 0;
             let side2 = 0;
@@ -1579,7 +1583,75 @@ function clickButton(selectedBox) {
           continue;
         }
         if (currentAtom.isLithiate()) {
-          currentAtom.element = "CuLi*";
+          currentAtom.element = "CuLi×2";
+        }
+      }
+      break;
+    case 49:
+      for (let i = 0; i < network.length; i++) {
+        let currentAtom = network[i];
+        if (currentAtom.deleted) {
+          continue;
+        }
+        if (currentAtom.isHydroxyl(currentAtom)) {
+          adjacentAtom = network[currentAtom.bondIdList[0]];
+          if (adjacentAtom.numBonds >= maxBonds(adjacentAtom.element)) { // too many bonds to form another
+            break;
+          }
+          currentAtom.bondTypeList[0] = 2;
+          currentAtom.numBonds = 2;
+          for (let j = 0; j < adjacentAtom.bondTypeList.length; j++) {
+            if (adjacentAtom.bondIdList[j] === currentAtom.id) {
+              adjacentAtom.bondTypeList[j] = 2;
+              adjacentAtom.updateNumBonds();
+            }
+          }
+        }
+      } 
+      break;
+    case 50:
+      // TODO: finish this
+      for (let i = 0; i < network.length; i++) {
+        let currentAtom = network[i];
+        if (currentAtom.deleted) {
+          continue;
+        }
+        if (currentAtom.isKetone(currentAtom)) {
+          adjacentAtom = network[currentAtom.bondIdList[0]];
+          currentAtom.bondTypeList[0] = 1;
+          currentAtom.numBonds = 1;
+          for (let j = 0; j < adjacentAtom.bondTypeList.length; j++) {
+            if (adjacentAtom.bondIdList[j] === currentAtom.id) {
+              adjacentAtom.bondTypeList[j] = 1;
+              adjacentAtom.updateNumBonds();
+            }
+          }
+          // turn aldehyde into carboxylic acid
+          if (adjacentAtom.numBonds < maxBonds(adjacentAtom.element)) {
+            adjacentAtom.addBond("O", 1, false);
+          }
+        }
+      }
+      break;
+    case 51:
+      for (let i = 0; i < network.length; i++) {
+        let currentAtom = network[i];
+        if (currentAtom.deleted) {
+          continue;
+        }
+        if (currentAtom.isHydroxyl()) {
+          currentAtom.element = "OTBS";
+        }
+      }
+      break;
+    case 52:
+      for (let i = 0; i < network.length; i++) {
+        let currentAtom = network[i];
+        if (currentAtom.deleted) {
+          continue;
+        }
+        if (currentAtom.isProtectedHydroxyl()) {
+          currentAtom.element = "O";
         }
       }
       break;

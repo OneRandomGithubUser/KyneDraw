@@ -265,19 +265,35 @@ body {
   bottom: 270px;
   left: 680px;
 }
-#weak-oxidation {
+#strong-reduction {
   bottom: 320px;
   left: 680px;
 }
-#bromination {
+#weak-oxidation {
   bottom: 370px;
   left: 680px;
 }
-#chlorination {
+#jones-oxidation {
   bottom: 420px;
   left: 680px;
 }
-#tosylation {
+#bromination {
   bottom: 470px;
+  left: 680px;
+}
+#chlorination {
+  bottom: 520px;
+  left: 680px;
+}
+#tosylation {
+  bottom: 570px;
+  left: 680px;
+}
+#hydroxyl-protection {
+  bottom: 620px;
+  left: 680px;
+}
+#hydroxyl-unprotection {
+  bottom: 670px;
   left: 680px;
 }
