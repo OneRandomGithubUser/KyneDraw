@@ -16,24 +16,36 @@
         <div class="warning">JavaScript must be enabled to use KyneDraw. I can't do this all in HTML!</div>
       </noscript>
       <pre style="position:absolute;z-index:100;top:30px;left:30px" id="error"></pre>
-      <!-- Adapted from https://stackoverflow.com/a/16243163 -->
-      <div class="selectable-button square">
-        <input type="radio" id="single" name="tool" checked="checked" onclick="selectBox(1)" />
-          <label for="single" id="single">SINGLE BOND</label>
-        <input type="radio" id="double" name="tool" onclick="selectBox(2)" />
-          <label for="double" id="double">DOUBLE BOND</label>
-        <input type="radio" id="triple" name="tool" onclick="selectBox(3)" />
-          <label for="triple" id="triple">TRIPLE BOND</label>
-        <input type="radio" id="carbon" name="tool" onclick="selectBox(6)" />
-          <label for="carbon" id="carbon" class="atomLabel">C</label>
-        <input type="radio" id="oxygen" name="tool" onclick="selectBox(7)" />
-          <label for="oxygen" id="oxygen" class="atomLabel">O</label>
-        <input type="radio" id="nitrogen" name="tool" onclick="selectBox(8)" />
-          <label for="nitrogen" id="nitrogen" class="atomLabel">N</label>
-        <input type="radio" id="bromine" name="tool" onclick="selectBox(9)" />
-          <label for="bromine" id="bromine" class="atomLabel">Br</label>
-        <input type="radio" id="chlorine" name="tool" onclick="selectBox(10)" />
-          <label for="chlorine" id="chlorine" class="atomLabel">Cl</label>
+      <!-- Radio buttons adapted from https://stackoverflow.com/a/16243163 -->
+      <div class="dropdown">
+        <button class="button square-button" id="bonds">Bonds</button>
+        <div class="dropdown-content">
+          <div class="selectable-button square">
+            <input type="radio" id="single" name="tool" checked="checked" onclick="selectBox(1)" />
+              <label for="single" id="single">SINGLE BOND</label>
+            <input type="radio" id="double" name="tool" onclick="selectBox(2)" />
+              <label for="double" id="double">DOUBLE BOND</label>
+            <input type="radio" id="triple" name="tool" onclick="selectBox(3)" />
+              <label for="triple" id="triple">TRIPLE BOND</label>
+          </div>
+        </div>
+      </div>
+      <div class="dropdown">
+        <button class="button square-button" id="atoms">Atoms</button>
+        <div class="dropdown-content">
+          <div class="selectable-button square">
+            <input type="radio" id="carbon" name="tool" onclick="selectBox(6)" />
+              <label for="carbon" id="carbon" class="atomLabel">C</label>
+            <input type="radio" id="oxygen" name="tool" onclick="selectBox(7)" />
+              <label for="oxygen" id="oxygen" class="atomLabel">O</label>
+            <input type="radio" id="nitrogen" name="tool" onclick="selectBox(8)" />
+              <label for="nitrogen" id="nitrogen" class="atomLabel">N</label>
+            <input type="radio" id="bromine" name="tool" onclick="selectBox(9)" />
+              <label for="bromine" id="bromine" class="atomLabel">Br</label>
+            <input type="radio" id="chlorine" name="tool" onclick="selectBox(10)" />
+              <label for="chlorine" id="chlorine" class="atomLabel">Cl</label>
+          </div>
+        </div>
       </div>
       <div class="selectable-button thin">
         <input type="radio" id="snap" name="bond-type" checked="checked" onclick="selectBox(5)" />

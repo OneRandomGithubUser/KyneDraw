@@ -54,8 +54,8 @@ body {
 .square-button,
 .square label,
 .square input {
-  width: 100px;
-  height: 100px;
+  width: 75px;
+  height: 75px;
 }
 
 .thin-button,
@@ -82,47 +82,49 @@ body {
 
 .atomLabel {
   font-weight: normal !important;
-  font-size: 48px !important;
+  font-size: 36px !important;
 }
 
-#single {
+#bonds {
   top: 20px;
   left: 20px;
 }
-
+#single {
+  top: 95px;
+  left: 20px;
+}
 #double {
-  top: 20px;
-  left: 140px;
+  top: 170px;
+  left: 20px;
 }
-
 #triple {
-  top: 20px;
-  left: 260px;
+  top: 245px;
+  left: 20px;
 }
 
+#atoms {
+  top: 20px;
+  left: 115px;
+}
 #carbon {
-  top: 20px;
-  left: 380px;
+  top: 95px;
+  left: 115px;
 }
-
 #oxygen {
-  top: 20px;
-  left: 500px;
+  top: 170px;
+  left: 115px;
 }
-
 #nitrogen {
-  top: 20px;
-  left: 620px;
+  top: 245px;
+  left: 115px;
 }
-
 #bromine {
-  top: 20px;
-  left: 740px;
+  top: 320px;
+  left: 115px;
 }
-
 #chlorine {
-  top: 20px;
-  left: 860px;
+  top: 395px;
+  left: 115px;
 }
 
 #freeform {

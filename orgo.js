@@ -501,7 +501,7 @@ function draw() {
     let cachedMouseX = mouseX;
     let cachedMouseY = mouseY;
     if (hackerman && frameCount%3 === 0) {
-      // this is a joke feature
+      // this is a joke feature. continually clears the frame and then makes a random molecule
       clickButton(11);
       clickButton(12);
     }
