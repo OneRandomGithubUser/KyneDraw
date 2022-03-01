@@ -4,9 +4,9 @@ var nextID = 0; // next atom ID
 var bondType = 1;
 var element = "C";
 var reagents = "";
-var bondMode = true;
+var selectedTool = "bond";
 var network = []; // array of Atom objects
-// TODO: new Network object? might make index searching O(n) instead of O(1)
+// TODO: new Network object?
 var closestDistance = 0; // 20 is the maximum distance for selection
 var selectedAtom = []; // selected atom when snap-on is in effect
 var destinationAtom = [];
@@ -36,7 +36,7 @@ var renderFrame = false;
 var renderMiddleground = false;
 var tip;
 var hackerman = false;
-var selectedBond;
+var selectedBond = [];
 var somethingClicked = false;
 var buttonClicked = false;
 var tips = [
@@ -525,7 +525,6 @@ function draw() {
         middleground.image(background2, 0, 0, windowWidth, windowHeight);
       }
 
-      // selected atom when snap-on is in effect
       if (!mousePressed) {
         selectedAtom = [];
         selectedBond = [];
@@ -614,7 +613,7 @@ function draw() {
           middleground.stroke(0);
         }
 
-        // calculate closest selected atom/bond as long as the mouse is not pressed
+        // calculate closest selected atom/bond as long as the mouse is not being dragged
         // TODO: this algorithm can be made much more efficient
         if (!mousePressed) {
           // find closest atom
@@ -623,8 +622,8 @@ function draw() {
             closestDistance = distance;
             selectedAtom = currentAtom;
           }
-          if (selectedAtom.length === 0 && bondMode) {
-            // find closest bond if there is no closest atom
+          if (selectedAtom.length === 0 && selectedTool !== "atom") {
+            // find closest bond if there is no closest atom when the selectedTool is bond or drag
             for (let j = 0; j < currentAtom.bondIdList.length; j++) {
               let currentAtom2 = network[currentAtom.bondIdList[j]];
               if (!currentAtom2.deleted) {
@@ -640,7 +639,7 @@ function draw() {
       }
 
       // calculate new bond angle
-      if (selectedAtom.length !== 0 && !mousePressed && bondMode) {
+      if (selectedAtom.length !== 0 && !mousePressed && selectedTool === "bond") {
         if (selectedAtom.numBonds > maxBonds(selectedAtom.element)-bondType) {
           // too many bonds
           validBond = false;
@@ -651,7 +650,8 @@ function draw() {
         previewY1 = selectedAtom.y;
         previewX2 = selectedAtom.x + Math.cos(toRadians(360-bondAngle))*bondLength;
         previewY2 = selectedAtom.y + Math.sin(toRadians(360-bondAngle))*bondLength;
-      } else if (selectedAtom.length !== 0 && !bondMode) {
+      } else if (selectedAtom.length !== 0 && !mousePressed) {
+        // when only one point is selected, not two, when selectedTool is atom or drag
         previewX1 = selectedAtom.x;
         previewY1 = selectedAtom.y;
         if (selectedAtom.numBonds > maxBonds(element)) {
@@ -660,26 +660,46 @@ function draw() {
           bondAngle = 330;
         }
       } else if (mousePressed) {
-        // on mouse press, stop updating previewX1 and previewY1
-        if (angleSnap) {
-          if (selectedAtom.numBonds > maxBonds(selectedAtom.element)-bondType) {
-            // too many bonds
-            validBond = false;
+        // on mouse drag, stop updating previewX1 and previewY1 when selectedTool is bond
+        if (selectedTool === "bond") {
+          if (angleSnap) {
+            if (selectedAtom.numBonds > maxBonds(selectedAtom.element)-bondType) {
+              // too many bonds
+              validBond = false;
+            } else {
+              bondAngle = Math.floor((findBondAngle(previewX1,previewY1,cachedMouseX,cachedMouseY)+15)/30)*30;
+              // round bond angle to nearest 30 degrees
+            }
+            previewX2 = previewX1 + Math.cos(toRadians(360-bondAngle))*bondLength;
+            previewY2 = previewY1 + Math.sin(toRadians(360-bondAngle))*bondLength;
           } else {
-            bondAngle = Math.floor((findBondAngle(previewX1,previewY1,cachedMouseX,cachedMouseY)+15)/30)*30;
-            // round bond angle to nearest 30 degrees
+            previewX2 = cachedMouseX;
+            previewY2 = cachedMouseY;
+            if (selectedAtom.numBonds > maxBonds(selectedAtom.element)-bondType) {
+              // too many bonds
+              validBond = false;
+            } else {
+              bondAngle = findBondAngle(previewX1,previewY1,cachedMouseX,cachedMouseY);
+            }
           }
-          previewX2 = previewX1 + Math.cos(toRadians(360-bondAngle))*bondLength;
-          previewY2 = previewY1 + Math.sin(toRadians(360-bondAngle))*bondLength;
+        } else if (selectedTool === "atomDrag") {
+            // when mouse is dragged, edit the position of the selectedAtom or selectedBond
+            let diffX = cachedMouseX - previousMouseX;
+            let diffY = cachedMouseY - previousMouseY;
+            if (selectedBond.length !== 0) {
+              selectedBond[0].x += diffX;
+              selectedBond[0].y += diffY;
+              selectedBond[1].x += diffX;
+              selectedBond[1].y += diffY;
+            } else {
+              selectedAtom.x += diffX;
+              selectedAtom.y += diffY;
+            }
+          previewX1 = cachedMouseX;
+          previewX2 = cachedMouseY;
+            // TODO: snap if the selectedAtom is now within an acceptable distance from one of its bonded atoms
         } else {
-          previewX2 = cachedMouseX;
-          previewY2 = cachedMouseY;
-          if (selectedAtom.numBonds > maxBonds(selectedAtom.element)-bondType) {
-            // too many bonds
-            validBond = false;
-          } else {
-            bondAngle = findBondAngle(previewX1,previewY1,cachedMouseX,cachedMouseY);
-          }
+          // selectedTool is moleculeDrag
         }
       } else {
         // no selectedAtom
@@ -703,24 +723,30 @@ function draw() {
         foreground.fill(255);
       }
 
-      // highlight selected bond
-      if (selectedAtom.length === 0 && selectedBond.length !== 0 && bondMode) {
+      // highlight selected bond when selectedTool is bond or atom drag
+      if (selectedAtom.length === 0 && selectedBond.length !== 0 && (selectedTool === "bond" || selectedTool === "atomDrag")) {
         let color;
         if (selectedBond[0].numBonds - selectedBond[2] + bondType > maxBonds(selectedBond[0].element) || selectedBond[1].numBonds - selectedBond[2] + bondType > maxBonds(selectedBond[1].element)) {
           // don't change selected bond if it would cause too many bonds
           color = [255,0,0];
           highlightedBond(selectedBond[0].x, selectedBond[0].y, selectedBond[1].x, selectedBond[1].y, selectedBond[2], color, foreground);
-          bond(selectedBond[0].x, selectedBond[0].y, selectedBond[1].x, selectedBond[1].y, bondType, foreground);
+          if (selectedTool === "bond") {
+            bond(selectedBond[0].x, selectedBond[0].y, selectedBond[1].x, selectedBond[1].y, bondType, foreground);
+          }
           selectedBond = [];
         } else {
           color = [48,227,255];
           highlightedBond(selectedBond[0].x, selectedBond[0].y, selectedBond[1].x, selectedBond[1].y, selectedBond[2], color, foreground);
-          bond(selectedBond[0].x, selectedBond[0].y, selectedBond[1].x, selectedBond[1].y, bondType, foreground);
+          if (selectedTool === "bond") {
+            bond(selectedBond[0].x, selectedBond[0].y, selectedBond[1].x, selectedBond[1].y, bondType, foreground);
+          }
         }
         validBond = false;
+      } else {
+        selectedBond = [];
       }
 
-      if (bondMode) {
+      if (selectedTool === "bond") {
         // calculate destination atom
         destinationAtom = findClosestDestinationAtom(previewX2,previewY2,selectedAtom,network);
 
@@ -750,7 +776,7 @@ function draw() {
       }
 
       // draw preview
-      if (!bondMode) {
+      if (selectedTool === "atom") {
         foreground.rectMode(CENTER);
         foreground.fill(0);
         foreground.noStroke();
@@ -759,7 +785,7 @@ function draw() {
         foreground.fill(255);
         foreground.stroke(0);
         foreground.rectMode(CORNER);
-      } else if (validBond) {
+      } else if (validBond && selectedTool === "bond") {
         bond(previewX1, previewY1, previewX2, previewY2, bondType, foreground);
       }
 
@@ -819,6 +845,7 @@ function draw() {
 
 function mouseDragged() {
   renderFrame = true;
+  renderMiddleground = true;
   mousePressed = true;
 }
 
@@ -1014,15 +1041,15 @@ function clickButton(selectedBox) {
   switch (selectedBox) {
     case 1:
       bondType = selectedBox;
-      bondMode = true;
+      selectedTool = "bond";
       break;
     case 2:
       bondType = selectedBox;
-      bondMode = true;
+      selectedTool = "bond";
       break;
     case 3:
       bondType = selectedBox;
-      bondMode = true;
+      selectedTool = "bond";
       break;
     case 4:
       angleSnap = false;
@@ -1032,23 +1059,23 @@ function clickButton(selectedBox) {
       break;
     case 6:
       element = "C"
-      bondMode = false;
+      selectedTool = "atom";
       break;
     case 7:
       element = "O"
-      bondMode = false;
+      selectedTool = "atom";
       break;
     case 8:
       element = "N"
-      bondMode = false;
+      selectedTool = "atom";
       break;
     case 9:
       element = "Br"
-      bondMode = false;
+      selectedTool = "atom";
       break;
     case 10:
       element = "Cl"
-      bondMode = false;
+      selectedTool = "atom";
       break;
     case 11:
       network = [];
@@ -1091,6 +1118,12 @@ function clickButton(selectedBox) {
       break;
     case 13:
       hackerman = !hackerman;
+      break;
+    case 14:
+      selectedTool = "atomDrag";
+      break;
+    case 15:
+      selectedTool = "moleculeDrag";
       break;
     case 19:
       for (let i = 0; i < network.length; i++) {
@@ -1659,7 +1692,7 @@ function clickButton(selectedBox) {
       }
       break;
     case 0: // when no box is selected
-    if (bondMode) {
+    if (selectedTool === "bond") {
       element = "C";
       // -1 means invalid bond TODO: change this, bondAngle is not needed elsewhere anymore
       if (selectedAtom.length === 0 && selectedBond.length !== 0 && selectedBond[2] !== bondType) {
@@ -1702,7 +1735,7 @@ function clickButton(selectedBox) {
         atom1.createBondWith(atom2, bondType);
         break;
       }
-    } else {
+    } else if (selectedTool === "atom") {
       if (!validBond) {
         break;
       } else if (selectedAtom.length !== 0) {

@@ -127,6 +127,19 @@ body {
   left: 115px;
 }
 
+#drag-tools {
+  top: 20px;
+  left: 210px;
+}
+#atom-drag {
+  top: 95px;
+  left: 210px;
+}
+#molecule-drag {
+  top: 170px;
+  left: 210px;
+}
+
 #freeform {
   top: 20px;
   right: 20px;

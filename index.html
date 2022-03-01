@@ -15,10 +15,10 @@
       <noscript>
         <div class="warning">JavaScript must be enabled to use KyneDraw. I can't do this all in HTML!</div>
       </noscript>
-      <pre style="position:absolute;z-index:100;top:30px;left:30px" id="error"></pre>
+      <pre style="position:absolute;z-index:100;top:100px;left:100px" id="error"></pre>
       <!-- Radio buttons adapted from https://stackoverflow.com/a/16243163 -->
       <div class="dropdown">
-        <button class="button square-button" id="bonds">Bonds</button>
+        <button class="button square-button" id="bonds">Bond Tools</button>
         <div class="dropdown-content">
           <div class="selectable-button square">
             <input type="radio" id="single" name="tool" checked="checked" onclick="selectBox(1)" />
@@ -31,7 +31,7 @@
         </div>
       </div>
       <div class="dropdown">
-        <button class="button square-button" id="atoms">Atoms</button>
+        <button class="button square-button" id="atoms">Atom Tools</button>
         <div class="dropdown-content">
           <div class="selectable-button square">
             <input type="radio" id="carbon" name="tool" onclick="selectBox(6)" />
@@ -44,6 +44,17 @@
               <label for="bromine" id="bromine" class="atomLabel">Br</label>
             <input type="radio" id="chlorine" name="tool" onclick="selectBox(10)" />
               <label for="chlorine" id="chlorine" class="atomLabel">Cl</label>
+          </div>
+        </div>
+      </div>
+      <div class="dropdown">
+        <button class="button square-button" id="drag-tools">Drag Tools</button>
+        <div class="dropdown-content">
+          <div class="selectable-button square">
+            <input type="radio" id="atom-drag" name="tool" onclick="selectBox(14)" />
+              <label for="atom-drag" id="atom-drag">Atom Drag</label>
+            <input type="radio" id="molecule-drag" name="tool" onclick="selectBox(15)" />
+              <label for="molecule-drag" id="molecule-drag">Molecule Drag</label>
           </div>
         </div>
       </div>
