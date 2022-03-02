@@ -1,11 +1,13 @@
 // Written by Joseph. github.com/OneRandomGithubUser
 const bondLength = 50;
-var nextID = 0; // next atom ID
+var nextAtomID = 0;
+var nextMoleculeID = 0;
 var bondType = 1;
 var element = "C";
 var reagents = "";
 var selectedTool = "bond";
 var network = []; // array of Atom objects
+var molecules = []; // array of Molecule objects
 // TODO: new Network object?
 var closestDistance = 0; // 20 is the maximum distance for selection
 var selectedAtom = []; // selected atom when snap-on is in effect
@@ -55,9 +57,9 @@ var tips = [
 // TODO: bad practice to make so many global variables
 
 // define the Atom class
-// TODO: possible performance improvements by caching functional groups, though too small to worry about right now
+// TODO: possible performance improvements by caching functional groups, though too small to worry about right now/*
 class Atom {
-  constructor(id,element,x,y,numBonds,deleted,predictedNextBondAngle,bondIdList,bondTypeList) {
+  constructor(id,element,x,y,numBonds,deleted,predictedNextBondAngle,bondIdList,bondTypeList,moleculeID) {
     this.id = id;
     this.element = element;
     this.x = x;
@@ -67,6 +69,7 @@ class Atom {
     this.predictedNextBondAngle = predictedNextBondAngle;
     this.bondIdList = bondIdList;
     this.bondTypeList = bondTypeList;
+    this.moleculeID = moleculeID;
   }
 
   delete() {
@@ -75,36 +78,46 @@ class Atom {
       let currentAtom = network[i];
       currentAtom.removeBondWith(this);
     }
+    this.clearData();
     return true;
   }
 
-  insertAtom(element, bond, connectToExistingAtoms, optionalBondAngle) {
-    if (bond + this.numBonds > maxBonds(this.element) || bond > maxBonds(element)) {
+  clearData() {
+    if (!this.deleted) {
+      throw new Error("tried to clear data of nondeleted atom");
+    }
+    this.id = null;
+    this.element = null;
+    this.x = null;
+    this.y = null;
+    this.numBonds = null;
+    this.predictedNextBondAngle = null;
+    this.bondIdList = null;
+    this.bondTypeList = null;
+    this.moleculeID = null;
+  }
+
+  insertAtom(element, bondType, connectToExistingAtoms, optionalBondAngle) {
+    if (bondType + this.numBonds > maxBonds(this.element) || bondType > maxBonds(element)) {
       // bond makes too many bonds for a valid molecule
       return false;
     } else {
       let bondAngle;
       if (optionalBondAngle === undefined) {
-        bondAngle = this.getNextBondAngleOf(bond);
+        bondAngle = this.getNextBondAngleOf(bondType);
       } else {
         bondAngle = optionalBondAngle;
       }
       let closestDestinationAtom = [];
       let previewX2 = this.x + Math.cos(toRadians(360-bondAngle))*bondLength;
       let previewY2 = this.y + Math.sin(toRadians(360-bondAngle))*bondLength;
-      let id2 = nextID;
+      let id2 = nextAtomID;
       // connect to an existing atom, ignoring element
       closestDestinationAtom = findClosestDestinationAtom(previewX2,previewY2,[],network);
       if (closestDestinationAtom.length !== 0) {
-        if (connectToExistingAtoms && closestDestinationAtom.numBonds + bond < maxBonds(closestDestinationAtom.element)) {
-          this.bondIdList.push(closestDestinationAtom.id);
-          this.bondTypeList.push(bond);
-          this.numBonds += bond;
-          this.updateNextBondAngle();
-          closestDestinationAtom.bondIdList.push(this.id);
-          closestDestinationAtom.bondTypeList.push(bond);
-          closestDestinationAtom.numBonds += bond;
-          closestDestinationAtom.updateNextBondAngle();
+        if (connectToExistingAtoms && closestDestinationAtom.numBonds + bondType < maxBonds(closestDestinationAtom.element)) {
+          // if connectToExistingAtoms is true and the bondType is not too big to addition to the closestDestinationAtom, make the bond to it
+          this.createBondWith(closestDestinationAtom, bondType);
 
           // then update the frame
           renderFrame = true;
@@ -125,13 +138,9 @@ class Atom {
           }
         }
       }
-      this.numBonds += bond;
-      this.bondIdList.push(id2);
-      this.bondTypeList.push(bond);
-      network.push(new Atom(id2, element, previewX2, previewY2, bond, false, 0, [this.id], [bond]));
-      nextID++;
-      this.updateNextBondAngle();
-      network[id2].updateNextBondAngle();
+      network.push(new Atom(id2, element, previewX2, previewY2, 0, false, 0, [], [], -1));
+      nextAtomID++;
+      this.createBondWith(network[id2], bondType);
 
       // then update the frame
       renderFrame = true;
@@ -240,6 +249,27 @@ class Atom {
     atom2.numBonds += bondType;
     this.updateNextBondAngle();
     atom2.updateNextBondAngle();
+    // update the molecules as necessary
+    if (this.moleculeID === -1) {
+      // if the moleculeID is -1, then it is not in any molecule yet
+      if (atom2.moleculeID === -1) {
+        this.moleculeID = nextMoleculeID;
+        atom2.moleculeID = nextMoleculeID;
+        molecules.push(new Molecule(nextMoleculeID, Math.min(this.x,atom2.x), Math.min(this.y,atom2.y), Math.max(this.x,atom2.x), Math.max(this.y,atom2.y), false, [this.id, atom2.id]));
+        nextMoleculeID++;
+      } else {
+        molecules[atom2.moleculeID].addNewAtom(this);
+      }
+    } else {
+      if (atom2.moleculeID === -1) {
+        molecules[this.moleculeID].addNewAtom(atom2);
+      } else {
+        if (this.moleculeID !== atom2.moleculeID) {
+          // no need to combine identical molecules
+          molecules[this.moleculeID].combineWith(molecules[atom2.moleculeID]);
+        }
+      }
+    }
   }
 
   removeBondWith(atom2) {
@@ -259,6 +289,10 @@ class Atom {
     } else {
       return false;
     }
+  }
+
+  changeMoleculeNumber(moleculeNumber) {
+    molecules[this.moleculeID].changeMoleculeNumber(moleculeNumber);
   }
   
   updateNumBonds() {
@@ -459,6 +493,122 @@ class Atom {
         }
         ans *= 30;
         return ans;
+    }
+  }
+}
+
+class Molecule {
+  constructor(id,x1,y1,x2,y2,deleted,atomIDs) {
+    this.id = id;
+    this.x1 = x1;
+    this.y1 = y1;
+    this.x2 = x2;
+    this.y2 = y2;
+    this.deleted = deleted;
+    this.atomIDs = atomIDs;
+  }
+
+  delete() {
+    this.deleted = true;
+    for (let i = 0; i < atomIDs.length; i++) {
+      let currentAtom = network[i];
+      currentAtom.delete();
+    }
+    this.clearData();
+    return true;
+  }
+
+  changeMoleculeNumber() {
+    // TODO
+  }
+
+  addNewAtom(atom) {
+    if (this.deleted) {
+      throw new Error("referenced deleted molecule");
+    }
+    this.atomIDs.push(atom.id);
+    if (atom.x < this.x1) {
+      this.x1 = atom.x;
+    }
+    if (atom.y < this.y1) {
+      this.y1 = atom.y;
+    }
+    if (atom.x > this.x2) {
+      this.x2 = atom.x;
+    }
+    if (atom.y > this.y2) {
+      this.y2 = atom.y;
+    }
+    atom.moleculeID = this.id;
+  }
+
+  clearData() {
+    if (!this.deleted) {
+      throw new Error("tried to clear data of nondeleted molecule");
+    }
+    this.id = null;
+    this.x1 = null;
+    this.y1 = null;
+    this.x2 = null;
+    this.y2 = null;
+    this.atomIDs = null;
+  }
+
+  combineWith(molecule) {
+    if (this.deleted) {
+      throw new Error("referenced deleted molecule");
+    }
+    if (this.id === molecule.id) {
+      throw new Error("tried to combine molecule with itself");
+    }
+    if (molecule.x1 < this.x1) {
+      this.x1 = molecule.x1;
+    }
+    if (molecule.y1 < this.y1) {
+      this.y1 = molecule.y1;
+    }
+    if (molecule.x2 > this.x2) {
+      this.x2 = molecule.x2;
+    }
+    if (molecule.y2 > this.y2) {
+      this.y2 = molecule.y2;
+    }
+    for (let i = 0; i < molecule.atomIDs.length; i++) {
+      let currentAtomId = molecule.atomIDs[i];
+      this.atomIDs.push(currentAtomId);
+      network[currentAtomId].moleculeID = this.id;
+    }
+    molecule.deleted = true;
+  }
+
+  isBridge(atom1, atom2) {
+    if (this.deleted) {
+      throw new Error("referenced deleted molecule");
+    }
+    if (!this.atomIDs.includes(atom1.id) || !this.atomIDs.includes(atom2.id)) {
+      throw new Error("idBridge atoms not in molecule");
+    }
+    let seenNetwork = new Array(this.atomIDs.length).fill(false);
+    this.isBridgeHelper(atom1, atom2, seenNetwork);
+  }
+
+  isBridgeHelper(currentAtom, targetAtom, seenNetwork) {
+    if (this.deleted) {
+      throw new Error("referenced deleted molecule");
+    }
+    seenNetwork[currentAtom.id] = true;
+    let deadEnd = true;
+    for (let i = 0; i < currentAtom.bondIdList.length; i++) {
+      if (!seenNetwork[currentAtom.bondIdList[i]]) {
+        if (targetAtom.id === currentAtom.bondIdList[i]) {
+          return true;
+        }
+        this.isBridgeHelper(network[currentAtom.bondIdList[i]], targetAtom, seenNetwork);
+      }
+      deadEnd = false;
+    }
+    if (deadEnd) {
+      return false;
     }
   }
 }
@@ -1079,19 +1229,23 @@ function clickButton(selectedBox) {
       break;
     case 11:
       network = [];
-      nextID = 0;
+      molecules = [];
+      nextAtomID = 0;
+      nextMoleculeID = 0;
       break;
     case 12:
-      let startingID = nextID;
-      network.push(new Atom(nextID, "C", windowWidth/2+Math.random()*windowWidth/10, windowHeight/2+Math.random()*windowHeight/10, 0, false, 330, [], []));
-      nextID++;
+      let startingID = nextAtomID;
+      network.push(new Atom(nextAtomID, "C", windowWidth/2+Math.random()*windowWidth/10, windowHeight/2+Math.random()*windowHeight/10, 0, false, 330, [], [], nextMoleculeID));
+      molecules.push(new Molecule(nextMoleculeID, previewX1, previewY1, previewX1, previewY1, false, [nextAtomID]));
+      nextAtomID++;
+      nextMoleculeID++;
       let generating = true;
       let randomAtom;
       let randomNum;
       let randomElement;
       let randomBondNumber;
       while (generating) {
-        randomAtom = network[startingID + Math.floor(Math.random() * (nextID-startingID))];
+        randomAtom = network[startingID + Math.floor(Math.random() * (nextAtomID-startingID))];
         randomNum = Math.random();
         if (randomNum < 0.85) {
           randomElement = "C";
@@ -1151,16 +1305,16 @@ function clickButton(selectedBox) {
         }
         if (currentAtom.isHydroxyl()) {
           let adjacentAtom = network[currentAtom.bondIdList[0]]; // carbon atom that the oxygen is attached to
-          let mostSubstitutedAtom = new Atom(0,"C",0,0,0,true,330,[],[]); // blank atom
+          let mostSubstitutedAtom = [];
           for (let j = 0; j < adjacentAtom.bondIdList.length; j++) { // look at the atoms attached to the adjacentAtom
             let adjacentAdjacentAtom = network[adjacentAtom.bondIdList[j]];
             if (adjacentAdjacentAtom.element != "C" || adjacentAdjacentAtom.id === currentAtom.id || adjacentAdjacentAtom.numBonds >= maxBonds(adjacentAdjacentAtom.element)) {
               continue;
-            } else if (adjacentAdjacentAtom.isMoreSubstitutedThan(mostSubstitutedAtom)) {
+            } else if (mostSubstitutedAtom.length === 0 || adjacentAdjacentAtom.isMoreSubstitutedThan(mostSubstitutedAtom)) {
               mostSubstitutedAtom = adjacentAdjacentAtom; // TODO: consider what happens when equally substituted
             }
           }
-          if (!mostSubstitutedAtom.deleted) {
+          if (mostSubstitutedAtom.length !== 0) {
             // remove hydroxyl group (currentAtom)
             adjacentAtom.removeBondWith(currentAtom);
             currentAtom.delete();
@@ -1445,7 +1599,7 @@ function clickButton(selectedBox) {
             } else {
               bondAngle = (bondAngle + 300) % 360;
             }
-            let newID = nextID;
+            let newID = nextAtomID;
             currentAtom.bondTypeList[j]--;
             currentAtom.numBonds--;
             currentAtom.insertAtom("C", 1, false, bondAngle);
@@ -1509,7 +1663,7 @@ function clickButton(selectedBox) {
             } else {
               bondAngle = (bondAngle + 300) % 360;
             }
-            let newID = nextID;
+            let newID = nextAtomID;
             currentAtom.bondTypeList[j]--;
             currentAtom.numBonds--;
             currentAtom.insertAtom("O", 1, false, bondAngle);
@@ -1721,18 +1875,19 @@ function clickButton(selectedBox) {
         if (selectedAtom.length !== 0) {
           atom1 = selectedAtom;
         } else {
-          network.push(new Atom(nextID, element, previewX1, previewY1, 0, false, 0, [], []));
-          atom1 = network[nextID];
-          nextID++;
+          network.push(new Atom(nextAtomID, element, previewX1, previewY1, 0, false, 0, [], [], -1));
+          atom1 = network[nextAtomID];
+          nextAtomID++;
         }
         if (destinationAtom.length !== 0) {
           atom2 = destinationAtom;
         } else {
-          network.push(new Atom(nextID, element, previewX2, previewY2, 0, false, 0, [], []));
-          atom2 = network[nextID];
-          nextID++;
+          network.push(new Atom(nextAtomID, element, previewX2, previewY2, 0, false, 0, [], [], -1));
+          atom2 = network[nextAtomID];
+          nextAtomID++;
         }
         atom1.createBondWith(atom2, bondType);
+        // the molecule IDs are handled in createBondWith
         break;
       }
     } else if (selectedTool === "atom") {
@@ -1741,9 +1896,11 @@ function clickButton(selectedBox) {
       } else if (selectedAtom.length !== 0) {
         selectedAtom.element = element;
       } else {
-        network.push(new Atom(nextID, element, previewX1, previewY1, 0, false, 0, [], []));
-        network[nextID].updateNextBondAngle();
-        nextID++;
+        network.push(new Atom(nextAtomID, element, previewX1, previewY1, 0, false, 0, [], [], nextMoleculeID));
+        molecules.push(new Molecule(nextMoleculeID, previewX1, previewY1, previewX1, previewY1, false, [nextAtomID]));
+        network[nextAtomID].updateNextBondAngle();
+        nextAtomID++;
+        nextMoleculeID++;
       }
     }
   }
