@@ -909,8 +909,8 @@ function draw() {
       // highlight selected bond when selectedTool is bond or atom drag
       if (selectedAtom.length === 0 && selectedBond.length !== 0 && (selectedTool === "bond" || selectedTool === "atomDrag")) {
         let color;
-        if (selectedBond[0].numBonds - selectedBond[2] + bondType > maxBonds(selectedBond[0].element) || selectedBond[1].numBonds - selectedBond[2] + bondType > maxBonds(selectedBond[1].element)) {
-          // don't change selected bond if it would cause too many bonds
+        if (selectedTool === "bond" && (selectedBond[0].numBonds - selectedBond[2] + bondType > maxBonds(selectedBond[0].element) || selectedBond[1].numBonds - selectedBond[2] + bondType > maxBonds(selectedBond[1].element))) {
+          // don't change selected bond if it would cause too many bonds only when the selectedTool is bond
           color = [255,0,0];
           highlightedBond(selectedBond[0].x, selectedBond[0].y, selectedBond[1].x, selectedBond[1].y, selectedBond[2], color, foreground);
           if (selectedTool === "bond") {
@@ -931,7 +931,6 @@ function draw() {
 
       // highlight selected molecule when selectedTool is moleculeDrag
       if (selectedTool === "moleculeDrag" && selectedMolecule.length !== 0) {
-        console.log("b");
         foreground.strokeWeight(3);
         foreground.stroke(48,227,255);
         foreground.fill(48,227,255);
@@ -941,7 +940,6 @@ function draw() {
           if (currentAtom.deleted) {
             continue;
           }
-          console.log("a" + currentAtom.id);
             // render preexisting bonds
             if (currentAtom.numBonds !== 0) {
               for (let j = 0; j < currentAtom.bondIdList.length; j++) {
@@ -949,7 +947,6 @@ function draw() {
                 if (currentAtom.bondIdList[j] > currentAtom.id) {
                   let adjacentAtom = network[currentAtom.bondIdList[j]];
                   if (!adjacentAtom.deleted) {
-                    console.log(currentAtom.id + " " + adjacentAtom.id);
                     bond(currentAtom.x, currentAtom.y, adjacentAtom.x, adjacentAtom.y, currentAtom.bondTypeList[j], foreground);
                   }
                 }
@@ -1011,7 +1008,6 @@ function draw() {
             foreground.stroke(48,227,255);
             }
           }
-          console.log("asdf");
         foreground.fill(0);
         foreground.strokeWeight(1);
         foreground.stroke(0);
