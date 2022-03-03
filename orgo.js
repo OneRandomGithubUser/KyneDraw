@@ -692,88 +692,14 @@ function draw() {
       validBond = true;
       let bondAngle;
 
-      // TODO: refactor the below code, difficult to understand at the moment
-
-      // cycle through all atoms to render the preexisting bonds and atoms and to find selectedAtom
+      // calculate closest selected atom/bond as long as the mouse is not being dragged
+      // TODO: this algorithm can be made much more efficient
       for (let i = 0; i < network.length; i++) {
         let currentAtom = network[i];
         // don't even consider deleted atoms
         if (currentAtom.deleted) {
           continue;
         }
-
-        if (renderMiddleground) {
-          // render preexisting bonds
-          if (currentAtom.numBonds !== 0) {
-            for (let j = 0; j < currentAtom.bondIdList.length; j++) {
-              // only draw it if it's a bond from a lesser ID to a greater ID. prevents drawing the bond twice (since bonds don't go from atoms to themselves)
-              if (currentAtom.bondIdList[j] > currentAtom.id) {
-                let adjacentAtom = network[currentAtom.bondIdList[j]];
-                if (!adjacentAtom.deleted) {
-                  bond(currentAtom.x, currentAtom.y, adjacentAtom.x, adjacentAtom.y, currentAtom.bondTypeList[j], middleground);
-                }
-              }
-            }
-          }
-          
-          // render preexisting atoms
-          middleground.noStroke();
-          if (currentAtom.deleted) {
-            continue; // deleted atom
-          } else {
-            let label = currentAtom.element;
-            // account for the atom's charge, asumming it has hydrogens if it makes sense to assume so
-            if (label === "C") {
-              if (currentAtom.numBonds === 0) {
-                label = "CH₄"
-              } else {
-                label = "";
-              }
-            } else if (label === "O") {
-              switch (currentAtom.numBonds) {
-                case 0:
-                  label = "H₂O";
-                  break;
-                case 1:
-                  label = "OH";
-                  break;/*
-                case 3:
-                  label = "O⁺"
-                  break;
-                case 4:
-                  label = "O²⁺"*/
-              }
-            } else if (label === "N") {
-              switch (currentAtom.numBonds) {
-                case 0:
-                  label = "NH₃";
-                  break;
-                case 1:
-                  label = "NH₂";
-                  break;
-                case 2:
-                  label = "NH";
-                  break;
-                case 4:
-                  label = "N⁺"
-                  break;
-              }
-            } else if ((label === "Br" || label === "Cl" || label === "I" || label === "F" || label === "Ts") && currentAtom.numBonds === 0) {
-              label += "⁻";
-            }
-            if (label !== "") {
-              middleground.fill(255);
-              let boundingBox = font.textBounds(label, currentAtom.x, currentAtom.y, 20, CENTER, CENTER);
-              middleground.rect(boundingBox.x-5-boundingBox.w/2, boundingBox.y-5+boundingBox.h/2, boundingBox.w+10, boundingBox.h+10); // TODO: figure out why this is so weird, especially with H2O
-              middleground.fill(0);
-              middleground.text(label, currentAtom.x, currentAtom.y);
-            }
-          }
-          middleground.stroke(0);
-        }
-
-        // calculate closest selected atom/bond as long as the mouse is not being dragged
-        // TODO: this algorithm can be made much more efficient
         if (!mousePressed) {
           // find closest atom
           let distance = Math.sqrt((cachedMouseX-currentAtom.x)**2 + (cachedMouseY-currentAtom.y)**2);
@@ -888,6 +814,83 @@ function draw() {
         bondAngle = 330;
         previewX2 = cachedMouseX + Math.cos(toRadians(360-bondAngle))*bondLength;
         previewY2 = cachedMouseY + Math.sin(toRadians(360-bondAngle))*bondLength;
+      }
+
+      if (renderMiddleground) {
+        // render bonds
+        middleground.stroke(0);
+        for (let i = 0; i < network.length; i++) {
+          let currentAtom = network[i];
+          if (currentAtom.deleted) {
+            continue;
+          }
+          if (currentAtom.numBonds !== 0) {
+            for (let j = 0; j < currentAtom.bondIdList.length; j++) {
+              // only draw it if it's a bond from a lesser ID to a greater ID. prevents drawing the bond twice (since bonds don't go from atoms to themselves)
+              if (currentAtom.bondIdList[j] > currentAtom.id) {
+                let adjacentAtom = network[currentAtom.bondIdList[j]];
+                if (!adjacentAtom.deleted) {
+                  bond(currentAtom.x, currentAtom.y, adjacentAtom.x, adjacentAtom.y, currentAtom.bondTypeList[j], middleground);
+                }
+              }
+            }
+          }
+        }
+        // render atoms
+        middleground.noStroke();
+        for (let i = 0; i < network.length; i++) {
+          let currentAtom = network[i];
+          if (currentAtom.deleted) {
+            continue;
+          }
+          let label = currentAtom.element;
+          // account for the atom's charge, asumming it has hydrogens if it makes sense to assume so
+          if (label === "C") {
+            if (currentAtom.numBonds === 0) {
+              label = "CH₄"
+            } else {
+              label = "";
+            }
+          } else if (label === "O") {
+            switch (currentAtom.numBonds) {
+              case 0:
+                label = "H₂O";
+                break;
+              case 1:
+                label = "OH";
+                break;/*
+              case 3:
+                label = "O⁺"
+                break;
+              case 4:
+                label = "O²⁺"*/
+            }
+          } else if (label === "N") {
+            switch (currentAtom.numBonds) {
+              case 0:
+                label = "NH₃";
+                break;
+              case 1:
+                label = "NH₂";
+                break;
+              case 2:
+                label = "NH";
+                break;
+              case 4:
+                label = "N⁺"
+                break;
+            }
+          } else if ((label === "Br" || label === "Cl" || label === "I" || label === "F" || label === "Ts") && currentAtom.numBonds === 0) {
+            label += "⁻";
+          }
+          if (label !== "") {
+            middleground.fill(255);
+            let boundingBox = font.textBounds(label, currentAtom.x, currentAtom.y, 20, CENTER, CENTER);
+            middleground.rect(boundingBox.x-5-boundingBox.w/2, boundingBox.y-5+boundingBox.h/2, boundingBox.w+10, boundingBox.h+10); // TODO: figure out why this is so weird, especially with H2O
+            middleground.fill(0);
+            middleground.text(label, currentAtom.x, currentAtom.y);
+          }
+        }
       }
       
       // render cyan/red selection dot
