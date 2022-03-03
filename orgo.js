@@ -20,8 +20,8 @@ const selectionDistance = 15;
 const destinationDistance = 5;
 var mousePressed = false;
 var selectedBox = 0;
-const minWidth = 1580;
-const minHeight = 810;
+const minWidth = 905;
+const minHeight = 720;
 let windowHeight = 0;
 let windowLength = 0;
 let previousWindowHeight = 0;
@@ -651,8 +651,8 @@ function setup() {
 
 function draw() {
   try {
-    let cachedMouseX = mouseX;
-    let cachedMouseY = mouseY;
+    let cachedMouseX = parseInt(mouseX);
+    let cachedMouseY = parseInt(mouseY);
     if (hackerman && frameCount%3 === 0) {
       // this is a joke feature. continually clears the frame and then makes a random molecule
       clickButton(11);

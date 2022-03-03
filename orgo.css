@@ -5,10 +5,14 @@ body {
     -webkit-tap-highlight-color: transparent; /* apparently does not work with Firefox mobile */
 }
 
+/* min for top UI: 905px */
+
 #ui {
   position: absolute;
-  min-width: 1580px;
-  height: 810px;
+  min-width: 905px;
+  width: 100%;
+  min-height: 720px;
+  height: 100%;
   overflow: auto;
 }
 
@@ -53,8 +57,9 @@ body {
 }
 
 .button:hover,
-.selectable-button label:hover {
-  margin: 1px;
+.selectable-button label:hover,
+.button-text {
+  padding: 2px;
   z-index: 1;
   border: 1px solid white;
 }
