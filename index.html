@@ -17,109 +17,111 @@
       </noscript>
       <pre style="position:absolute;z-index:100;top:100px;left:100px" id="error"></pre>
       <!-- Radio buttons adapted from https://stackoverflow.com/a/16243163 -->
-      <div class="dropdown">
-        <button class="button square-button" id="bonds">Bond Tools</button>
-        <div class="dropdown-content">
-          <div class="selectable-button square">
-            <input type="radio" id="single" name="tool" checked="checked" onclick="selectBox(1)" />
-              <label for="single" id="single">SINGLE BOND</label>
-            <input type="radio" id="double" name="tool" onclick="selectBox(2)" />
-              <label for="double" id="double">DOUBLE BOND</label>
-            <input type="radio" id="triple" name="tool" onclick="selectBox(3)" />
-              <label for="triple" id="triple">TRIPLE BOND</label>
+      <div id="ui">
+        <div class="dropdown">
+          <button class="button square-button" id="bonds">Bond Tools</button>
+          <div class="dropdown-content">
+            <div class="selectable-button square">
+              <input type="radio" id="single" name="tool" checked="checked" onclick="selectBox(1)" />
+                <label for="single" id="single">SINGLE BOND</label>
+              <input type="radio" id="double" name="tool" onclick="selectBox(2)" />
+                <label for="double" id="double">DOUBLE BOND</label>
+              <input type="radio" id="triple" name="tool" onclick="selectBox(3)" />
+                <label for="triple" id="triple">TRIPLE BOND</label>
+            </div>
           </div>
         </div>
-      </div>
-      <div class="dropdown">
-        <button class="button square-button" id="atoms">Atom Tools</button>
-        <div class="dropdown-content">
-          <div class="selectable-button square">
-            <input type="radio" id="carbon" name="tool" onclick="selectBox(6)" />
-              <label for="carbon" id="carbon" class="atomLabel">C</label>
-            <input type="radio" id="oxygen" name="tool" onclick="selectBox(7)" />
-              <label for="oxygen" id="oxygen" class="atomLabel">O</label>
-            <input type="radio" id="nitrogen" name="tool" onclick="selectBox(8)" />
-              <label for="nitrogen" id="nitrogen" class="atomLabel">N</label>
-            <input type="radio" id="bromine" name="tool" onclick="selectBox(9)" />
-              <label for="bromine" id="bromine" class="atomLabel">Br</label>
-            <input type="radio" id="chlorine" name="tool" onclick="selectBox(10)" />
-              <label for="chlorine" id="chlorine" class="atomLabel">Cl</label>
+        <div class="dropdown">
+          <button class="button square-button" id="atoms">Atom Tools</button>
+          <div class="dropdown-content">
+            <div class="selectable-button square">
+              <input type="radio" id="carbon" name="tool" onclick="selectBox(6)" />
+                <label for="carbon" id="carbon" class="atomLabel">C</label>
+              <input type="radio" id="oxygen" name="tool" onclick="selectBox(7)" />
+                <label for="oxygen" id="oxygen" class="atomLabel">O</label>
+              <input type="radio" id="nitrogen" name="tool" onclick="selectBox(8)" />
+                <label for="nitrogen" id="nitrogen" class="atomLabel">N</label>
+              <input type="radio" id="bromine" name="tool" onclick="selectBox(9)" />
+                <label for="bromine" id="bromine" class="atomLabel">Br</label>
+              <input type="radio" id="chlorine" name="tool" onclick="selectBox(10)" />
+                <label for="chlorine" id="chlorine" class="atomLabel">Cl</label>
+            </div>
           </div>
         </div>
-      </div>
-      <div class="dropdown">
-        <button class="button square-button" id="drag-tools">Drag Tools</button>
-        <div class="dropdown-content">
-          <div class="selectable-button square">
-            <input type="radio" id="atom-drag" name="tool" onclick="selectBox(14)" />
-              <label for="atom-drag" id="atom-drag">Atom Drag</label>
-            <input type="radio" id="molecule-drag" name="tool" onclick="selectBox(15)" />
-              <label for="molecule-drag" id="molecule-drag">Molecule Drag</label>
+        <div class="dropdown">
+          <button class="button square-button" id="drag-tools">Drag Tools</button>
+          <div class="dropdown-content">
+            <div class="selectable-button square">
+              <input type="radio" id="atom-drag" name="tool" onclick="selectBox(14)" />
+                <label for="atom-drag" id="atom-drag">Atom Drag</label>
+              <input type="radio" id="molecule-drag" name="tool" onclick="selectBox(15)" />
+                <label for="molecule-drag" id="molecule-drag">Molecule Drag</label>
+            </div>
           </div>
         </div>
-      </div>
-      <div class="selectable-button thin">
-        <input type="radio" id="snap" name="bond-type" checked="checked" onclick="selectBox(5)" />
-          <label for="snap" id="snap">SNAP BONDS</label>
-        <input type="radio" id="freeform" name="bond-type" onclick="selectBox(4)" />
-          <label for="freeform" id="freeform">FREEFORM BONDS</label>
-      </div>
-      <button class="button thin-button" id="clear" onclick="selectBox(11)">CLEAR</button>
-      <button class="button thin-button" id="random" onclick="selectBox(12)">RANDOM MOLECULE</button>
-      <div class="selectable-button thin">
-        <input type="checkbox" id="hackerman" onclick="selectBox(13)" />
-          <label for="hackerman" id="hackerman">HACKER MAN</label>
-      </div>
-      <div class="dropdown">
-        <button class="button long-button" id="sn-e">S<sub>N</sub>2/E2/S<sub>N</sub>1/E1 Reactions</button>
-        <div class="dropdown-content">
+        <div class="selectable-button thin">
+          <input type="radio" id="snap" name="bond-type" checked="checked" onclick="selectBox(5)" />
+            <label for="snap" id="snap">SNAP BONDS</label>
+          <input type="radio" id="freeform" name="bond-type" onclick="selectBox(4)" />
+            <label for="freeform" id="freeform">FREEFORM BONDS</label>
         </div>
-      </div>
-      <div class="dropdown">
-        <button class="button long-button" id="alkene-addition">Alkene/Alkyne Addition</button>
-        <div class="dropdown-content">
-          <button class="button long-button" id="ring-metathesis" onclick="selectBox(36)"><p>Ring-Closing Metathesis (regular Metathesis soon)<br>Grubb's Catalyst</p></button>
-          <button class="button long-button" id="hbr-addition" onclick="selectBox(23)"><p>HBr Addition<br>HBr</p></button>
-          <button class="button long-button" id="radical-hbr" onclick="selectBox(24)"><p>HBr Free Radical Addition<br>HBr, H<sub>2</sub>O<sub>2</sub></p></button>
-          <button class="button long-button" id="halogenation" onclick="selectBox(25)"><p>Halogenation<br>Br<sub>2</sub></p></button>
-          <button class="button long-button" id="halohydrin-formation" onclick="selectBox(26)"><p>Halohydrin Formation<br>Br<sub>2</sub>, H<sub>2</sub>O</p></button>
-          <button class="button long-button" id="hydrogenation" onclick="selectBox(27)"><p>Hydrogenation<br>H<sub>2</sub>, Pd</p></button>
-          <button class="button long-button" id="cis-hydrogenation" onclick="selectBox(37)"><p>Hydrogenation to Cis<br>H<sub>2</sub>, Lindlar Catalyst</p></button>
-          <button class="button long-button" id="trans-hydrogenation" onclick="selectBox(38)"><p>Hydrogenation to Trans<br>Na, NH<sub>3</sub> (l)</p></button>
-          <button class="button long-button" id="cyclopropanation" onclick="selectBox(39)"><p>Cyclopropanation<br>CH<sub>2</sub>I<sub>2</sub>, Zn/Cu</p></button>
+        <button class="button thin-button" id="clear" onclick="selectBox(11)">CLEAR</button>
+        <button class="button thin-button" id="random" onclick="selectBox(12)">RANDOM MOLECULE</button>
+        <div class="selectable-button thin">
+          <input type="checkbox" id="hackerman" onclick="selectBox(13)" />
+            <label for="hackerman" id="hackerman">HACKER MAN</label>
         </div>
-      </div>
-      <div class="dropdown">
-        <button class="button long-button" id="alkene-oxidation">Alkene/Alkyne Oxidation</button>
-        <div class="dropdown-content">
-          <button class="button long-button" id="acid-hydration" onclick="selectBox(19)"><p>Acid Hydration<br>H<sup>+</sup>, H<sub>2</sub>O</p></button>
-          <button class="button long-button" id="oxymercuration" onclick="selectBox(28)"><p>Oxymercuration/Reduction<br>i. Hg(OAc)<sub>2</sub>, H<sub>2</sub>O, ii. BH<sub>4</sub></p></button>
-          <button class="button long-button" id="hydroboration" onclick="selectBox(35)"><p>Hydroboration/Oxidation<br>i. BH<sub>3</sub>, ii. H<sub>2</sub>O<sub>2</sub>, OH<sup>-</sup></p></button>
-          <button class="button long-button" id="alkyne-hydration" onclick="selectBox(40)"><p>Alkyne Hydration<br>H<sup>+</sup>/H<sub>2</sub>SO<sub>4</sub>, H<sub>2</sub>O, HgSO<sub>4</sub></p></button>
-          <button class="button long-button" id="alkyne-hydroboration" onclick="selectBox(41)"><p>Alkyne Hydroboration<br>i. Sia<sub>2</sub>BH, ii. H<sub>2</sub>O<sub>2</sub>, OH<sup>-</sup></p></button>
-          <button class="button long-button" id="epoxidation" onclick="selectBox(42)"><p>Epoxidation<br><i>m</i>-CPBA</p></button>
-          <button class="button long-button" id="dihydroxylation" onclick="selectBox(43)"><p>Dihydroxylation<br>OsO<sub>4</sub>, H<sub>2</sub>O<sub>2</sub></p></button>
-          <button class="button long-button" id="wacker-oxidation" onclick="selectBox(20)"><p>Wacker Oxidation<br>PdCl<sub>2</sub>, H<sub>2</sub>O</p></button>
-          <button class="button long-button" id="ozonolysis" onclick="selectBox(44)"><p>Ozonolysis<br>i. O<sub>3</sub>, ii. Ph<sub>3</sub>P**, H<sub>2</sub>O***</p></button>
-          <button class="button long-button" id="oxidative-cleavage" onclick="selectBox(45)"><p>Oxidative Cleavage<br>KMnO<sub>4</sub></p></button>
+        <div class="dropdown">
+          <button class="button long-button" id="sn-e">S<sub>N</sub>2/E2/S<sub>N</sub>1/E1 Reactions</button>
+          <div class="dropdown-content">
+          </div>
         </div>
-      </div>
-      <div class="dropdown">
-        <button class="button long-button" id="alcohol-reactions">Alcohol Reactions</button>
-        <div class="dropdown-content">
-          <button class="button long-button" id="gringard-formation" onclick="selectBox(46)"><p>Formation of Grignard<br>Mg</p></button>
-          <button class="button long-button" id="organolithiate-formation" onclick="selectBox(47)"><p>Formation of Organolithiate<br>2 equiv. Li</p></button>
-          <button class="button long-button" id="organocopper-formation" onclick="selectBox(48)"><p>Formation of Organocopper<br>CuCN</p></button>
-          <button class="button long-button" id="dehydration" onclick="selectBox(21)"><p>Dehydration<br>POCl<sub>3</sub></p></button>
-          <button class="button long-button" id="weak-reduction" onclick="selectBox(30)"><p>Weak Reduction<br>NaBH<sub>4</sub></p></button>
-          <button class="button long-button" id="strong-reduction" onclick="selectBox(49)"><p>Strong Reduction<br>LAH (LiAlH<sub>4</sub>)</p></button>
-          <button class="button long-button" id="weak-oxidation" onclick="selectBox(31)"><p>Weak Oxidation<br>PCC/PDC/Swern</p></button>
-          <button class="button long-button" id="jones-oxidation" onclick="selectBox(50)"><p>Jones (Strong) Oxidation (unfinished)<br>CrO<sub>3</sub>, H<sup>+</sup> or Na<sub>2</sub>Cr<sub>2</sub>O<sub>7</sub>, H<sup>+</sup></p></button>
-          <button class="button long-button" id="bromination" onclick="selectBox(32)"><p>Bromination<br>PBr<sub>3</sub></p></button>
-          <button class="button long-button" id="chlorination" onclick="selectBox(33)"><p>Chlorination<br>SOCl<sub>2</sub></p></button>
-          <button class="button long-button" id="tosylation" onclick="selectBox(34)"><p>Tosylation<br>TsCl</p></button>
-          <button class="button long-button" id="hydroxyl-protection" onclick="selectBox(51)"><p>Protection of Hydroxyl<br>TBSCl, Et<sub>3</sub>N</p></button>
-          <button class="button long-button" id="hydroxyl-unprotection" onclick="selectBox(52)"><p>Unprotection of Hydroxyl<br>TBAF</p></button>
+        <div class="dropdown">
+          <button class="button long-button" id="alkene-addition">Alkene/Alkyne Addition</button>
+          <div class="dropdown-content">
+            <button class="button long-button" id="ring-metathesis" onclick="selectBox(36)"><p>Ring-Closing Metathesis (regular Metathesis soon)<br>Grubb's Catalyst</p></button>
+            <button class="button long-button" id="hbr-addition" onclick="selectBox(23)"><p>HBr Addition<br>HBr</p></button>
+            <button class="button long-button" id="radical-hbr" onclick="selectBox(24)"><p>HBr Free Radical Addition<br>HBr, H<sub>2</sub>O<sub>2</sub></p></button>
+            <button class="button long-button" id="halogenation" onclick="selectBox(25)"><p>Halogenation<br>Br<sub>2</sub></p></button>
+            <button class="button long-button" id="halohydrin-formation" onclick="selectBox(26)"><p>Halohydrin Formation<br>Br<sub>2</sub>, H<sub>2</sub>O</p></button>
+            <button class="button long-button" id="hydrogenation" onclick="selectBox(27)"><p>Hydrogenation<br>H<sub>2</sub>, Pd</p></button>
+            <button class="button long-button" id="cis-hydrogenation" onclick="selectBox(37)"><p>Hydrogenation to Cis<br>H<sub>2</sub>, Lindlar Catalyst</p></button>
+            <button class="button long-button" id="trans-hydrogenation" onclick="selectBox(38)"><p>Hydrogenation to Trans<br>Na, NH<sub>3</sub> (l)</p></button>
+            <button class="button long-button" id="cyclopropanation" onclick="selectBox(39)"><p>Cyclopropanation<br>CH<sub>2</sub>I<sub>2</sub>, Zn/Cu</p></button>
+          </div>
+        </div>
+        <div class="dropdown">
+          <button class="button long-button" id="alkene-oxidation">Alkene/Alkyne Oxidation</button>
+          <div class="dropdown-content">
+            <button class="button long-button" id="acid-hydration" onclick="selectBox(19)"><p>Acid Hydration<br>H<sup>+</sup>, H<sub>2</sub>O</p></button>
+            <button class="button long-button" id="oxymercuration" onclick="selectBox(28)"><p>Oxymercuration/Reduction<br>i. Hg(OAc)<sub>2</sub>, H<sub>2</sub>O, ii. BH<sub>4</sub></p></button>
+            <button class="button long-button" id="hydroboration" onclick="selectBox(35)"><p>Hydroboration/Oxidation<br>i. BH<sub>3</sub>, ii. H<sub>2</sub>O<sub>2</sub>, OH<sup>-</sup></p></button>
+            <button class="button long-button" id="alkyne-hydration" onclick="selectBox(40)"><p>Alkyne Hydration<br>H<sup>+</sup>/H<sub>2</sub>SO<sub>4</sub>, H<sub>2</sub>O, HgSO<sub>4</sub></p></button>
+            <button class="button long-button" id="alkyne-hydroboration" onclick="selectBox(41)"><p>Alkyne Hydroboration<br>i. Sia<sub>2</sub>BH, ii. H<sub>2</sub>O<sub>2</sub>, OH<sup>-</sup></p></button>
+            <button class="button long-button" id="epoxidation" onclick="selectBox(42)"><p>Epoxidation<br><i>m</i>-CPBA</p></button>
+            <button class="button long-button" id="dihydroxylation" onclick="selectBox(43)"><p>Dihydroxylation<br>OsO<sub>4</sub>, H<sub>2</sub>O<sub>2</sub></p></button>
+            <button class="button long-button" id="wacker-oxidation" onclick="selectBox(20)"><p>Wacker Oxidation<br>PdCl<sub>2</sub>, H<sub>2</sub>O</p></button>
+            <button class="button long-button" id="ozonolysis" onclick="selectBox(44)"><p>Ozonolysis<br>i. O<sub>3</sub>, ii. Ph<sub>3</sub>P**, H<sub>2</sub>O***</p></button>
+            <button class="button long-button" id="oxidative-cleavage" onclick="selectBox(45)"><p>Oxidative Cleavage<br>KMnO<sub>4</sub></p></button>
+          </div>
+        </div>
+        <div class="dropdown">
+          <button class="button long-button" id="alcohol-reactions">Alcohol Reactions</button>
+          <div class="dropdown-content">
+            <button class="button long-button" id="gringard-formation" onclick="selectBox(46)"><p>Formation of Grignard<br>Mg</p></button>
+            <button class="button long-button" id="organolithiate-formation" onclick="selectBox(47)"><p>Formation of Organolithiate<br>2 equiv. Li</p></button>
+            <button class="button long-button" id="organocopper-formation" onclick="selectBox(48)"><p>Formation of Organocopper<br>CuCN</p></button>
+            <button class="button long-button" id="dehydration" onclick="selectBox(21)"><p>Dehydration<br>POCl<sub>3</sub></p></button>
+            <button class="button long-button" id="weak-reduction" onclick="selectBox(30)"><p>Weak Reduction<br>NaBH<sub>4</sub></p></button>
+            <button class="button long-button" id="strong-reduction" onclick="selectBox(49)"><p>Strong Reduction<br>LAH (LiAlH<sub>4</sub>)</p></button>
+            <button class="button long-button" id="weak-oxidation" onclick="selectBox(31)"><p>Weak Oxidation<br>PCC/PDC/Swern</p></button>
+            <button class="button long-button" id="jones-oxidation" onclick="selectBox(50)"><p>Jones (Strong) Oxidation (unfinished)<br>CrO<sub>3</sub>, H<sup>+</sup> or Na<sub>2</sub>Cr<sub>2</sub>O<sub>7</sub>, H<sup>+</sup></p></button>
+            <button class="button long-button" id="bromination" onclick="selectBox(32)"><p>Bromination<br>PBr<sub>3</sub></p></button>
+            <button class="button long-button" id="chlorination" onclick="selectBox(33)"><p>Chlorination<br>SOCl<sub>2</sub></p></button>
+            <button class="button long-button" id="tosylation" onclick="selectBox(34)"><p>Tosylation<br>TsCl</p></button>
+            <button class="button long-button" id="hydroxyl-protection" onclick="selectBox(51)"><p>Protection of Hydroxyl<br>TBSCl, Et<sub>3</sub>N</p></button>
+            <button class="button long-button" id="hydroxyl-unprotection" onclick="selectBox(52)"><p>Unprotection of Hydroxyl<br>TBAF</p></button>
+          </div>
         </div>
       </div>
     </main>

@@ -39,6 +39,7 @@ var renderMiddleground = false;
 var tip;
 var hackerman = false;
 var selectedBond = [];
+var selectedMolecule = [];
 var somethingClicked = false;
 var buttonClicked = false;
 var tips = [
@@ -51,7 +52,7 @@ var tips = [
   "Click on a reagent button to simulate a reaction",
   "This is a very simplified view of organic chemistry, don't expect this program to know everything",
   "Snap onto preexisting atoms to make bonds from that atom or to change the element of that atom",
-  "This website has been optimized for speed at the expense of memory usage",
+  "This website's code has been optimized for readability at the expense of speed - check out the code!",
   "This web app does not yet support stereochemistry, charges, resonance, or E-Z configuration"
 ];
 // TODO: bad practice to make so many global variables
@@ -70,6 +71,7 @@ class Atom {
     this.bondIdList = bondIdList;
     this.bondTypeList = bondTypeList;
     this.moleculeID = moleculeID;
+    this.length = -1; // because length doesn't make sense for an atom
   }
 
   delete() {
@@ -506,6 +508,7 @@ class Molecule {
     this.y2 = y2;
     this.deleted = deleted;
     this.atomIDs = atomIDs;
+    this.length = -1; // because length doesn't make sense for an atom
   }
 
   delete() {
@@ -638,7 +641,7 @@ function setup() {
   middleground.stroke(0); // Set line drawing color to black
   middleground.textSize(20);
   middleground.textAlign(CENTER, CENTER);
-  foreground.textSize(16);
+  foreground.textSize(20);
   foreground.textAlign(CENTER, CENTER);
   frameRate(60);
   pixelDensity(1);
@@ -667,8 +670,11 @@ function draw() {
     }
 
     if (renderFrame) {
-      background(255);
-      foreground.clear();
+      // clear the frame only if it is not in the intro or frameCount >= 60 (the !intro is there to prevent checking frameCount every time)
+      if (!intro || intro && frameCount >= 60) {
+        background(255);
+        foreground.clear();
+      }
 
       if (renderMiddleground) {
         middleground.clear();
@@ -678,6 +684,7 @@ function draw() {
       if (!mousePressed) {
         selectedAtom = [];
         selectedBond = [];
+        selectedMolecule = [];
       }
 
       closestDistance = selectionDistance;
@@ -685,7 +692,9 @@ function draw() {
       validBond = true;
       let bondAngle;
 
-      // cycle through all atoms
+      // TODO: refactor the below code, difficult to understand at the moment
+
+      // cycle through all atoms to render the preexisting bonds and atoms and to find selectedAtom
       for (let i = 0; i < network.length; i++) {
         let currentAtom = network[i];
         // don't even consider deleted atoms
@@ -755,7 +764,7 @@ function draw() {
             if (label !== "") {
               middleground.fill(255);
               let boundingBox = font.textBounds(label, currentAtom.x, currentAtom.y, 20, CENTER, CENTER);
-              middleground.rect(boundingBox.x-5-boundingBox.w/2, boundingBox.y-5, boundingBox.w+10, boundingBox.h+10); // TODO: figure out why this is so weird
+              middleground.rect(boundingBox.x-5-boundingBox.w/2, boundingBox.y-5+boundingBox.h/2, boundingBox.w+10, boundingBox.h+10); // TODO: figure out why this is so weird, especially with H2O
               middleground.fill(0);
               middleground.text(label, currentAtom.x, currentAtom.y);
             }
@@ -788,8 +797,18 @@ function draw() {
         }
       }
 
+      if (selectedTool === "moleculeDrag") {
+        if (selectedBond.length !== 0) {
+          selectedMolecule = molecules[selectedBond[0].moleculeID];
+          // should not need to consider selectedBond[1] since they should be in the same molecule
+        } else if (selectedAtom.length !== 0) {
+          selectedMolecule = molecules[selectedAtom.moleculeID];
+        }
+      }
+
       // calculate new bond angle
       if (selectedAtom.length !== 0 && !mousePressed && selectedTool === "bond") {
+        // when there is a selectedAtom and the mouse is not being dragged and the bond tool is selected
         if (selectedAtom.numBonds > maxBonds(selectedAtom.element)-bondType) {
           // too many bonds
           validBond = false;
@@ -832,18 +851,29 @@ function draw() {
               bondAngle = findBondAngle(previewX1,previewY1,cachedMouseX,cachedMouseY);
             }
           }
-        } else if (selectedTool === "atomDrag") {
+        } else if (selectedTool === "atomDrag" || selectedTool === "moleculeDrag") {
             // when mouse is dragged, edit the position of the selectedAtom or selectedBond
             let diffX = cachedMouseX - previousMouseX;
             let diffY = cachedMouseY - previousMouseY;
-            if (selectedBond.length !== 0) {
-              selectedBond[0].x += diffX;
-              selectedBond[0].y += diffY;
-              selectedBond[1].x += diffX;
-              selectedBond[1].y += diffY;
+            if (selectedTool === "atomDrag") {
+              if (selectedBond.length !== 0) {
+                selectedBond[0].x += diffX;
+                selectedBond[0].y += diffY;
+                selectedBond[1].x += diffX;
+                selectedBond[1].y += diffY;
+              } else {
+                selectedAtom.x += diffX;
+                selectedAtom.y += diffY;
+              }
             } else {
-              selectedAtom.x += diffX;
-              selectedAtom.y += diffY;
+              // selectedTool is moleculeDrag
+              if (selectedMolecule.length !== 0){
+                for (let i = 0; i < selectedMolecule.atomIDs.length; i++) {
+                  let currentAtom = network[selectedMolecule.atomIDs[i]];
+                  currentAtom.x += diffX;
+                  currentAtom.y += diffY;
+                }
+              }
             }
           previewX1 = cachedMouseX;
           previewX2 = cachedMouseY;
@@ -861,7 +891,7 @@ function draw() {
       }
       
       // render cyan/red selection dot
-      if (selectedAtom.length !== 0) {
+      if (selectedAtom.length !== 0 && selectedTool !== "moleculeDrag") {
         if (!validBond) {
           foreground.fill(255,0,0);
           validBond = false;
@@ -896,6 +926,93 @@ function draw() {
         selectedBond = [];
       }
 
+      // highlight selected molecule when selectedTool is moleculeDrag
+      if (selectedTool === "moleculeDrag" && selectedMolecule.length !== 0) {
+        console.log("b");
+        foreground.strokeWeight(3);
+        foreground.stroke(48,227,255);
+        foreground.fill(48,227,255);
+        for (let i = 0; i < selectedMolecule.atomIDs.length; i++) {
+          let currentAtom = network[selectedMolecule.atomIDs[i]];
+          // don't even consider deleted atoms
+          if (currentAtom.deleted) {
+            continue;
+          }
+          console.log("a" + currentAtom.id);
+            // render preexisting bonds
+            if (currentAtom.numBonds !== 0) {
+              for (let j = 0; j < currentAtom.bondIdList.length; j++) {
+                // only draw it if it's a bond from a lesser ID to a greater ID. prevents drawing the bond twice (since bonds don't go from atoms to themselves)
+                if (currentAtom.bondIdList[j] > currentAtom.id) {
+                  let adjacentAtom = network[currentAtom.bondIdList[j]];
+                  if (!adjacentAtom.deleted) {
+                    console.log(currentAtom.id + " " + adjacentAtom.id);
+                    bond(currentAtom.x, currentAtom.y, adjacentAtom.x, adjacentAtom.y, currentAtom.bondTypeList[j], foreground);
+                  }
+                }
+              }
+            }
+            
+            // render preexisting atoms
+            if (currentAtom.deleted) {
+              continue; // deleted atom
+            } else {
+            foreground.noStroke();
+              let label = currentAtom.element;
+              // account for the atom's charge, asumming it has hydrogens if it makes sense to assume so
+              if (label === "C") {
+                if (currentAtom.numBonds === 0) {
+                  label = "CH₄"
+                } else {
+                  label = "";
+                }
+              } else if (label === "O") {
+                switch (currentAtom.numBonds) {
+                  case 0:
+                    label = "H₂O";
+                    break;
+                  case 1:
+                    label = "OH";
+                    break;/*
+                  case 3:
+                    label = "O⁺"
+                    break;
+                  case 4:
+                    label = "O²⁺"*/
+                }
+              } else if (label === "N") {
+                switch (currentAtom.numBonds) {
+                  case 0:
+                    label = "NH₃";
+                    break;
+                  case 1:
+                    label = "NH₂";
+                    break;
+                  case 2:
+                    label = "NH";
+                    break;
+                  case 4:
+                    label = "N⁺"
+                    break;
+                }
+              } else if ((label === "Br" || label === "Cl" || label === "I" || label === "F" || label === "Ts") && currentAtom.numBonds === 0) {
+                label += "⁻";
+              }
+              if (label !== "") {
+                foreground.fill(255);
+                let boundingBox = font.textBounds(label, currentAtom.x, currentAtom.y, 20, CENTER, CENTER);
+                foreground.rect(boundingBox.x-5-boundingBox.w/2, boundingBox.y-5+boundingBox.h/2, boundingBox.w+10, boundingBox.h+10); // TODO: figure out why this is so weird, especially with H2O
+                foreground.fill(48,227,255);
+                foreground.text(label, currentAtom.x, currentAtom.y);
+              }
+            foreground.stroke(48,227,255);
+            }
+          }
+          console.log("asdf");
+        foreground.fill(0);
+        foreground.strokeWeight(1);
+        foreground.stroke(0);
+      }
       if (selectedTool === "bond") {
         // calculate destination atom
         destinationAtom = findClosestDestinationAtom(previewX2,previewY2,selectedAtom,network);
@@ -946,7 +1063,7 @@ function draw() {
       image(middleground, 0, 0, windowWidth, windowHeight);
       image(foreground, 0, 0, windowWidth, windowHeight);
     }
-    // determine whether or not to render the next frame
+    // render the intro screen
     if (intro) {
       if (frameCount < 120) {
         foreground.stroke(255);
@@ -960,15 +1077,19 @@ function draw() {
           foreground.fill(0);
         }
         if (frameCount === 60) {
+          // no need to render the intro while it's at full opacity
           renderFrame = true;
           renderMiddleground = true;
         }
-        foreground.textSize(144);
-        foreground.text("KyneDraw",0,windowHeight/2,windowWidth);
-        foreground.textSize(36);
-        foreground.text(tip,0,windowHeight*3/4,windowWidth)
-        foreground.stroke(0);
-        image(foreground, 0, 0, windowWidth, windowHeight);
+        if (frameCount === 1 || frameCount > 60) {
+          foreground.textSize(144);
+          foreground.text("KyneDraw",0,windowHeight/2,windowWidth);
+          foreground.textSize(36);
+          foreground.text(tip,0,windowHeight*3/4,windowWidth)
+          foreground.textSize(20);
+          foreground.stroke(0);
+          image(foreground, 0, 0, windowWidth, windowHeight);
+        }
       } else if (frameCount >= 120) {
         intro = false;
       }
@@ -1082,7 +1203,7 @@ function drawBackground() {
     var newGraphics = createGraphics(windowWidth,windowHeight);
     foreground = newGraphics;
     newGraphics.remove();
-    middleground.textSize(20);
+    foreground.textSize(20);
     foreground.textAlign(CENTER, CENTER);
   }
   renderFrame = true;
