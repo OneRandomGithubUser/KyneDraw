@@ -49,13 +49,17 @@
           </div>
         </div>
         <div class="dropdown">
-          <button class="button square-button dropdown-header" id="drag-tools" onclick="selectBox(-1)">Drag Tools</button>
+          <button class="button square-button dropdown-header" id="drag-delete-tools" onclick="selectBox(-1)">Drag/ Delete Tools</button>
           <div class="dropdown-content">
             <div class="selectable-button square">
-              <input type="radio" id="atom-drag" name="tool" onclick="selectBox(14)" />
-                <label for="atom-drag" id="atom-drag">Atom Drag</label>
+              <input type="radio" id="atom-bond-drag" name="tool" onclick="selectBox(14)" />
+                <label for="atom-bond-drag" id="atom-bond-drag">Atom/ Bond Drag</label>
               <input type="radio" id="molecule-drag" name="tool" onclick="selectBox(15)" />
                 <label for="molecule-drag" id="molecule-drag">Molecule Drag</label>
+              <input type="radio" id="atom-bond-delete" name="tool" onclick="selectBox(16)" />
+                <label for="atom-bond-delete" id="atom-bond-delete">Atom/ Bond Delete</label>
+              <input type="radio" id="molecule-delete" name="tool" onclick="selectBox(17)" />
+                <label for="molecule-delete" id="molecule-delete">Molecule Delete</label>
             </div>
           </div>
         </div>

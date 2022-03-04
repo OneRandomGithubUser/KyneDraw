@@ -75,8 +75,8 @@ class Atom {
   }
 
   delete() {
-    for (let i = 0; i < this.bondIdList.length; i++) {
-      let currentAtom = network[i];
+    while (this.bondIdList.length > 0) {
+      let currentAtom = network[this.bondIdList[0]];
       currentAtom.removeBondWith(this);
     }
     molecules[this.moleculeID].removeAtom(this);
@@ -276,6 +276,9 @@ class Atom {
   }
 
   removeBondWith(atom2) {
+    if (!this.bondIdList.includes(atom2.id)) {
+      return false;
+    }
     let currentIndex = this.bondIdList.indexOf(atom2.id);
     if (currentIndex !== -1) {
       molecules[this.moleculeID].removeBondBetween(this, atom2);
@@ -515,8 +518,9 @@ class Molecule {
 
   delete() {
     for (let i = 0; i < this.atomIDs.length; i++) {
-      let currentAtom = network[i];
-      currentAtom.delete();
+      let currentAtom = network[this.atomIDs[i]];
+      currentAtom.deleted = true;
+      currentAtom.clearData();
     }
     this.deleted = true;
     this.clearData();
@@ -584,7 +588,7 @@ class Molecule {
       throw new Error("referenced deleted atom - delete atom AFTER molecule.remove(atom)");
     }
     if (!this.atomIDs.includes(atom.id)) {
-      throw new Error("tried to remove atom from molecule it's not in");
+      return false;
     }
     this.atomIDs.splice(this.atomIDs.indexOf(atom.id), 1);
     for (let i = 0; i < atom.bondIdList.length; i++) {
@@ -639,6 +643,9 @@ class Molecule {
     if (atom1.deleted || atom2.deleted) {
       throw new Error("removeBondBetween referenced deleted atoms");
     }
+    if (!this.atomIDs.includes(atom1.id) || !this.atomIDs.includes(atom2.id)) {
+      return false;
+    }
     if (!atom1.bondIdList.includes(atom2.id)) {
       throw new Error("molecule.removeBondBetween must be called on two atoms that currently have a bond");
     }
@@ -674,7 +681,7 @@ class Molecule {
       throw new Error("isBridge referenced deleted atoms");
     }
     if (!this.atomIDs.includes(atom1.id) || !this.atomIDs.includes(atom2.id)) {
-      throw new Error("isBridge atoms not in molecule");
+      return false;
     }
     let seenNetwork = {};
     seenNetwork[atom1.id] = true;
@@ -750,6 +757,15 @@ function draw() {
       // this is a joke feature. continually clears the frame and then makes a random molecule
       clickButton(11);
       clickButton(12);
+      clickButton(12);
+      clickButton(12);
+      clickButton(12);
+      clickButton(12);
+      clickButton(12);
+      clickButton(12);
+      clickButton(12);
+      clickButton(12);
+      clickButton(12);
     }
 
     if (somethingClicked) {
@@ -816,7 +832,7 @@ function draw() {
         }
       }
 
-      if (selectedTool === "moleculeDrag") {
+      if (selectedTool === "moleculeDrag" || selectedTool === "moleculeDelete") {
         if (selectedBond.length !== 0) {
           selectedMolecule = molecules[selectedBond[0].moleculeID];
           // should not need to consider selectedBond[1] since they should be in the same molecule
@@ -880,9 +896,11 @@ function draw() {
                 selectedBond[0].y += diffY;
                 selectedBond[1].x += diffX;
                 selectedBond[1].y += diffY;
+                molecules[selectedBond[0].moleculeID].recalculateBounds();
               } else {
                 selectedAtom.x += diffX;
                 selectedAtom.y += diffY;
+                molecules[selectedAtom.moleculeID].recalculateBounds();
               }
             } else {
               // selectedTool is moleculeDrag
@@ -934,7 +952,6 @@ function draw() {
           }
         }
         // render atoms
-        middleground.noStroke();
         for (let i = 0; i < network.length; i++) {
           let currentAtom = network[i];
           if (currentAtom.deleted) {
@@ -981,6 +998,7 @@ function draw() {
             label += "⁻";
           }
           if (label !== "") {
+            middleground.noStroke();
             middleground.fill(255);
             let boundingBox = font.textBounds(label, currentAtom.x, currentAtom.y, 20, CENTER, CENTER);
             middleground.rect(boundingBox.x-5-boundingBox.w/2, boundingBox.y-5+boundingBox.h/2, boundingBox.w+10, boundingBox.h+10); // TODO: figure out why this is so weird, especially with H2O
@@ -991,8 +1009,8 @@ function draw() {
       }
       
       // render cyan/red selection dot
-      if (selectedAtom.length !== 0 && selectedTool !== "moleculeDrag") {
-        if (!validBond) {
+      if (selectedAtom.length !== 0 && selectedTool !== "moleculeDrag" && selectedTool !== "moleculeDelete") {
+        if (!validBond || selectedTool === "atomDelete") {
           foreground.fill(255,0,0);
           validBond = false;
         } else {
@@ -1004,16 +1022,16 @@ function draw() {
       }
 
       // highlight selected bond when selectedTool is bond or atom drag
-      if (selectedAtom.length === 0 && selectedBond.length !== 0 && (selectedTool === "bond" || selectedTool === "atomDrag")) {
+      if (selectedAtom.length === 0 && selectedBond.length !== 0 && (selectedTool === "bond" || selectedTool === "atomDrag" || selectedTool === "atomDelete")) {
         let color;
-        if (selectedTool === "bond" && (selectedBond[0].numBonds - selectedBond[2] + bondType > maxBonds(selectedBond[0].element) || selectedBond[1].numBonds - selectedBond[2] + bondType > maxBonds(selectedBond[1].element))) {
-          // don't change selected bond if it would cause too many bonds only when the selectedTool is bond
+        if (selectedTool === "bond" && (selectedBond[0].numBonds - selectedBond[2] + bondType > maxBonds(selectedBond[0].element) || selectedBond[1].numBonds - selectedBond[2] + bondType > maxBonds(selectedBond[1].element)) || selectedTool === "atomDelete") {
+          // highlight red to not change selected bond if it would cause too many bonds only when the selectedTool is bond, or when the selectedTool is atomDelete
           color = [255,0,0];
           highlightedBond(selectedBond[0].x, selectedBond[0].y, selectedBond[1].x, selectedBond[1].y, selectedBond[2], color, foreground);
           if (selectedTool === "bond") {
             bond(selectedBond[0].x, selectedBond[0].y, selectedBond[1].x, selectedBond[1].y, bondType, foreground);
+            selectedBond = [];
           }
-          selectedBond = [];
         } else {
           color = [48,227,255];
           highlightedBond(selectedBond[0].x, selectedBond[0].y, selectedBond[1].x, selectedBond[1].y, selectedBond[2], color, foreground);
@@ -1026,13 +1044,18 @@ function draw() {
         selectedBond = [];
       }
 
-      // highlight selected molecule when selectedTool is moleculeDrag
-      if (selectedTool === "moleculeDrag" && selectedMolecule.length !== 0) {
+      // highlight selected molecule when selectedTool is moleculeDrag or moleculeDelete
+      if ((selectedTool === "moleculeDrag" || selectedTool === "moleculeDelete") && selectedMolecule.length !== 0) {
         foreground.strokeWeight(3);
         foreground.noFill();
         foreground.rect(selectedMolecule.x1, selectedMolecule.y1, selectedMolecule.x2-selectedMolecule.x1, selectedMolecule.y2-selectedMolecule.y1);
-        foreground.stroke(48,227,255);
-        foreground.fill(48,227,255);
+        if (selectedTool === "moleculeDrag") {
+          foreground.stroke(48,227,255);
+          foreground.fill(48,227,255);
+        } else {
+          foreground.stroke(255,0,0);
+          foreground.fill(255,0,0);
+        }
         for (let i = 0; i < selectedMolecule.atomIDs.length; i++) {
           let currentAtom = network[selectedMolecule.atomIDs[i]];
           // don't even consider deleted atoms
@@ -1056,7 +1079,6 @@ function draw() {
             if (currentAtom.deleted) {
               continue; // deleted atom
             } else {
-            foreground.noStroke();
               let label = currentAtom.element;
               // account for the atom's charge, asumming it has hydrogens if it makes sense to assume so
               if (label === "C") {
@@ -1098,13 +1120,20 @@ function draw() {
                 label += "⁻";
               }
               if (label !== "") {
+                foreground.noStroke();
                 foreground.fill(255);
                 let boundingBox = font.textBounds(label, currentAtom.x, currentAtom.y, 20, CENTER, CENTER);
                 foreground.rect(boundingBox.x-5-boundingBox.w/2, boundingBox.y-5+boundingBox.h/2, boundingBox.w+10, boundingBox.h+10); // TODO: figure out why this is so weird, especially with H2O
-                foreground.fill(48,227,255);
-                foreground.text(label, currentAtom.x, currentAtom.y);
+                if (selectedTool === "moleculeDrag") {
+                  foreground.fill(48,227,255);
+                  foreground.text(label, currentAtom.x, currentAtom.y);
+                  foreground.stroke(48,227,255);
+                } else {
+                  foreground.fill(255,0,0);
+                  foreground.text(label, currentAtom.x, currentAtom.y);
+                  foreground.stroke(255,0,0);
+                }
               }
-            foreground.stroke(48,227,255);
             }
           }
         foreground.fill(0);
@@ -1457,8 +1486,17 @@ function clickButton(selectedBox) {
       break;
     case 12:
       let startingID = nextAtomID;
-      let x = windowWidth/2+(Math.random()-0.5)*windowWidth/5;
-      let y = windowHeight/2+(Math.random()-0.5)*windowHeight/5;
+      let x;
+      let y;
+      if (hackerman) {
+        // allow random molecules to go anywhere in hackerman
+        x = Math.random()*windowWidth;
+        y = Math.random()*windowHeight;
+      } else {
+        // keep random molecules close to the center of the screen
+        x = windowWidth/2+(Math.random()-0.5)*windowWidth/2;
+        y = windowHeight/2+(Math.random()-0.5)*windowHeight/2;
+      }
       network.push(new Atom(nextAtomID, "C", x, y, 0, false, 330, [], [], nextMoleculeID));
       molecules.push(new Molecule(nextMoleculeID, x, y, x, y, false, [nextAtomID]));
       nextAtomID++;
@@ -1503,6 +1541,12 @@ function clickButton(selectedBox) {
     case 15:
       selectedTool = "moleculeDrag";
       break;
+    case 16:
+      selectedTool = "atomDelete";
+      break;
+    case 17:
+      selectedTool = "moleculeDelete";
+      break;
     case 19:
       for (let i = 0; i < network.length; i++) {
         let currentAtom = network[i];
@@ -1518,7 +1562,7 @@ function clickButton(selectedBox) {
         if (currentAtom.deleted) {
           continue;
         }
-        currentAtom.alkeneAdditionOf2("O","",2,1);
+        currentAtom.alkeneAdditionOf("O","",2,1);
       }
       break;
     case 21:
@@ -2126,6 +2170,16 @@ function clickButton(selectedBox) {
         nextAtomID++;
         nextMoleculeID++;
       }
+    } else if (selectedTool === "atomDelete") {
+      if (selectedBond.length !== 0) {
+        selectedBond[0].delete();
+        selectedBond[1].delete();
+        selectedBond[0].removeBondWith(selectedBond[1]);
+      } else {
+        selectedAtom.delete();
+      }
+    } else if (selectedTool === "moleculeDelete" && selectedMolecule.length !== 0) {
+      selectedMolecule.delete();
     }
   }
   renderFrame = true;

@@ -153,16 +153,24 @@ body {
   left: 115px;
 }
 
-#drag-tools {
+#drag-delete-tools {
   top: 20px;
   left: 210px;
 }
-#atom-drag {
+#atom-bond-drag {
   top: 95px;
   left: 210px;
 }
 #molecule-drag {
   top: 170px;
+  left: 210px;
+}
+#atom-bond-delete {
+  top: 245px;
+  left: 210px;
+}
+#molecule-delete {
+  top: 320px;
   left: 210px;
 }
 
