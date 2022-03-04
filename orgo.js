@@ -20,8 +20,8 @@ const selectionDistance = 15;
 const destinationDistance = 5;
 var mousePressed = false;
 var selectedBox = 0;
-const minWidth = 905;
-const minHeight = 720;
+const minWidth = 900;
+const minHeight = 715;
 let windowHeight = 0;
 let windowLength = 0;
 let previousWindowHeight = 0;
@@ -75,11 +75,12 @@ class Atom {
   }
 
   delete() {
-    this.deleted = true;
     for (let i = 0; i < this.bondIdList.length; i++) {
       let currentAtom = network[i];
       currentAtom.removeBondWith(this);
     }
+    molecules[this.moleculeID].removeAtom(this);
+    this.deleted = true;
     this.clearData();
     return true;
   }
@@ -277,6 +278,7 @@ class Atom {
   removeBondWith(atom2) {
     let currentIndex = this.bondIdList.indexOf(atom2.id);
     if (currentIndex !== -1) {
+      molecules[this.moleculeID].removeBondBetween(this, atom2);
       let bonds = this.bondTypeList[currentIndex];
       this.bondIdList.splice(currentIndex, 1);
       this.bondTypeList.splice(currentIndex, 1);
@@ -512,17 +514,13 @@ class Molecule {
   }
 
   delete() {
-    this.deleted = true;
-    for (let i = 0; i < atomIDs.length; i++) {
+    for (let i = 0; i < this.atomIDs.length; i++) {
       let currentAtom = network[i];
       currentAtom.delete();
     }
+    this.deleted = true;
     this.clearData();
     return true;
-  }
-
-  changeMoleculeNumber() {
-    // TODO
   }
 
   addNewAtom(atom) {
@@ -543,6 +541,56 @@ class Molecule {
       this.y2 = atom.y;
     }
     atom.moleculeID = this.id;
+  }
+
+  recalculateBounds() {
+    if (this.deleted) {
+      throw new Error("referenced deleted molecule");
+    }
+    if (this.atomIDs.length === 0) {
+      throw new Error("tried to recalculate x1 of empty molecule")
+    }
+    let x1 = network[this.atomIDs[0]].x;
+    let y1 = network[this.atomIDs[0]].y;
+    let x2 = network[this.atomIDs[0]].x;
+    let y2 = network[this.atomIDs[0]].y;
+    for (let i = 0; i < this.atomIDs.length; i++) {
+      let currentAtom = network[this.atomIDs[i]];
+      if (currentAtom.x < x1) {
+        x1 = currentAtom.x;
+      }
+      if (currentAtom.y < y1) {
+        y1 = currentAtom.y;
+      }
+      if (currentAtom.x > x2) {
+        x2 = currentAtom.x;
+      }
+      if (currentAtom.y > y2) {
+        y2 = currentAtom.y;
+      }
+    }
+    this.x1 = x1;
+    this.y1 = y1;
+    this.x2 = x2;
+    this.y2 = y2;
+  }
+
+  removeAtom(atom) {
+    // removes the atom's branches from itself, then deletes itself
+    if (this.deleted) {
+      throw new Error("referenced deleted molecule");
+    }
+    if (atom.deleted) {
+      throw new Error("referenced deleted atom - delete atom AFTER molecule.remove(atom)");
+    }
+    if (!this.atomIDs.includes(atom.id)) {
+      throw new Error("tried to remove atom from molecule it's not in");
+    }
+    this.atomIDs.splice(this.atomIDs.indexOf(atom.id), 1);
+    for (let i = 0; i < atom.bondIdList.length; i++) {
+      this.removeBondBetween(atom, network[atom.bondIdList[i]]);
+    }
+    this.delete();
   }
 
   clearData() {
@@ -584,35 +632,79 @@ class Molecule {
     molecule.deleted = true;
   }
 
+  removeBondBetween(atom1, atom2) {
+    if (this.deleted) {
+      throw new Error("removeBondBetween referenced deleted molecule");
+    }
+    if (atom1.deleted || atom2.deleted) {
+      throw new Error("removeBondBetween referenced deleted atoms");
+    }
+    if (!atom1.bondIdList.includes(atom2.id)) {
+      throw new Error("molecule.removeBondBetween must be called on two atoms that currently have a bond");
+    }
+    if (this.isBridge(atom1, atom2)) {
+      molecules.push(new Molecule(nextMoleculeID, atom2.x, atom2.y, atom2.x, atom2.y, false, []))
+      let seenNetwork = {};
+      seenNetwork[atom1.id] = true;
+      this.removeBondBetweenHelper(atom2, seenNetwork, nextMoleculeID);
+      nextMoleculeID++;
+      this.recalculateBounds();
+    }
+    return true;
+  }
+
+  removeBondBetweenHelper(atom, seenNetwork, moleculeID) {
+    seenNetwork[atom.id] = true;
+    atom.moleculeID = moleculeID;
+    molecules[nextMoleculeID].addNewAtom(atom);
+    this.atomIDs.splice(this.atomIDs.indexOf(atom.id), 1);
+    for (let i = 0; i < atom.bondIdList.length; i++) {
+      let currentAtom = network[atom.bondIdList[i]];
+      if (!seenNetwork[currentAtom.id]) {
+        this.removeBondBetweenHelper(currentAtom, seenNetwork, moleculeID);
+      }
+    }
+  }
+
   isBridge(atom1, atom2) {
     if (this.deleted) {
-      throw new Error("referenced deleted molecule");
+      throw new Error("isBridge referenced deleted molecule");
+    }
+    if (atom1.deleted || atom2.deleted) {
+      throw new Error("isBridge referenced deleted atoms");
     }
     if (!this.atomIDs.includes(atom1.id) || !this.atomIDs.includes(atom2.id)) {
-      throw new Error("idBridge atoms not in molecule");
+      throw new Error("isBridge atoms not in molecule");
     }
-    let seenNetwork = new Array(this.atomIDs.length).fill(false);
-    this.isBridgeHelper(atom1, atom2, seenNetwork);
+    let seenNetwork = {};
+    seenNetwork[atom1.id] = true;
+    seenNetwork[atom2.id] = true;
+    let ans = true;
+    for (let i = 0; i < atom1.bondIdList.length; i++) {
+      let currentAtom = network[atom1.bondIdList[i]];
+      if (currentAtom.id === atom2.id) {
+        // skip the bond between atom1 and atom2 if it exists
+        continue;
+      } else {
+        // isBridgeHelper returns false if it IS a bridge
+        ans = ans && !this.isBridgeHelper(currentAtom, atom2, seenNetwork);
+      }
+    }
+    return ans;
   }
 
   isBridgeHelper(currentAtom, targetAtom, seenNetwork) {
-    if (this.deleted) {
-      throw new Error("referenced deleted molecule");
-    }
     seenNetwork[currentAtom.id] = true;
-    let deadEnd = true;
+    let ans = false;
     for (let i = 0; i < currentAtom.bondIdList.length; i++) {
-      if (!seenNetwork[currentAtom.bondIdList[i]]) {
-        if (targetAtom.id === currentAtom.bondIdList[i]) {
-          return true;
-        }
-        this.isBridgeHelper(network[currentAtom.bondIdList[i]], targetAtom, seenNetwork);
+      let currentAtom2 = network[currentAtom.bondIdList[i]];
+      if (targetAtom.id === currentAtom2.id) {
+        return true;
+      } else if (!seenNetwork[currentAtom2.id]) {
+        ans = ans || this.isBridgeHelper(currentAtom2, targetAtom, seenNetwork);
       }
-      deadEnd = false;
     }
-    if (deadEnd) {
-      return false;
-    }
+    return ans;
   }
 }
 
@@ -651,6 +743,7 @@ function setup() {
 
 function draw() {
   try {
+    // parseInt so that cachedMouseX and cachedMouseY don't keep changing during rending
     let cachedMouseX = parseInt(mouseX);
     let cachedMouseY = parseInt(mouseY);
     if (hackerman && frameCount%3 === 0) {
@@ -794,6 +887,10 @@ function draw() {
             } else {
               // selectedTool is moleculeDrag
               if (selectedMolecule.length !== 0){
+                selectedMolecule.x1 += diffX;
+                selectedMolecule.y1 += diffY;
+                selectedMolecule.x2 += diffX;
+                selectedMolecule.y2 += diffY;
                 for (let i = 0; i < selectedMolecule.atomIDs.length; i++) {
                   let currentAtom = network[selectedMolecule.atomIDs[i]];
                   currentAtom.x += diffX;
@@ -932,6 +1029,8 @@ function draw() {
       // highlight selected molecule when selectedTool is moleculeDrag
       if (selectedTool === "moleculeDrag" && selectedMolecule.length !== 0) {
         foreground.strokeWeight(3);
+        foreground.noFill();
+        foreground.rect(selectedMolecule.x1, selectedMolecule.y1, selectedMolecule.x2-selectedMolecule.x1, selectedMolecule.y2-selectedMolecule.y1);
         foreground.stroke(48,227,255);
         foreground.fill(48,227,255);
         for (let i = 0; i < selectedMolecule.atomIDs.length; i++) {
@@ -1309,6 +1408,9 @@ function mouseClicked() {
 
 function clickButton(selectedBox) {
   switch (selectedBox) {
+    case -1:
+      // -1 is when the dropdown menu heading is clicked, so do nothing
+      break;
     case 1:
       bondType = selectedBox;
       selectedTool = "bond";
@@ -1355,8 +1457,10 @@ function clickButton(selectedBox) {
       break;
     case 12:
       let startingID = nextAtomID;
-      network.push(new Atom(nextAtomID, "C", windowWidth/2+Math.random()*windowWidth/10, windowHeight/2+Math.random()*windowHeight/10, 0, false, 330, [], [], nextMoleculeID));
-      molecules.push(new Molecule(nextMoleculeID, previewX1, previewY1, previewX1, previewY1, false, [nextAtomID]));
+      let x = windowWidth/2+(Math.random()-0.5)*windowWidth/5;
+      let y = windowHeight/2+(Math.random()-0.5)*windowHeight/5;
+      network.push(new Atom(nextAtomID, "C", x, y, 0, false, 330, [], [], nextMoleculeID));
+      molecules.push(new Molecule(nextMoleculeID, x, y, x, y, false, [nextAtomID]));
       nextAtomID++;
       nextMoleculeID++;
       let generating = true;

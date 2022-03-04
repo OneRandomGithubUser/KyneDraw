@@ -19,7 +19,7 @@
       <!-- Radio buttons adapted from https://stackoverflow.com/a/16243163 -->
       <div id="ui">
         <div class="dropdown">
-          <button class="button square-button" id="bonds">Bond Tools</button>
+          <button class="button square-button dropdown-header" id="bonds" onclick="selectBox(-1)">Bond Tools</button>
           <div class="dropdown-content">
             <div class="selectable-button square">
               <input type="radio" id="single" name="tool" checked="checked" onclick="selectBox(1)" />
@@ -32,7 +32,7 @@
           </div>
         </div>
         <div class="dropdown">
-          <button class="button square-button" id="atoms">Atom Tools</button>
+          <button class="button square-button dropdown-header" id="atoms" onclick="selectBox(-1)">Atom Tools</button>
           <div class="dropdown-content">
             <div class="selectable-button square">
               <input type="radio" id="carbon" name="tool" onclick="selectBox(6)" />
@@ -49,7 +49,7 @@
           </div>
         </div>
         <div class="dropdown">
-          <button class="button square-button" id="drag-tools">Drag Tools</button>
+          <button class="button square-button dropdown-header" id="drag-tools" onclick="selectBox(-1)">Drag Tools</button>
           <div class="dropdown-content">
             <div class="selectable-button square">
               <input type="radio" id="atom-drag" name="tool" onclick="selectBox(14)" />
@@ -72,12 +72,12 @@
             <label for="hackerman" id="hackerman">HACKER MAN</label>
         </div>
         <div class="dropdown">
-          <button class="button long-button" id="sn-e">S<sub>N</sub>2/E2/S<sub>N</sub>1/E1 Reactions</button>
+          <button class="button long-button dropdown-header" id="sn-e" onclick="selectBox(-1)">S<sub>N</sub>2/E2/S<sub>N</sub>1/E1 Reactions</button>
           <div class="dropdown-content">
           </div>
         </div>
         <div class="dropdown">
-          <button class="button long-button" id="alkene-addition">Alkene/Alkyne Addition</button>
+          <button class="button long-button dropdown-header" id="alkene-addition" onclick="selectBox(-1)">Alkene/Alkyne Addition</button>
           <div class="dropdown-content">
             <button class="button long-button" id="ring-metathesis" onclick="selectBox(36)"><p>Ring-Closing Metathesis (regular Metathesis soon)<br>Grubb's Catalyst</p></button>
             <button class="button long-button" id="hbr-addition" onclick="selectBox(23)"><p>HBr Addition<br>HBr</p></button>
@@ -91,7 +91,7 @@
           </div>
         </div>
         <div class="dropdown">
-          <button class="button long-button" id="alkene-oxidation">Alkene/Alkyne Oxidation</button>
+          <button class="button long-button dropdown-header" id="alkene-oxidation" onclick="selectBox(-1)">Alkene/Alkyne Oxidation</button>
           <div class="dropdown-content">
             <button class="button long-button" id="acid-hydration" onclick="selectBox(19)"><p>Acid Hydration<br>H<sup>+</sup>, H<sub>2</sub>O</p></button>
             <button class="button long-button" id="oxymercuration" onclick="selectBox(28)"><p>Oxymercuration/Reduction<br>i. Hg(OAc)<sub>2</sub>, H<sub>2</sub>O, ii. BH<sub>4</sub></p></button>
@@ -106,7 +106,7 @@
           </div>
         </div>
         <div class="dropdown">
-          <button class="button long-button" id="alcohol-reactions">Alcohol Reactions</button>
+          <button class="button long-button dropdown-header" id="alcohol-reactions" onclick="selectBox(-1)">Alcohol Reactions</button>
           <div class="dropdown-content">
             <button class="button long-button" id="gringard-formation" onclick="selectBox(46)"><p>Formation of Grignard<br>Mg</p></button>
             <button class="button long-button" id="organolithiate-formation" onclick="selectBox(47)"><p>Formation of Organolithiate<br>2 equiv. Li</p></button>
