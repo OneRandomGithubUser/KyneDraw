@@ -243,6 +243,16 @@ class Atom {
     }
   }
 
+  changeNumBonds(changeNumBonds, optionalSetCharge = this.charge) {
+    // changes numBonds and also updates charge and numH, minimizing charge unless the change in charge is explicitly stated or 
+    this.numBonds += changeNumBonds;
+    this.charge = optionalSetCharge;
+    if (this.isHalideIon()) {}
+    if (this.numBonds < this.charge) {
+      this.numH = 0;
+    }
+  }
+
   createBondWith(atom2, bondType) {
     this.bondIdList.push(atom2.id);
     atom2.bondIdList.push(this.id);
@@ -379,12 +389,16 @@ class Atom {
     return (this.element === "Br" || this.element === "Cl" || this.element === "F" || this.element === "I" || this.element === "Ts") && this.numBonds === 1 && this.bondIdList.length == 1 && network[this.bondIdList[0]].element === "C";
   }
 
+  isHalideIon() {
+    return (this.element === "Br" || this.element === "Cl" || this.element === "F" || this.element === "I") && this.numBonds === 0 && this.bondIdList.length == 0 && this.numH === 0;
+  }
+
   isHalide() {
     return (this.element === "Br" || this.element === "Cl" || this.element === "F" || this.element === "I") && this.numBonds === 1 && this.bondIdList.length == 1 && network[this.bondIdList[0]].element === "C";
   }
 
   isLithiate() {
-    return (this.element === "Li") && this.numBonds === 1 && this.bondIdList.length == 1 && network[this.bondIdList[0]].element === "C";
+    return this.element === "Li" && this.numBonds === 1 && this.bondIdList.length == 1 && network[this.bondIdList[0]].element === "C";
   }
 
   isBenzene() {
@@ -1047,8 +1061,8 @@ function draw() {
       // highlight selected molecule when selectedTool is moleculeDrag or moleculeDelete
       if ((selectedTool === "moleculeDrag" || selectedTool === "moleculeDelete") && selectedMolecule.length !== 0) {
         foreground.strokeWeight(3);
-        foreground.noFill();
-        foreground.rect(selectedMolecule.x1, selectedMolecule.y1, selectedMolecule.x2-selectedMolecule.x1, selectedMolecule.y2-selectedMolecule.y1);
+        // DEBUG: foreground.noFill();
+        // DEBUG: foreground.rect(selectedMolecule.x1, selectedMolecule.y1, selectedMolecule.x2-selectedMolecule.x1, selectedMolecule.y2-selectedMolecule.y1);
         if (selectedTool === "moleculeDrag") {
           foreground.stroke(48,227,255);
           foreground.fill(48,227,255);
@@ -1422,6 +1436,20 @@ function bond(x1,y1,x2,y2,num,frame) {
 function maxBonds(element) {
   if (element === "C" || element === "N") {
     return 4;
+  } else if (element === "O") {
+    return 2;
+  } else if (element === "Br" || element === "Cl" || element === "Ts" || element === "I" || element === "F" || element === "OTBS") {
+    return 1;
+  } else {
+    return -1;
+  }
+}
+
+function valenceOf(element) {
+  if (element === "C") {
+    return 4;
+  } else if (element === "N") {
+    return 3;
   } else if (element === "O") {
     return 2;
   } else if (element === "Br" || element === "Cl" || element === "Ts" || element === "I" || element === "F" || element === "OTBS") {
