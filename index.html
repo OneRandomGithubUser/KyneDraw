@@ -63,6 +63,21 @@
             </div>
           </div>
         </div>
+        <div class="dropdown">
+          <button class="button square-button dropdown-header" id="charge-h-tools" onclick="selectBox(-1)">Charge/<br>H Tools</button>
+          <div class="dropdown-content">
+            <div class="selectable-button square">
+              <input type="radio" id="add-charge" name="tool" onclick="selectBox(-2)" />
+                <label for="add-charge" id="add-charge">-1 Electron Pair</label>
+              <input type="radio" id="subtract-charge" name="tool" onclick="selectBox(-3)" />
+                <label for="subtract-charge" id="subtract-charge">+1 Electron Pair</label>
+              <input type="radio" id="add-h" name="tool" onclick="selectBox(-4)" />
+                <label for="add-h" id="add-h">+H</label>
+              <input type="radio" id="subtract-h" name="tool" onclick="selectBox(-5)" />
+                <label for="subtract-h" id="subtract-h">-H</label>
+            </div>
+          </div>
+        </div>
         <div class="selectable-button thin">
           <input type="radio" id="snap" name="bond-type" checked="checked" onclick="selectBox(5)" />
             <label for="snap" id="snap">SNAP BONDS</label>

@@ -9,7 +9,7 @@ body {
 
 #ui {
   position: absolute;
-  min-width: 905px;
+  min-width: 1000px;
   width: 100%;
   min-height: 720px;
   height: 100%;
@@ -172,6 +172,27 @@ body {
 #molecule-delete {
   top: 320px;
   left: 210px;
+}
+
+#charge-h-tools {
+  top: 20px;
+  left: 305px;
+}
+#add-charge {
+  top: 95px;
+  left: 305px;
+}
+#subtract-charge {
+  top: 170px;
+  left: 305px;
+}
+#add-h {
+  top: 245px;
+  left: 305px;
+}
+#subtract-h {
+  top: 320px;
+  left: 305px;
 }
 
 #freeform {

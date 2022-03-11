@@ -20,7 +20,7 @@ const selectionDistance = 15;
 const destinationDistance = 5;
 var mousePressed = false;
 var selectedBox = 0;
-const minWidth = 900;
+const minWidth = 995;
 const minHeight = 715;
 let windowHeight = 0;
 let windowLength = 0;
@@ -29,7 +29,7 @@ let previousWindowWidth = 0;
 var previousMouseX = 0.0;
 var previousMouseY = 0.0;
 var angleSnap = true;
-var validBond = true;
+var validAction = true;
 let background2;
 let middleground;
 let foreground;
@@ -248,19 +248,20 @@ class Atom {
   }
 
   changeNumBonds(changeNumBonds) {
-    // changes numBonds and also updates charge and numH, maximizing numH and minimizing charge if possible
+    // changes numBonds such that this.numH + this.numBonds - this.charge = valenceOf(this.element), minimizing charge if possible
     this.numBonds += changeNumBonds;
     this.numH -= changeNumBonds;
-    if (this.numBonds > valenceOf(this.element)) {
-      // if too many bonds on an atom, put the extra on a charge
-      this.numH = 0;
-      this.charge = this.numBonds - valenceOf(this.element);
-    } else {
-      this.charge = 0;
-      this.numH = valenceOf(this.element) - this.numBonds;
-    }
     if (this.numH < 0) {
-      throw new Error("negative numH on an atom");
+      this.charge += this.numH;
+      this.numH = 0;
+    } else if (this.numH > 0 && this.charge > 0) {
+      if (this.numH > this.charge) {
+        this.numH -= this.charge;
+        this.charge = 0;
+      } else {
+        this.charge -= this.numH;
+        this.numH = 0;
+      }
     }
   }
 
@@ -324,6 +325,7 @@ class Atom {
   }
   
   updateNumBonds() {
+    // TODO: change updateNumBonds to changeNumBonds for consistent behavior
     let numBonds = 0;
     for (let i = 0; i < this.bondTypeList.length; i++) {
       numBonds += this.bondTypeList[i];
@@ -394,7 +396,7 @@ class Atom {
   findBondAngleWith(atom2) {
     return findBondAngle(this.x, this.y, atom2.x, atom2.y);
   }
-    
+
   isHydroxyl() {
     return this.element === "O" && this.numBonds === 1 && network[this.bondIdList[0]].element === "C";
   }
@@ -786,11 +788,11 @@ function setup() {
 
 function draw() {
   try {
-    // parseInt so that cachedMouseX and cachedMouseY don't keep changing during rending
+    // parseInt so that cachedMouseX and cachedMouseY don't keep changing during rending, i think
     let cachedMouseX = parseInt(mouseX);
     let cachedMouseY = parseInt(mouseY);
     if (hackerman && frameCount%3 === 0) {
-      // this is a joke feature. continually clears the frame and then makes a random molecule
+      // this is a joke feature. continually clears the frame and then makes 10 random molecules
       clickButton(11);
       clickButton(12);
       clickButton(12);
@@ -834,7 +836,6 @@ function draw() {
 
       closestDistance = selectionDistance;
       let closestBondDistance = selectionDistance;
-      validBond = true;
       let bondAngle;
 
       // calculate closest selected atom/bond as long as the mouse is not being dragged
@@ -852,7 +853,7 @@ function draw() {
             closestDistance = distance;
             selectedAtom = currentAtom;
           }
-          if (selectedAtom.length === 0 && selectedTool !== "atom") {
+          if (selectedAtom.length === 0 && selectedTool !== "atom" && selectedTool !== "chargeH") {
             // find closest bond if there is no closest atom when the selectedTool is bond or drag
             for (let j = 0; j < currentAtom.bondIdList.length; j++) {
               let currentAtom2 = network[currentAtom.bondIdList[j]];
@@ -879,10 +880,11 @@ function draw() {
 
       // calculate new bond angle
       if (selectedAtom.length !== 0 && !mousePressed && selectedTool === "bond") {
+        validAction = true;
         // when there is a selectedAtom and the mouse is not being dragged and the bond tool is selected
         if (selectedAtom.numBonds > maxBonds(selectedAtom.element)-bondType) {
           // too many bonds
-          validBond = false;
+          validAction = false;
         } else {
           bondAngle = selectedAtom.getNextBondAngleOf(bondType);
         }
@@ -891,11 +893,21 @@ function draw() {
         previewX2 = selectedAtom.x + Math.cos(toRadians(360-bondAngle))*bondLength;
         previewY2 = selectedAtom.y + Math.sin(toRadians(360-bondAngle))*bondLength;
       } else if (selectedAtom.length !== 0 && !mousePressed) {
-        // when only one point is selected, not two, when selectedTool is atom or drag
+        validAction = true;
+        // when only one point is selected, not two, when selectedTool is atom or drag or chargeH
         previewX1 = selectedAtom.x;
         previewY1 = selectedAtom.y;
-        if (selectedAtom.numBonds > maxBonds(element)) {
-          validBond = false;
+        if (selectedTool !== "chargeH" && selectedAtom.numBonds > maxBonds(element)) {
+          validAction = false;
+        } else if (selectedTool === "chargeH") {
+          // avoid causing a negative numH
+          if (element === "-H" && selectedAtom.numH <= 0 || element === "+H" && selectedAtom.numBonds + selectedAtom.numH >= valenceElectronsOf(selectedAtom.element)) {
+            validAction = false;
+          } else if (element === "+2𝑒" && selectedAtom.numH + selectedAtom.numBonds - selectedAtom.charge >= valenceOf(selectedAtom.element) - 1 || element === "-2𝑒" && selectedAtom.numH + selectedAtom.numBonds + selectedAtom.charge >= valenceElectronsOf(selectedAtom.element) - 1) {
+            // the number of unbonded electrons is valenceElectronsOf(selectedAtom.element) - 2 * (selectedAtom.numH + selectedAtom.numBonds) + selectedAtom.charge
+            // the maximum number of unbonded electrons (full octet) is when selectedAtom.numH + selectedAtom.numBonds - selectedAtom.charge = valenceOf(selectedAtom.element)
+            validAction = false;
+          }
         } else {
           bondAngle = 330;
         }
@@ -905,9 +917,10 @@ function draw() {
           if (angleSnap) {
             if (selectedAtom.numBonds > maxBonds(selectedAtom.element)-bondType) {
               // too many bonds
-              validBond = false;
+              validAction = false;
             } else {
               bondAngle = Math.floor((findBondAngle(previewX1,previewY1,cachedMouseX,cachedMouseY)+15)/30)*30;
+              validAction = true;
               // round bond angle to nearest 30 degrees
             }
             previewX2 = previewX1 + Math.cos(toRadians(360-bondAngle))*bondLength;
@@ -917,48 +930,49 @@ function draw() {
             previewY2 = cachedMouseY;
             if (selectedAtom.numBonds > maxBonds(selectedAtom.element)-bondType) {
               // too many bonds
-              validBond = false;
+              validAction = false;
             } else {
               bondAngle = findBondAngle(previewX1,previewY1,cachedMouseX,cachedMouseY);
+              validAction = true;
             }
           }
         } else if (selectedTool === "atomDrag" || selectedTool === "moleculeDrag") {
-            // when mouse is dragged, edit the position of the selectedAtom or selectedBond
-            let diffX = cachedMouseX - previousMouseX;
-            let diffY = cachedMouseY - previousMouseY;
-            if (selectedTool === "atomDrag") {
-              if (selectedBond.length !== 0) {
-                selectedBond[0].x += diffX;
-                selectedBond[0].y += diffY;
-                selectedBond[1].x += diffX;
-                selectedBond[1].y += diffY;
-                molecules[selectedBond[0].moleculeID].recalculateBounds();
-              } else {
-                selectedAtom.x += diffX;
-                selectedAtom.y += diffY;
-                molecules[selectedAtom.moleculeID].recalculateBounds();
-              }
-            } else {
-              // selectedTool is moleculeDrag
-              if (selectedMolecule.length !== 0){
-                selectedMolecule.x1 += diffX;
-                selectedMolecule.y1 += diffY;
-                selectedMolecule.x2 += diffX;
-                selectedMolecule.y2 += diffY;
-                for (let i = 0; i < selectedMolecule.atomIDs.length; i++) {
-                  let currentAtom = network[selectedMolecule.atomIDs[i]];
-                  currentAtom.x += diffX;
-                  currentAtom.y += diffY;
-                }
+          validAction = true;
+          // when mouse is dragged, edit the position of the selectedAtom or selectedBond
+          let diffX = cachedMouseX - previousMouseX;
+          let diffY = cachedMouseY - previousMouseY;
+          if (selectedTool === "atomDrag") {
+            if (selectedBond.length !== 0) {
+              selectedBond[0].x += diffX;
+              selectedBond[0].y += diffY;
+              selectedBond[1].x += diffX;
+              selectedBond[1].y += diffY;
+              molecules[selectedBond[0].moleculeID].recalculateBounds();
+            } else if (selectedAtom.length !== 0) {
+              selectedAtom.x += diffX;
+              selectedAtom.y += diffY;
+              molecules[selectedAtom.moleculeID].recalculateBounds();
+            }
+          } else {
+            // selectedTool is moleculeDrag
+            if (selectedMolecule.length !== 0){
+              selectedMolecule.x1 += diffX;
+              selectedMolecule.y1 += diffY;
+              selectedMolecule.x2 += diffX;
+              selectedMolecule.y2 += diffY;
+              for (let i = 0; i < selectedMolecule.atomIDs.length; i++) {
+                let currentAtom = network[selectedMolecule.atomIDs[i]];
+                currentAtom.x += diffX;
+                currentAtom.y += diffY;
               }
             }
+          }
           previewX1 = cachedMouseX;
           previewX2 = cachedMouseY;
             // TODO: snap if the selectedAtom is now within an acceptable distance from one of its bonded atoms
-        } else {
-          // selectedTool is moleculeDrag
         }
       } else {
+        validAction = true;
         // no selectedAtom
         previewX1 = cachedMouseX;
         previewY1 = cachedMouseY;
@@ -995,70 +1009,38 @@ function draw() {
           }
           let label = "";
           if (currentAtom.element !== "C" || currentAtom.element === "C" && currentAtom.numBonds === 0) {
-            if (currentAtom.numH > 0) {
-              label += "H"
-            }
             if (currentAtom.numH > 1) {
               let subscript = ["₀","₁","₂","₃","₄","₅","₆","₇","₈","₉"];
               let tens = currentAtom.numH;
               while (tens !== 0) {
-                label += subscript[tens%10];
+                label = subscript[tens%10] + label;
                 tens = Math.floor(tens/10);
               }
             }
-          }
-          if (currentAtom.charge > 1) {
-            let superscript = ["⁰","¹","²","³","⁴","⁵","⁶","⁷","⁸","⁹"];
-            let tens = Math.abs(currentAtom.charge);
-            while (tens !== 0) {
-              label += superscript[tens%10];
-              tens = Math.floor(tens/10);
+            if (currentAtom.numH > 0) {
+              label = "H" + label;
             }
-          }
-          if (currentAtom.charge > 0) {
-            label += "⁺";
-          } else if (currentAtom.charge < 0) {
-            label += "⁻";
           }
           if (currentAtom.element === "O" && currentAtom.numH >= 2 || currentAtom.isHydrogenHalide()) {
             label += currentAtom.element;
           } else if (currentAtom.element !== "C" || currentAtom.element === "C" && currentAtom.numBonds === 0) {
             label = currentAtom.element + label;
           }
-          /*
-          if (label === "C") {
-            if (currentAtom.numBonds === 0) {
-              label = "CH₄"
-            } else {
-              label = "";
+          if (Math.abs(currentAtom.charge) > 1) {
+            let temp = "";
+            let superscript = ["⁰","¹","²","³","⁴","⁵","⁶","⁷","⁸","⁹"];
+            let tens = Math.abs(currentAtom.charge);
+            while (tens !== 0) {
+              temp = superscript[tens%10] + temp;
+              tens = Math.floor(tens/10);
             }
-          } else if (label === "O") {
-            switch (currentAtom.numBonds) {
-              case 0:
-                label = "H₂O";
-                break;
-              case 1:
-                label = "OH";
-                break;
-            }
-          } else if (label === "N") {
-            switch (currentAtom.numBonds) {
-              case 0:
-                label = "NH₃";
-                break;
-              case 1:
-                label = "NH₂";
-                break;
-              case 2:
-                label = "NH";
-                break;
-              case 4:
-                label = "N⁺"
-                break;
-            }
-          } else if ((label === "Br" || label === "Cl" || label === "I" || label === "F" || label === "Ts") && currentAtom.numBonds === 0) {
+            label += temp;
+          }
+          if (currentAtom.charge > 0) {
+            label += "⁺";
+          } else if (currentAtom.charge < 0) {
             label += "⁻";
-          }*/
+          }
           if (label !== "") {
             middleground.noStroke();
             middleground.fill(255);
@@ -1072,12 +1054,10 @@ function draw() {
       
       // render cyan/red selection dot
       if (selectedAtom.length !== 0 && selectedTool !== "moleculeDrag" && selectedTool !== "moleculeDelete") {
-        if (!validBond || selectedTool === "atomDelete") {
+        if (!validAction || selectedTool === "atomDelete") {
           foreground.fill(255,0,0);
-          validBond = false;
         } else {
           foreground.fill(48,227,255);
-          validBond = true;
         }
         foreground.circle(selectedAtom.x,selectedAtom.y,10);
         foreground.fill(255);
@@ -1101,7 +1081,7 @@ function draw() {
             bond(selectedBond[0].x, selectedBond[0].y, selectedBond[1].x, selectedBond[1].y, bondType, foreground);
           }
         }
-        validBond = false;
+        validAction = false;
       } else {
         selectedBond = [];
       }
@@ -1144,35 +1124,37 @@ function draw() {
               // account for the atom's charge, asumming it has hydrogens if it makes sense to assume so
               let label = "";
               if (currentAtom.element !== "C" || currentAtom.element === "C" && currentAtom.numBonds === 0) {
-                if (currentAtom.numH > 0) {
-                  label += "H"
-                }
                 if (currentAtom.numH > 1) {
                   let subscript = ["₀","₁","₂","₃","₄","₅","₆","₇","₈","₉"];
                   let tens = currentAtom.numH;
                   while (tens !== 0) {
-                    label += subscript[tens%10];
+                    label = subscript[tens%10] + label;
                     tens = Math.floor(tens/10);
                   }
                 }
-              }
-              if (currentAtom.charge > 1) {
-                let superscript = ["⁰","¹","²","³","⁴","⁵","⁶","⁷","⁸","⁹"];
-                let tens = Math.abs(currentAtom.charge);
-                while (tens !== 0) {
-                  label += superscript[tens%10];
-                  tens = Math.floor(tens/10);
+                if (currentAtom.numH > 0) {
+                  label = "H" + label;
                 }
-              }
-              if (currentAtom.charge > 0) {
-                label += "⁺";
-              } else if (currentAtom.charge < 0) {
-                label += "⁻";
               }
               if (currentAtom.element === "O" && currentAtom.numH >= 2 || currentAtom.isHydrogenHalide()) {
                 label += currentAtom.element;
               } else if (currentAtom.element !== "C" || currentAtom.element === "C" && currentAtom.numBonds === 0) {
                 label = currentAtom.element + label;
+              }
+              if (Math.abs(currentAtom.charge) > 1) {
+                let temp = "";
+                let superscript = ["⁰","¹","²","³","⁴","⁵","⁶","⁷","⁸","⁹"];
+                let tens = Math.abs(currentAtom.charge);
+                while (tens !== 0) {
+                  temp = superscript[tens%10] + temp;
+                  tens = Math.floor(tens/10);
+                }
+                label += temp;
+              }
+              if (currentAtom.charge > 0) {
+                label += "⁺";
+              } else if (currentAtom.charge < 0) {
+                label += "⁻";
               }
               if (label !== "") {
                 foreground.noStroke();
@@ -1210,7 +1192,7 @@ function draw() {
           } else {
             bondAngle = findBondAngle(previewX1,previewY1,previewX2,previewY2);
           }
-          if (destinationAtom.numBonds <= maxBonds(destinationAtom.element)-bondType && validBond) {
+          if (destinationAtom.numBonds <= maxBonds(destinationAtom.element)-bondType && validAction) {
             foreground.fill(48,227,255);
             foreground.circle(destinationAtom.x,destinationAtom.y,10);
             foreground.fill(255);
@@ -1219,13 +1201,13 @@ function draw() {
             foreground.fill(255,0,0);
             foreground.circle(destinationAtom.x,destinationAtom.y,10);
             foreground.fill(255);
-            validBond = false;
+            validAction = false;
           }
         }
       }
 
       // draw preview
-      if (selectedTool === "atom") {
+      if (selectedTool === "atom" || selectedTool === "chargeH") {
         foreground.rectMode(CENTER);
         foreground.fill(0);
         foreground.noStroke();
@@ -1234,7 +1216,7 @@ function draw() {
         foreground.fill(255);
         foreground.stroke(0);
         foreground.rectMode(CORNER);
-      } else if (validBond && selectedTool === "bond") {
+      } else if (validAction && selectedTool === "bond") {
         bond(previewX1, previewY1, previewX2, previewY2, bondType, foreground);
       }
 
@@ -1342,17 +1324,17 @@ function findClosestDestinationAtom(x,y,selectedAtom,network) {
     currentAtom = network[i];
     if (!currentAtom.deleted) {
       distance = Math.sqrt((x-currentAtom.x)**2 + (y-currentAtom.y)**2);
-      if (distance < destinationDistance && distance < closestDistance && validBond) {
+      if (distance < destinationDistance && distance < closestDistance && validAction) {
         if (selectedAtom.length !== 0) {
           // check if the currentAtom is already bonded to the selectedAtom
           for (let j = 0; j < selectedAtom.bondIdList.length; j++) {
             if (selectedAtom.bondIdList[j] === currentAtom.id) {
-              validBond = false;
+              validAction = false;
               closestDestinationAtom = currentAtom;
             }
           }
         }
-        if (validBond) {
+        if (validAction) {
           closestDistance = distance;
           closestDestinationAtom = currentAtom;
         }
@@ -1500,6 +1482,11 @@ function valenceOf(element) {
   }
 }
 
+function valenceElectronsOf(element) {
+  // TODO: maybe make this function work for atoms that don't make octets? probably not useful for organic chemistry
+  return 8 - valenceOf(element);
+}
+
 function mouseClicked() {
   somethingClicked = true;
 }
@@ -1615,6 +1602,22 @@ function clickButton(selectedBox) {
       break;
     case 17:
       selectedTool = "moleculeDelete";
+      break;
+    case -2:
+      selectedTool = "chargeH";
+      element = "-2𝑒";
+      break;
+    case -3:
+      selectedTool = "chargeH";
+      element = "+2𝑒";
+      break;
+    case -4:
+      selectedTool = "chargeH";
+      element = "+H";
+      break;
+    case -5:
+      selectedTool = "chargeH";
+      element = "-H";
       break;
     case 19:
       for (let i = 0; i < network.length; i++) {
@@ -2201,7 +2204,7 @@ function clickButton(selectedBox) {
             selectedBond[1].updateNumBonds(bondType - selectedBond[2]); // update numBonds
           }
         }
-      } else if (!validBond) {
+      } else if (!validAction) {
         // invalid bond
         return false;
       } else {
@@ -2228,7 +2231,7 @@ function clickButton(selectedBox) {
         break;
       }
     } else if (selectedTool === "atom") {
-      if (!validBond) {
+      if (!validAction) {
         break;
       } else if (selectedAtom.length !== 0) {
         selectedAtom.element = element;
@@ -2240,11 +2243,31 @@ function clickButton(selectedBox) {
         nextAtomID++;
         nextMoleculeID++;
       }
+    } else if (selectedTool === "chargeH") {
+      // changes charge and numH such that this.numH + this.numBonds - this.charge = valenceOf(this.element), keeping numBonds constant
+      if (selectedAtom.length !== 0 && validAction) {
+        switch (element) {
+          case "+H":
+            selectedAtom.charge++;
+            selectedAtom.numH++;
+            break;
+          case "-H":
+            selectedAtom.charge--;
+            selectedAtom.numH--;
+            break;
+          case "-2𝑒":
+            selectedAtom.charge += 2;
+            break;
+          case "+2𝑒":
+            selectedAtom.charge -= 2;
+            break;
+        }
+      }
     } else if (selectedTool === "atomDelete") {
       if (selectedBond.length !== 0) {
+        selectedBond[0].removeBondWith(selectedBond[1]);
         selectedBond[0].delete();
         selectedBond[1].delete();
-        selectedBond[0].removeBondWith(selectedBond[1]);
       } else {
         selectedAtom.delete();
       }
