@@ -903,8 +903,8 @@ function draw() {
           // avoid causing a negative numH
           if (element === "-H" && selectedAtom.numH <= 0 || element === "+H" && selectedAtom.numBonds + selectedAtom.numH >= valenceElectronsOf(selectedAtom.element)) {
             validAction = false;
-          } else if (element === "+2𝑒" && selectedAtom.numH + selectedAtom.numBonds - selectedAtom.charge >= valenceOf(selectedAtom.element) - 1 || element === "-2𝑒" && selectedAtom.numH + selectedAtom.numBonds + selectedAtom.charge >= valenceElectronsOf(selectedAtom.element) - 1) {
-            // the number of unbonded electrons is valenceElectronsOf(selectedAtom.element) - 2 * (selectedAtom.numH + selectedAtom.numBonds) + selectedAtom.charge
+          } else if (element === "+2𝑒" && selectedAtom.numH + selectedAtom.numBonds - selectedAtom.charge >= valenceOf(selectedAtom.element) - 1 || element === "-2𝑒" && valenceElectronsOf(selectedAtom.element) - (selectedAtom.numH + selectedAtom.numBonds) - selectedAtom.charge <= 1) {
+            // the number of unbonded electrons is valenceElectronsOf(selectedAtom.element) - (selectedAtom.numH + selectedAtom.numBonds) - selectedAtom.charge, as per the definition of formal charge
             // the maximum number of unbonded electrons (full octet) is when selectedAtom.numH + selectedAtom.numBonds - selectedAtom.charge = valenceOf(selectedAtom.element)
             validAction = false;
           }
@@ -1457,7 +1457,9 @@ function bond(x1,y1,x2,y2,num,frame) {
 }
 
 function maxBonds(element) {
-  if (element === "C" || element === "N") {
+  if (element === "S") {
+    return 6;
+  } else if (element === "C" || element === "N") {
     return 4;
   } else if (element === "O") {
     return 2;
@@ -1473,7 +1475,7 @@ function valenceOf(element) {
     return 4;
   } else if (element === "N") {
     return 3;
-  } else if (element === "O") {
+  } else if (element === "O" || element === "S") {
     return 2;
   } else if (element === "Br" || element === "Cl" || element === "Ts" || element === "I" || element === "F" || element === "OTBS") {
     return 1;
@@ -2266,8 +2268,6 @@ function clickButton(selectedBox) {
     } else if (selectedTool === "atomDelete") {
       if (selectedBond.length !== 0) {
         selectedBond[0].removeBondWith(selectedBond[1]);
-        selectedBond[0].delete();
-        selectedBond[1].delete();
       } else {
         selectedAtom.delete();
       }
