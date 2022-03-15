@@ -896,11 +896,18 @@ function draw() {
         previewY2 = selectedAtom.y + Math.sin(toRadians(360-bondAngle))*bondLength;
       } else if (selectedAtom.length !== 0 && !mousePressed) {
         validAction = true;
-        // when only one point is selected, not two, when selectedTool is atom or drag or chargeH
+        // when only one point is selected, not two, when selectedTool is atom or drag or delete or chargeH
         previewX1 = selectedAtom.x;
         previewY1 = selectedAtom.y;
-        if (selectedTool !== "chargeH" && selectedAtom.numBonds > maxBonds(element)) {
-          validAction = false;
+        if (selectedTool === "atom") {
+          if (selectedAtom.numBonds > maxBonds(element)) {
+            validAction = false;
+          } else {
+            bondAngle = 330;
+          }
+        } else if (selectedTool !== "chargeH") {
+          // selectedTool is drag or delete
+          validAction = true;
         } else if (selectedTool === "chargeH") {
           // avoid causing a negative numH
           if (element === "-H" && selectedAtom.numH <= 0 || element === "+H" && selectedAtom.numBonds + selectedAtom.numH >= valenceElectronsOf(selectedAtom.element)) {
@@ -910,8 +917,6 @@ function draw() {
             // the maximum number of unbonded electrons (full octet) is when selectedAtom.numH + selectedAtom.numBonds - selectedAtom.charge = valenceOf(selectedAtom.element)
             validAction = false;
           }
-        } else {
-          bondAngle = 330;
         }
       } else if (mousePressed) {
         // on mouse drag, stop updating previewX1 and previewY1 when selectedTool is bond
