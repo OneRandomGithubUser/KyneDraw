@@ -249,6 +249,7 @@ class Atom {
 
   changeNumBonds(changeNumBonds) {
     // changes numBonds such that this.numH + this.numBonds - this.charge = valenceOf(this.element), minimizing charge if possible
+    // this assumes a full octet! if the atom does not have a full octet (such as in a sulfone group), this doesn't work properly
     this.numBonds += changeNumBonds;
     this.numH -= changeNumBonds;
     if (this.numH < 0) {
@@ -783,6 +784,7 @@ function setup() {
   frameRate(60);
   pixelDensity(1);
   tip = "Tip: "+ tips[Math.floor(Math.random()*tips.length)];
+  retrieveSettings();
   console.log("Written by Joseph. github.com/OneRandomGithubUser");
 }
 
@@ -1493,6 +1495,110 @@ function mouseClicked() {
   somethingClicked = true;
 }
 
+function storeSettings(item) {
+  switch (item) {
+    case "selectedTool":
+      localStorage.setItem("selectedTool", selectedTool);
+      break;
+    case "element":
+      localStorage.setItem("element", element);
+      break;
+    case "bondType":
+      localStorage.setItem("bondType", bondType);
+      break;
+    case "angleSnap":
+      localStorage.setItem("angleSnap", angleSnap);
+      break;
+  }
+}
+
+function retrieveSettings() {
+  selectedTool = localStorage.getItem("selectedTool");
+  element = localStorage.getItem("element");
+  bondType = parseInt(localStorage.getItem("bondType"));
+  if (localStorage.getItem("angleSnap") === "true") {
+    angleSnap = true;
+  } else {
+    angleSnap = false;
+  }
+  if (angleSnap) {
+    document.getElementById("snap").setAttribute("checked", "checked");
+  } else {
+    document.getElementById("freeform").setAttribute("checked", "checked");
+  }
+  switch(selectedTool) {
+    case "bond":
+      switch (bondType) {
+        case 1:
+          document.getElementById("single").setAttribute("checked", "checked");
+          break;
+        case 2:
+          document.getElementById("double").setAttribute("checked", "checked");
+          break;
+        case 3:
+          document.getElementById("triple").setAttribute("checked", "checked");
+          break;
+        default:
+          throw new Error("selectedTool has an invalid bondType");
+      }
+      break;
+    case "atomDrag":
+      document.getElementById("atom-bond-drag").setAttribute("checked", "checked");
+      break;
+    case "moleculeDrag":
+      document.getElementById("molecule-drag").setAttribute("checked", "checked");
+      break;
+    case "atomDelete":
+      document.getElementById("atom-bond-delete").setAttribute("checked", "checked");
+      break;
+    case "moleculeDelete":
+      document.getElementById("molecule-delete").setAttribute("checked", "checked");
+      break;
+    case "atom":
+      switch (element) {
+        case "C":
+          document.getElementById("carbon").setAttribute("checked", "checked");
+          break;
+        case "O":
+          document.getElementById("oxygen").setAttribute("checked", "checked");
+          break;
+        case "N":
+          document.getElementById("nitrogen").setAttribute("checked", "checked");
+          break;
+        case "Br":
+          document.getElementById("bromine").setAttribute("checked", "checked");
+          break;
+        case "Cl":
+          document.getElementById("chlorine").setAttribute("checked", "checked");
+          break;
+        case "C":
+          document.getElementById("carbon").setAttribute("checked", "checked");
+          break;
+      }
+      break;
+    case "chargeE":
+      switch(element) {
+        case "-2𝑒":
+          document.getElementById("add-charge").setAttribute("checked", "checked");
+          break;
+        case "+2𝑒":
+          document.getElementById("subtract-charge").setAttribute("checked", "checked");
+          break;
+        case "+H":
+          document.getElementById("add-h").setAttribute("checked", "checked");
+          break;
+        case "-H":
+          document.getElementById("subtract-h").setAttribute("checked", "checked");
+          break;
+        default:
+          throw new Error("selectedTool has an invalid element");
+      }
+      break;
+    default:
+      throw new Error("invalid selectedTool is saved");
+  }
+}
+
 function clickButton(selectedBox) {
   switch (selectedBox) {
     case -1:
@@ -1501,40 +1607,58 @@ function clickButton(selectedBox) {
     case 1:
       bondType = selectedBox;
       selectedTool = "bond";
+      storeSettings("selectedTool");
+      storeSettings("bondType");
       break;
     case 2:
       bondType = selectedBox;
       selectedTool = "bond";
+      storeSettings("selectedTool");
+      storeSettings("bondType");
       break;
     case 3:
       bondType = selectedBox;
       selectedTool = "bond";
+      storeSettings("selectedTool");
+      storeSettings("bondType");
       break;
     case 4:
       angleSnap = false;
+      storeSettings("angleSnap");
       break;
     case 5:
       angleSnap = true;
+      storeSettings("angleSnap");
       break;
     case 6:
       element = "C"
       selectedTool = "atom";
+      storeSettings("selectedTool");
+      storeSettings("element");
       break;
     case 7:
       element = "O"
       selectedTool = "atom";
+      storeSettings("selectedTool");
+      storeSettings("element");
       break;
     case 8:
       element = "N"
       selectedTool = "atom";
+      storeSettings("selectedTool");
+      storeSettings("element");
       break;
     case 9:
       element = "Br"
       selectedTool = "atom";
+      storeSettings("selectedTool");
+      storeSettings("element");
       break;
     case 10:
       element = "Cl"
       selectedTool = "atom";
+      storeSettings("selectedTool");
+      storeSettings("element");
       break;
     case 11:
       network = [];
@@ -1595,31 +1719,43 @@ function clickButton(selectedBox) {
       break;
     case 14:
       selectedTool = "atomDrag";
+      storeSettings("selectedTool");
       break;
     case 15:
       selectedTool = "moleculeDrag";
+      storeSettings("selectedTool");
       break;
     case 16:
       selectedTool = "atomDelete";
+      storeSettings("selectedTool");
       break;
     case 17:
       selectedTool = "moleculeDelete";
+      storeSettings("selectedTool");
       break;
     case -2:
       selectedTool = "chargeH";
       element = "-2𝑒";
+      storeSettings("selectedTool");
+      storeSettings("element");
       break;
     case -3:
       selectedTool = "chargeH";
       element = "+2𝑒";
+      storeSettings("selectedTool");
+      storeSettings("element");
       break;
     case -4:
       selectedTool = "chargeH";
       element = "+H";
+      storeSettings("selectedTool");
+      storeSettings("element");
       break;
     case -5:
       selectedTool = "chargeH";
       element = "-H";
+      storeSettings("selectedTool");
+      storeSettings("element");
       break;
     case 19:
       for (let i = 0; i < network.length; i++) {

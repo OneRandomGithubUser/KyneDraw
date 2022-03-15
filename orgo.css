@@ -3,6 +3,7 @@ body {
     padding: 0 !important;
     font-family: Arial, sans-serif;
     -webkit-tap-highlight-color: transparent; /* apparently does not work with Firefox mobile */
+    cursor: crosshair;
 }
 
 /* min for top UI: 905px */

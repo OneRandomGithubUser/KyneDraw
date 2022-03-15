@@ -22,7 +22,7 @@
           <button class="button square-button dropdown-header" id="bonds" onclick="selectBox(-1)">Bond Tools</button>
           <div class="dropdown-content">
             <div class="selectable-button square">
-              <input type="radio" id="single" name="tool" checked="checked" onclick="selectBox(1)" />
+              <input type="radio" id="single" name="tool" onclick="selectBox(1)" />
                 <label for="single" id="single">SINGLE BOND</label>
               <input type="radio" id="double" name="tool" onclick="selectBox(2)" />
                 <label for="double" id="double">DOUBLE BOND</label>
@@ -79,7 +79,7 @@
           </div>
         </div>
         <div class="selectable-button thin">
-          <input type="radio" id="snap" name="bond-type" checked="checked" onclick="selectBox(5)" />
+          <input type="radio" id="snap" name="bond-type" onclick="selectBox(5)" />
             <label for="snap" id="snap">SNAP BONDS</label>
           <input type="radio" id="freeform" name="bond-type" onclick="selectBox(4)" />
             <label for="freeform" id="freeform">FREEFORM BONDS</label>
