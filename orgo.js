@@ -131,7 +131,7 @@ class Atom {
           renderMiddleground = true;
           return true;
         } else {
-          // if cannot connect to existing atoms, make the new bond somewhere else by simulating the next bond as if there were simBonds already on the atom
+          // if connectToExistingAtoms is false, make the new bond somewhere else by simulating the next bond as if there were simBonds already on the atom
           let simBonds = this.numBonds + 1;
           while (simBonds < 12) {
             bondAngle = this.calculateNextBondAngle(simBonds);
@@ -1129,8 +1129,8 @@ function draw() {
       // highlight selected molecule when selectedTool is moleculeDrag or moleculeDelete
       if ((selectedTool === "moleculeDrag" || selectedTool === "moleculeDelete") && selectedMolecule.length !== 0) {
         foreground.strokeWeight(3);
-        foreground.noFill();
-        foreground.rect(selectedMolecule.x1, selectedMolecule.y1, selectedMolecule.x2-selectedMolecule.x1, selectedMolecule.y2-selectedMolecule.y1);
+        // DEBUG: foreground.noFill();
+        // DEBUG: foreground.rect(selectedMolecule.x1, selectedMolecule.y1, selectedMolecule.x2-selectedMolecule.x1, selectedMolecule.y2-selectedMolecule.y1);
         if (selectedTool === "moleculeDrag") {
           foreground.stroke(48,227,255);
           foreground.fill(48,227,255);
@@ -1775,11 +1775,14 @@ function clickButton(selectedBox) {
       nextAtomID++;
       nextMoleculeID++;
       let generating = true;
+      let minSize = 3;
       let randomAtom;
       let randomNum;
       let randomElement;
       let randomBondNumber;
       while (generating) {
+        // only makes a randomAtom that is in the molecule that has just been created
+        // No need to worry about race conditions because, if the user adds a new atom or something, that isn't processed until the next frame, and if the user presses the RANDOM MOLECULE twice in one frame, it is still only processed once
         randomAtom = network[startingID + Math.floor(Math.random() * (nextAtomID-startingID))];
         randomNum = Math.random();
         if (randomNum < 0.85) {
@@ -1799,8 +1802,11 @@ function clickButton(selectedBox) {
         } else {
           randomBondNumber = 3;
         }
-        randomAtom.insertAtom(randomElement, randomBondNumber, true);
-        if (Math.random() > 0.9) {
+        if (randomAtom.numBonds + randomBondNumber <= valenceOf(randomAtom.element)) {
+          // a similar condition is checked in insertAtom, but that uses maxBonds instead of valenceOf, which somtimes randomly makes charges, which aren't very desirable
+          randomAtom.insertAtom(randomElement, randomBondNumber, true);
+        }
+        if (Math.random() > 0.9 && molecules[network[startingID].moleculeID].atomIDs.length > minSize) {
           generating = false;
         }
       }
