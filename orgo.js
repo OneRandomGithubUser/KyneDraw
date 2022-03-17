@@ -1605,6 +1605,10 @@ function retrieveSettings() {
   } else {
     // default when angleSnap is not stored in localStorage
     angleSnap = true;
+    if (localStorage.getItem("angleSnap") !== "true") {
+      // if it doesn't exist or has been changed to something else, set it to a default
+      localStorage.setItem("angleSnap", "true");
+    }
   }
   if (angleSnap) {
     document.getElementById("snap").setAttribute("checked", "checked");
@@ -1624,7 +1628,10 @@ function retrieveSettings() {
           document.getElementById("triple").setAttribute("checked", "checked");
           break;
         default:
-          throw new Error("selectedTool has an invalid bondType");
+          bondType = 1;
+          localStorage.setItem("bondType", 1);
+          document.getElementById("single").setAttribute("checked", "checked");
+          break;
       }
       break;
     case "atomDrag":
@@ -1659,6 +1666,11 @@ function retrieveSettings() {
         case "C":
           document.getElementById("carbon").setAttribute("checked", "checked");
           break;
+        default:
+          element = "C";
+          element = localStorage.setItem("element", "C");
+          document.getElementById("carbon").setAttribute("checked", "checked");
+          break;
       }
       break;
     case "chargeE":
@@ -1676,17 +1688,20 @@ function retrieveSettings() {
           document.getElementById("subtract-h").setAttribute("checked", "checked");
           break;
         default:
-          throw new Error("selectedTool has an invalid element");
+          element = "-2𝑒";
+          localStorage.setItem("element", "-2𝑒");
+          document.getElementById("add-charge").setAttribute("checked", "checked");
+          break;
       }
       break;
-    case "":
-      // default when there is no selectedTool saved in localStorage
+    default:
+      // default when there is no or an invalid selectedTool saved in localStorage
       selectedTool = "bond";
       bondType = 1;
+      localStorage.setItem("selectedTool", "bond");
+      localStorage.setItem("bondType", "1");
       document.getElementById("single").setAttribute("checked", "checked");
       break;
-    default:
-      throw new Error("invalid selectedTool is saved");
   }
 }
 
