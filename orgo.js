@@ -618,6 +618,13 @@ class Molecule {
     this.y2 = y2;
   }
 
+  moveBounds(changeX,changeY) {
+    this.x1 += changeX;
+    this.y1 += changeY;
+    this.x2 += changeX;
+    this.y2 += changeY;
+  }
+
   removeAtom(atom) {
     // removes the atom's branches from itself, then deletes itself
     if (this.deleted) {
@@ -948,25 +955,51 @@ function draw() {
           // when mouse is dragged, edit the position of the selectedAtom or selectedBond
           let diffX = cachedMouseX - previousMouseX;
           let diffY = cachedMouseY - previousMouseY;
+          let trackedDistance = selectionDistance;
+          let selectedAtoms = [];
           if (selectedTool === "atomDrag") {
             if (selectedBond.length !== 0) {
               selectedBond[0].x += diffX;
               selectedBond[0].y += diffY;
               selectedBond[1].x += diffX;
               selectedBond[1].y += diffY;
+              // TODO: update this recalcualeBounds to only do it if it's necessary
               molecules[selectedBond[0].moleculeID].recalculateBounds();
             } else if (selectedAtom.length !== 0) {
-              selectedAtom.x += diffX;
-              selectedAtom.y += diffY;
+              previewX1 = cachedMouseX;
+              previewY1 = cachedMouseY;
+              // snap the atom to an existing atom if possible
+              if (angleSnap) {
+                for (let i = 0; i < selectedAtom.bondIdList.length; i++) {
+                  let currentAtom = network[selectedAtom.bondIdList[i]];
+                  let distance = pointDistance(currentAtom.x, currentAtom.y, cachedMouseX, cachedMouseY);
+                  if (distance < bondLength + selectionDistance && distance > bondLength - selectionDistance) {
+                    // initial check before doing intensive calculations
+                    for (let i = 0; i < 12; i++) {
+                      let offsetedX = currentAtom.x - bondLength * Math.cos(toRadians(30*i));
+                      let offsetedY = currentAtom.y + bondLength * Math.sin(toRadians(30*i));
+                      let currentDistance = pointDistance(offsetedX, offsetedY, cachedMouseX, cachedMouseY);
+                      if (currentDistance < selectionDistance && currentDistance < trackedDistance) {
+                        let closestAtom = findClosestDestinationAtom(offsetedX, offsetedY, currentAtom, network, selectedAtom);
+                        // closestAtom is null if the closestAtom already has a bond with currentAtom. Prevents being able to make two bonds in the same place
+                        if (closestAtom !== null) {
+                          previewX1 = offsetedX;
+                          previewY1 = offsetedY;
+                          trackedDistance = currentDistance;
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+              selectedAtom.x = previewX1;
+              selectedAtom.y = previewY1;
               molecules[selectedAtom.moleculeID].recalculateBounds();
             }
           } else {
             // selectedTool is moleculeDrag
             if (selectedMolecule.length !== 0){
-              selectedMolecule.x1 += diffX;
-              selectedMolecule.y1 += diffY;
-              selectedMolecule.x2 += diffX;
-              selectedMolecule.y2 += diffY;
+              selectedMolecule.moveBounds(diffX, diffY);
               for (let i = 0; i < selectedMolecule.atomIDs.length; i++) {
                 let currentAtom = network[selectedMolecule.atomIDs[i]];
                 currentAtom.x += diffX;
@@ -1096,8 +1129,8 @@ function draw() {
       // highlight selected molecule when selectedTool is moleculeDrag or moleculeDelete
       if ((selectedTool === "moleculeDrag" || selectedTool === "moleculeDelete") && selectedMolecule.length !== 0) {
         foreground.strokeWeight(3);
-        // DEBUG: foreground.noFill();
-        // DEBUG: foreground.rect(selectedMolecule.x1, selectedMolecule.y1, selectedMolecule.x2-selectedMolecule.x1, selectedMolecule.y2-selectedMolecule.y1);
+        foreground.noFill();
+        foreground.rect(selectedMolecule.x1, selectedMolecule.y1, selectedMolecule.x2-selectedMolecule.x1, selectedMolecule.y2-selectedMolecule.y1);
         if (selectedTool === "moleculeDrag") {
           foreground.stroke(48,227,255);
           foreground.fill(48,227,255);
@@ -1189,7 +1222,13 @@ function draw() {
         destinationAtom = findClosestDestinationAtom(previewX2,previewY2,selectedAtom,network);
 
         // render cyan/red destination dot
-        if (destinationAtom.length !== 0) {
+        if (destinationAtom === null) {
+          // invalid destination atom
+          foreground.fill(255,0,0);
+          foreground.circle(previewX2,previewY2,10);
+          foreground.fill(255);
+          validAction = false;
+        } else if (destinationAtom.length !== 0) {
           previewX2 = destinationAtom.x;
           previewY2 = destinationAtom.y;
           if (selectedAtom.length === 0) {
@@ -1322,22 +1361,32 @@ function lineOffset(x1,y1,x2,y2,offset,frame) {
   frame.line(x1-Math.sin(toRadians(angle))*offset, y1-Math.cos(toRadians(angle))*offset, x2-Math.sin(toRadians(angle))*offset, y2-Math.cos(toRadians(angle))*offset);
 }
 
-function findClosestDestinationAtom(x,y,selectedAtom,network) {
+/**
+ * Returns the closest Atom to a point (x, y) that is to be the endpoint of a bond with selectedAtom in network, optionally ignoring optionalIgnoreAtom. Returns null if the Atom already has a bond with selectedAtom.
+ * @param {Number} x 
+ * @param {Number} y 
+ * @param {Atom} selectedAtom 
+ * @param {Array} network 
+ * @param {Atom} optionalIgnoreAtom 
+ * @returns {Atom}
+ */
+function findClosestDestinationAtom(x,y,selectedAtom,network, optionalIgnoreAtom = []) {
   let closestDistance = destinationDistance;
   let closestDestinationAtom = [];
   let currentAtom;
-  let distance;
+  let distance; 
+  let validAction = true;
   for (let i = 0; i < network.length; i++) {
     currentAtom = network[i];
-    if (!currentAtom.deleted) {
-      distance = Math.sqrt((x-currentAtom.x)**2 + (y-currentAtom.y)**2);
+    if (!currentAtom.deleted && (optionalIgnoreAtom.length === 0 || currentAtom.id !== optionalIgnoreAtom.id)) {
+      distance = pointDistance(x,y,currentAtom.x,currentAtom.y);
       if (distance < destinationDistance && distance < closestDistance && validAction) {
         if (selectedAtom.length !== 0) {
           // check if the currentAtom is already bonded to the selectedAtom
           for (let j = 0; j < selectedAtom.bondIdList.length; j++) {
             if (selectedAtom.bondIdList[j] === currentAtom.id) {
               validAction = false;
-              closestDestinationAtom = currentAtom;
+              closestDestinationAtom = null;
             }
           }
         }
@@ -1349,6 +1398,32 @@ function findClosestDestinationAtom(x,y,selectedAtom,network) {
     }
   }
   return closestDestinationAtom;
+}
+
+/**
+ * Returns the closest Atom in network to a point (x, y), optionally ignoring a specified atom ignoreAtom
+ * @param {Number} x 
+ * @param {Number} y 
+ * @param {Atom} ignoreAtom 
+ * @param {Array} network 
+ * @returns {Atom}
+ */
+function findClosestAtom(x,y,ignoreAtom,network) {
+  let closestDistance = destinationDistance;
+  let closestAtom = [];
+  let currentAtom;
+  let distance; 
+  for (let i = 0; i < network.length; i++) {
+    currentAtom = network[i];
+    if (!currentAtom.deleted) {
+      distance = pointDistance(x,y,currentAtom.x,currentAtom.y);
+      if (distance < destinationDistance && distance < closestDistance && currentAtom.id !== ignoreAtom.id) {
+        closestDistance = distance;
+        closestAtom = currentAtom;
+      }
+    }
+  }
+  return closestAtom;
 }
 
 function windowResized() {
@@ -1379,6 +1454,10 @@ function drawBackground() {
   }
   renderFrame = true;
   renderMiddleground = true;
+}
+
+function pointDistance(x1, y1, x2, y2) {
+  return Math.sqrt((y2-y1)**2 + (x2-x1)**2);
 }
 
 function distanceToBond(x, y, x1, y1, x2, y2) {
@@ -1521,10 +1600,11 @@ function retrieveSettings() {
   selectedTool = localStorage.getItem("selectedTool");
   element = localStorage.getItem("element");
   bondType = parseInt(localStorage.getItem("bondType"));
-  if (localStorage.getItem("angleSnap") === "true") {
-    angleSnap = true;
-  } else {
+  if (localStorage.getItem("angleSnap") === "false") {
     angleSnap = false;
+  } else {
+    // default when angleSnap is not stored in localStorage
+    angleSnap = true;
   }
   if (angleSnap) {
     document.getElementById("snap").setAttribute("checked", "checked");
@@ -1598,6 +1678,12 @@ function retrieveSettings() {
         default:
           throw new Error("selectedTool has an invalid element");
       }
+      break;
+    case "":
+      // default when there is no selectedTool saved in localStorage
+      selectedTool = "bond";
+      bondType = 1;
+      document.getElementById("single").setAttribute("checked", "checked");
       break;
     default:
       throw new Error("invalid selectedTool is saved");
