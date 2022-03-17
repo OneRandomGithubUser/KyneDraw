@@ -1673,7 +1673,7 @@ function retrieveSettings() {
           break;
       }
       break;
-    case "chargeE":
+    case "chargeH":
       switch(element) {
         case "-2𝑒":
           document.getElementById("add-charge").setAttribute("checked", "checked");
