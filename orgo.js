@@ -933,7 +933,7 @@ function draw() {
           // avoid causing a negative numH
           if (element === "-H" && selectedAtom.numH <= 0 || element === "+H" && selectedAtom.numBonds + selectedAtom.numH >= valenceElectronsOf(selectedAtom.element)) {
             validAction = false;
-          } else if (element === "+2𝑒" && selectedAtom.numH + selectedAtom.numBonds - selectedAtom.charge >= valenceOf(selectedAtom.element) - 1 || element === "-2𝑒" && this.numLoneE <= 1) {
+          } else if (element === "+2𝑒" && selectedAtom.numH + selectedAtom.numBonds - selectedAtom.charge >= valenceOf(selectedAtom.element) - 1 || element === "-2𝑒" && selectedAtom.numLoneE <= 1) {
             // the number of unbonded electrons is valenceElectronsOf(selectedAtom.element) - (selectedAtom.numH + selectedAtom.numBonds) - selectedAtom.charge, as per the definition of formal charge
             // the maximum number of unbonded electrons (full octet) is when selectedAtom.numH + selectedAtom.numBonds - selectedAtom.charge = valenceOf(selectedAtom.element)
             validAction = false;
@@ -2467,13 +2467,13 @@ function clickButton(selectedBox) {
         for (let i = 0; i < selectedBond[0].bondTypeList.length; i++) {
           if (selectedBond[0].bondIdList[i] === selectedBond[1].id) {
             selectedBond[0].bondTypeList[i] = bondType;
-            selectedBond[0].changeNumBonds(bondType - selectedBond[2]); // update numBonds
+            selectedBond[0].changeNumBonds(bondType - selectedBond[2]);
           }
         }
         for (let i = 0; i < selectedBond[1].bondTypeList.length; i++) {
           if (selectedBond[1].bondIdList[i] === selectedBond[0].id) {
             selectedBond[1].bondTypeList[i] = bondType;
-            selectedBond[1].changeNumBonds(bondType - selectedBond[2]); // update numBonds
+            selectedBond[1].changeNumBonds(bondType - selectedBond[2]);
           }
         }
       } else if (!validAction) {
@@ -2522,18 +2522,22 @@ function clickButton(selectedBox) {
       if (selectedAtom.length !== 0 && validAction) {
         switch (element) {
           case "+H":
-            selectedAtom.charge++;
             selectedAtom.numH++;
+            selectedAtom.charge++;
+            selectedAtom.numLoneE -= 2;
             break;
           case "-H":
-            selectedAtom.charge--;
             selectedAtom.numH--;
+            selectedAtom.charge--;
+            selectedAtom.numLoneE += 2;
             break;
           case "-2𝑒":
             selectedAtom.charge += 2;
+            selectedAtom.numLoneE -= 2;
             break;
           case "+2𝑒":
             selectedAtom.charge -= 2;
+            selectedAtom.numLoneE += 2;
             break;
         }
       }
