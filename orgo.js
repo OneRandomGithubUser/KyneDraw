@@ -1083,7 +1083,7 @@ function draw() {
               label = "H" + label;
             }
           }
-          if (currentAtom.element === "O" && currentAtom.numH >= 2 || currentAtom.isHydrogenHalide()) {
+          if ((currentAtom.element === "O" || currentAtom.element === "S") && currentAtom.numH >= 2 || currentAtom.isHydrogenHalide()) {
             label += currentAtom.element;
           } else if (currentAtom.element !== "C" || currentAtom.element === "C" && currentAtom.numBonds === 0) {
             label = currentAtom.element + label;
@@ -1199,7 +1199,7 @@ function draw() {
                   label = "H" + label;
                 }
               }
-              if (currentAtom.element === "O" && currentAtom.numH >= 2 || currentAtom.isHydrogenHalide()) {
+              if ((currentAtom.element === "O" || currentAtom.element === "S") && currentAtom.numH >= 2 || currentAtom.isHydrogenHalide()) {
                 label += currentAtom.element;
               } else if (currentAtom.element !== "C" || currentAtom.element === "C" && currentAtom.numBonds === 0) {
                 label = currentAtom.element + label;
@@ -1784,6 +1784,12 @@ function clickButton(selectedBox) {
       break;
     case 10:
       element = "Cl"
+      selectedTool = "atom";
+      storeSettings("selectedTool");
+      storeSettings("element");
+      break;
+    case -6:
+      element = "S"
       selectedTool = "atom";
       storeSettings("selectedTool");
       storeSettings("element");
