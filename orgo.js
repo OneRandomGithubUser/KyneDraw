@@ -16,12 +16,12 @@ var previewX1 = 0;
 var previewY1 = 0;
 var previewX2 = 0;
 var previewY2 = 0;
-const selectionDistance = 15;
-const destinationDistance = 5;
+const SELECTION_DISTANCE = 15;
+const DESTINATION_DISTANCE = 5;
 var mousePressed = false;
 var selectedBox = 0;
-const minWidth = 995;
-const minHeight = 715;
+const MIN_WIDTH = 995;
+const MIN_HEIGHT = 715;
 let windowHeight = 0;
 let windowLength = 0;
 let previousWindowHeight = 0;
@@ -30,7 +30,6 @@ var previousMouseX = 0.0;
 var previousMouseY = 0.0;
 var angleSnap = true;
 var validAction = true;
-let background2;
 let middleground;
 let foreground;
 var intro = true;
@@ -42,6 +41,8 @@ var selectedBond = [];
 var selectedMolecule = [];
 var somethingClicked = false;
 var buttonClicked = false;
+const INTRO_FADE_START_FRAME = 60;
+const INTRO_FADE_END_FRAME = 120;
 var tips = [
   "Press the CLEAR button to clear all atoms on the screen",
   "Press the SNAP BONDS or FREEFORM BONDS to change the way bonds are made when clicking and dragging",
@@ -53,9 +54,9 @@ var tips = [
   "This is a very simplified view of organic chemistry, don't expect this program to know everything",
   "Snap onto preexisting atoms to make bonds from that atom or to change the element of that atom",
   "This website's code is open source - check out the code!",
-  "This web app does not yet support stereochemistry, charges, resonance, or E-Z configuration"
+  "This web app does not yet support stereochemistry, resonance, or E-Z configuration"
 ];
-// TODO: bad practice to make so many global variables
+// TODO: bad practice to make so many global variables, but p5.js leaves me no choice
 
 // define the Atom class
 // TODO: possible performance improvements by caching functional groups, though too small to worry about right now
@@ -795,19 +796,13 @@ function preload() {
 // set up canvases
 function setup() {
   // createCanvas must be the first statement
-  // background2: static UI elements
-  // middleground: background2, preexisting bonds and atoms
-  // foreground: preview bond/atom, snap indicators
-  windowWidth = Math.max(window.innerWidth-20,minWidth);
-  windowHeight = Math.max(window.innerHeight-20,minHeight);
+  // middleground: preexisting bonds and atoms
+  windowWidth = Math.max(window.innerWidth-20,MIN_WIDTH);
+  windowHeight = Math.max(window.innerHeight-20,MIN_HEIGHT);
   createCanvas(windowWidth,windowHeight);
   textFont(font);
   middleground = createGraphics(windowWidth,windowHeight);
   foreground = createGraphics(windowWidth,windowHeight);
-  background2 = createGraphics(windowWidth,windowHeight);
-  background2.textSize(48);
-  background2.textAlign(RIGHT, BOTTOM);
-  background2.text("KyneDraw", windowWidth-20, windowHeight-20);
   middleground.stroke(0); // Set line drawing color to black
   middleground.textSize(20);
   middleground.textAlign(CENTER, CENTER);
@@ -852,14 +847,8 @@ function draw() {
 
     if (renderFrame) {
       // clear the frame only if it is not in the intro or frameCount >= 60 (the !intro is there to prevent checking frameCount every time)
-      if (!intro || frameCount >= 60) {
-        background(255);
+      if (!intro || frameCount >= INTRO_FADE_START_FRAME) {
         foreground.clear();
-      }
-
-      if (renderMiddleground) {
-        middleground.clear();
-        middleground.image(background2, 0, 0, windowWidth, windowHeight);
       }
 
       if (!mousePressed) {
@@ -868,8 +857,8 @@ function draw() {
         selectedMolecule = [];
       }
 
-      closestDistance = selectionDistance;
-      let closestBondDistance = selectionDistance;
+      closestDistance = SELECTION_DISTANCE;
+      let closestBondDistance = SELECTION_DISTANCE;
       let bondAngle;
 
       // calculate closest selected atom/bond as long as the mouse is not being dragged
@@ -980,7 +969,7 @@ function draw() {
           // when mouse is dragged, edit the position of the selectedAtom or selectedBond
           let diffX = cachedMouseX - previousMouseX;
           let diffY = cachedMouseY - previousMouseY;
-          let trackedDistance = selectionDistance;
+          let trackedDistance = SELECTION_DISTANCE;
           let selectedAtoms = [];
           if (selectedTool === "atomDrag") {
             if (selectedBond.length !== 0) {
@@ -998,13 +987,13 @@ function draw() {
                 for (let i = 0; i < selectedAtom.bondIdList.length; i++) {
                   let currentAtom = network[selectedAtom.bondIdList[i]];
                   let distance = pointDistance(currentAtom.x, currentAtom.y, cachedMouseX, cachedMouseY);
-                  if (distance < bondLength + selectionDistance && distance > bondLength - selectionDistance) {
+                  if (distance < bondLength + SELECTION_DISTANCE && distance > bondLength - SELECTION_DISTANCE) {
                     // initial check before doing intensive calculations
                     for (let i = 0; i < 12; i++) {
                       let offsetedX = currentAtom.x - bondLength * Math.cos(toRadians(30*i));
                       let offsetedY = currentAtom.y + bondLength * Math.sin(toRadians(30*i));
                       let currentDistance = pointDistance(offsetedX, offsetedY, cachedMouseX, cachedMouseY);
-                      if (currentDistance < selectionDistance && currentDistance < trackedDistance) {
+                      if (currentDistance < SELECTION_DISTANCE && currentDistance < trackedDistance) {
                         let closestAtom = findClosestDestinationAtom(offsetedX, offsetedY, currentAtom, network, selectedAtom);
                         // closestAtom is null if the closestAtom already has a bond with currentAtom. Prevents being able to make two bonds in the same place
                         if (closestAtom !== null) {
@@ -1047,6 +1036,14 @@ function draw() {
       }
 
       if (renderMiddleground) {
+        middleground.background(255);
+        middleground.noStroke();
+        middleground.textSize(48);
+        middleground.textAlign(RIGHT, BOTTOM);
+        middleground.text("KyneDraw", windowWidth-20, windowHeight-20); // wordmark
+        middleground.stroke(0);
+        middleground.textSize(20);
+        middleground.textAlign(CENTER, CENTER);
         // render bonds
         middleground.stroke(0);
         for (let i = 0; i < network.length; i++) {
@@ -1115,6 +1112,7 @@ function draw() {
             middleground.text(label, currentAtom.x, currentAtom.y);
           }
         }
+        renderMiddleground = false;
       }
       
       // render cyan/red selection dot
@@ -1290,19 +1288,17 @@ function draw() {
       } else if (validAction && selectedTool === "bond") {
         bond(previewX1, previewY1, previewX2, previewY2, bondType, foreground);
       }
-
-      if (renderMiddleground) {
-        renderMiddleground = false;
+      // copy buffers to screen when not in the intro
+      if (!intro || frameCount >= INTRO_FADE_START_FRAME) {
+        image(middleground, 0, 0, windowWidth, windowHeight);
+        image(foreground, 0, 0, windowWidth, windowHeight);
       }
-      // copy buffers to screen
-      image(middleground, 0, 0, windowWidth, windowHeight);
-      image(foreground, 0, 0, windowWidth, windowHeight);
     }
     // render the intro screen
     if (intro) {
-      if (frameCount < 120) {
+      if (frameCount < INTRO_FADE_END_FRAME) {
         foreground.stroke(255);
-        if (frameCount > 60) {
+        if (frameCount > INTRO_FADE_START_FRAME) {
           foreground.fill(255,255-(frameCount-60)/60*255);
           foreground.rect(0,0,windowWidth,windowHeight);
           foreground.fill(0,255-(frameCount-60)/60*255);
@@ -1311,12 +1307,12 @@ function draw() {
           foreground.rect(0,0,windowWidth,windowHeight);
           foreground.fill(0);
         }
-        if (frameCount === 60) {
-          // no need to render the intro while it's at full opacity
+        if (frameCount === INTRO_FADE_START_FRAME) {
+          // no need to render the background while the intro at full opacity, so only start rendering it after 60 frames
           renderFrame = true;
           renderMiddleground = true;
         }
-        if (frameCount === 1 || frameCount > 60) {
+        if (frameCount === 1 || frameCount > INTRO_FADE_START_FRAME) {
           foreground.textSize(144);
           foreground.text("KyneDraw",0,windowHeight/2,windowWidth);
           foreground.textSize(36);
@@ -1325,7 +1321,7 @@ function draw() {
           foreground.stroke(0);
           image(foreground, 0, 0, windowWidth, windowHeight);
         }
-      } else if (frameCount >= 120) {
+      } else if (frameCount >= INTRO_FADE_END_FRAME) {
         intro = false;
       }
     } else {
@@ -1396,7 +1392,7 @@ function lineOffset(x1,y1,x2,y2,offset,frame) {
  * @returns {Atom}
  */
 function findClosestDestinationAtom(x,y,selectedAtom,network, optionalIgnoreAtom = []) {
-  let closestDistance = destinationDistance;
+  let closestDistance = DESTINATION_DISTANCE;
   let closestDestinationAtom = [];
   let currentAtom;
   let distance; 
@@ -1405,7 +1401,7 @@ function findClosestDestinationAtom(x,y,selectedAtom,network, optionalIgnoreAtom
     currentAtom = network[i];
     if (!currentAtom.deleted && (optionalIgnoreAtom.length === 0 || currentAtom.id !== optionalIgnoreAtom.id)) {
       distance = pointDistance(x,y,currentAtom.x,currentAtom.y);
-      if (distance < destinationDistance && distance < closestDistance && validAction) {
+      if (distance < DESTINATION_DISTANCE && distance < closestDistance && validAction) {
         if (selectedAtom.length !== 0) {
           // check if the currentAtom is already bonded to the selectedAtom
           for (let j = 0; j < selectedAtom.bondIdList.length; j++) {
@@ -1434,7 +1430,7 @@ function findClosestDestinationAtom(x,y,selectedAtom,network, optionalIgnoreAtom
  * @returns {Atom}
  */
 function findClosestAtom(x,y,ignoreAtom,network) {
-  let closestDistance = destinationDistance;
+  let closestDistance = DESTINATION_DISTANCE;
   let closestAtom = [];
   let currentAtom;
   let distance; 
@@ -1442,7 +1438,7 @@ function findClosestAtom(x,y,ignoreAtom,network) {
     currentAtom = network[i];
     if (!currentAtom.deleted) {
       distance = pointDistance(x,y,currentAtom.x,currentAtom.y);
-      if (distance < destinationDistance && distance < closestDistance && currentAtom.id !== ignoreAtom.id) {
+      if (distance < DESTINATION_DISTANCE && distance < closestDistance && currentAtom.id !== ignoreAtom.id) {
         closestDistance = distance;
         closestAtom = currentAtom;
       }
@@ -1456,15 +1452,11 @@ function windowResized() {
 }
 
 function drawBackground() {
-  if (windowWidth != Math.max(window.innerWidth-20,minWidth) || windowHeight != Math.max(window.innerHeight-20,minHeight)) {
-    windowWidth = Math.max(window.innerWidth-20,minWidth);
-    windowHeight = Math.max(window.innerHeight-20,minHeight);
+  if (windowWidth != Math.max(window.innerWidth-20,MIN_WIDTH) || windowHeight != Math.max(window.innerHeight-20,MIN_HEIGHT)) {
+    windowWidth = Math.max(window.innerWidth-20,MIN_WIDTH);
+    windowHeight = Math.max(window.innerHeight-20,MIN_HEIGHT);
     resizeCanvas(windowWidth,windowHeight);
     var newGraphics = createGraphics(windowWidth,windowHeight);
-    background2 = newGraphics;
-    background2.textSize(48);
-    background2.textAlign(RIGHT, BOTTOM);
-    background2.text("KyneDraw", windowWidth-20, windowHeight-20);
     newGraphics.remove();
     var newGraphics = createGraphics(windowWidth,windowHeight);
     middleground = newGraphics;
