@@ -43,6 +43,7 @@ var somethingClicked = false;
 var buttonClicked = false;
 const INTRO_FADE_START_FRAME = 60;
 const INTRO_FADE_END_FRAME = 120;
+const MULTIBOND_SEPARATION = 6;
 var tips = [
   "Press the CLEAR button to clear all atoms on the screen",
   "Press the SNAP BONDS or FREEFORM BONDS to change the way bonds are made when clicking and dragging",
@@ -61,7 +62,7 @@ var tips = [
 // define the Atom class
 // TODO: possible performance improvements by caching functional groups, though too small to worry about right now
 class Atom {
-  constructor(id,element,x,y,numBonds,charge,numH,numLoneE,deleted,predictedNextBondAngle,bondIdList,bondTypeList,moleculeID) {
+  constructor(id,element,x,y,numBonds,charge,numH,numLoneE,deleted,predictedNextBondAngle,bondIdList,bondTypeList,moleculeID,functionalGroupList) {
     this.id = id;
     this.element = element;
     this.x = x;
@@ -75,6 +76,7 @@ class Atom {
     this.bondIdList = bondIdList;
     this.bondTypeList = bondTypeList;
     this.moleculeID = moleculeID;
+    this.functionalGroupList = functionalGroupList;
     this.length = -1; // because length doesn't make sense for an atom
   }
 
@@ -257,7 +259,6 @@ class Atom {
     this.numH -= changeNumBonds;
     if (this.numH < 0) {
       // if there aren't enough hydrogens to change into regular bonds, change the charge and number of unbonded electrons to cover the difference and maintain the octet
-      console.log(this.charge);
       this.charge -= this.numH;
       this.numLoneE += 2 * this.numH;
       this.numH = 0;
@@ -291,7 +292,6 @@ class Atom {
     this.numH -= this.numBonds;
     if (this.numH < 0) {
       // if there aren't enough hydrogens to change into regular bonds, change the charge and number of unbonded electrons to cover the difference and maintain the octet
-      console.log(this.charge);
       this.charge -= this.numH;
       this.numLoneE += 2 * this.numH;
       this.numH = 0;
@@ -322,7 +322,8 @@ class Atom {
     atom2.changeNumBonds(bondType);
     this.updateNextBondAngle();
     atom2.updateNextBondAngle();
-    // update the molecules as necessary
+    this.createBondWithHelper(atom2, bondType);
+    // update the molecule data as necessary
     if (this.moleculeID === -1) {
       // if the moleculeID is -1, then it is not in any molecule yet
       if (atom2.moleculeID === -1) {
@@ -345,6 +346,26 @@ class Atom {
     }
   }
 
+  createBondWithHelper(atom, bondType) {
+    // gives new names to atom and this based on which one has the lower element index (done to avoid having repeated code depending on which orentation the bond is)
+    let atom1;
+    let atom2;
+    let indicies = ["C", "O", "N", "Br", "Cl", "S", "I", "F"];
+    atom1 = this;
+    console.log(this);
+    switch (bondType) {
+      case 1:
+        //
+        return;
+      case 2:
+        //
+        return;
+      case 3:
+        //
+        return;
+    }
+  }
+
   removeBondWith(atom2) {
     if (!this.bondIdList.includes(atom2.id)) {
       return false;
@@ -358,9 +379,9 @@ class Atom {
       let adjacentIndex = atom2.bondIdList.indexOf(this.id);
       atom2.bondIdList.splice(adjacentIndex, 1);
       atom2.bondTypeList.splice(adjacentIndex, 1);
-      this.changeNumBonds(bonds);
+      this.changeNumBonds(-bonds);
       this.updateNextBondAngle();
-      atom2.changeNumBonds(bonds);
+      atom2.changeNumBonds(-bonds);
       atom2.updateNextBondAngle();
       return true;
     } else {
@@ -425,31 +446,31 @@ class Atom {
   }
 
   isHydroxyl() {
-    return this.element === "O" && this.numBonds === 1 && network[this.bondIdList[0]].element === "C";
+    return this.element === "O" && this.numBonds === 1 && network[this.bondIdList[0]].element === "C" && this.charge === 0 && this.numH === 1 && this.numLoneE === 4;
   }
 
   isProtectedHydroxyl() {
-    return this.element === "OTBS" && this.numBonds === 1 && network[this.bondIdList[0]].element === "C";
+    return this.element === "OTBS" && this.numBonds === 1 && network[this.bondIdList[0]].element === "C" && this.charge === 0 && this.numH === 0 && this.numLoneE === 0;
   }
 
   isKetone() { // is ketone or aldehyde
-    return this.element === "O" && this.numBonds === 2 && this.bondIdList.length == 1 && network[this.bondIdList[0]].element === "C";
+    return this.element === "O" && this.numBonds === 2 && this.bondIdList.length == 1 && network[this.bondIdList[0]].element === "C" && this.charge === 0 && this.numH === 0 && this.numLoneE === 4;
   }
 
   isLeavingGroup() {
-    return (this.element === "Br" || this.element === "Cl" || this.element === "F" || this.element === "I" || this.element === "Ts") && this.numBonds === 1 && this.bondIdList.length == 1 && network[this.bondIdList[0]].element === "C";
+    return (this.element === "Br" || this.element === "Cl" || this.element === "F" || this.element === "I" || this.element === "Ts") && this.numBonds === 1 && this.bondIdList.length == 1 && network[this.bondIdList[0]].element === "C" && this.charge === 0 && this.numH === 0 && this.numLoneE === 6;
   }
 
   isHydrogenHalide() {
-    return (this.element === "Br" || this.element === "Cl" || this.element === "F" || this.element === "I") && this.numBonds === 0 && this.bondIdList.length == 0 && this.numH === 1;
+    return (this.element === "Br" || this.element === "Cl" || this.element === "F" || this.element === "I") && this.numBonds === 0 && this.bondIdList.length == 0 && this.numH === 1 && this.charge === 0 && this.numLoneE === 6;
   }
 
   isHalide() {
-    return (this.element === "Br" || this.element === "Cl" || this.element === "F" || this.element === "I") && this.numBonds === 1 && this.bondIdList.length == 1 && network[this.bondIdList[0]].element === "C";
+    return (this.element === "Br" || this.element === "Cl" || this.element === "F" || this.element === "I") && this.numBonds === 1 && this.bondIdList.length == 1 && network[this.bondIdList[0]].element === "C" && this.charge === 0 && this.numH === 0 && this.numLoneE === 6;
   }
 
   isLithiate() {
-    return this.element === "Li" && this.numBonds === 1 && this.bondIdList.length == 1 && network[this.bondIdList[0]].element === "C";
+    return this.element === "Li" && this.numBonds === 1 && this.bondIdList.length == 1 && network[this.bondIdList[0]].element === "C" && this.charge === 0 && this.numH === 0 && this.numLoneE === 0;
   }
 
   isBenzene() {
@@ -569,6 +590,21 @@ class Atom {
   }
 }
 
+class FunctionalGroup {
+  constructor(id,functionalGroup,x,y,deleted,predictedNextBondAngle,bondIdList,bondTypeList,moleculeID) {
+    this.id = id;
+    this.functionalGroup = functionalGroup;
+    this.x = x;
+    this.y = y;
+    this.deleted = deleted;
+    this.predictedNextBondAngle = predictedNextBondAngle;
+    this.bondIdList = bondIdList;
+    this.bondTypeList = bondTypeList;
+    this.moleculeID = moleculeID;
+    this.length = -1; // because length doesn't make sense for a functional group
+  }
+}
+
 class Molecule {
   constructor(id,x1,y1,x2,y2,deleted,atomIDs) {
     this.id = id;
@@ -578,7 +614,7 @@ class Molecule {
     this.y2 = y2;
     this.deleted = deleted;
     this.atomIDs = atomIDs;
-    this.length = -1; // because length doesn't make sense for an atom
+    this.length = -1; // because length doesn't make sense for a molecule
   }
 
   delete() {
@@ -1167,75 +1203,75 @@ function draw() {
           if (currentAtom.deleted) {
             continue;
           }
-            // render preexisting bonds
-            if (currentAtom.numBonds !== 0) {
-              for (let j = 0; j < currentAtom.bondIdList.length; j++) {
-                // only draw it if it's a bond from a lesser ID to a greater ID. prevents drawing the bond twice (since bonds don't go from atoms to themselves)
-                if (currentAtom.bondIdList[j] > currentAtom.id) {
-                  let adjacentAtom = network[currentAtom.bondIdList[j]];
-                  if (!adjacentAtom.deleted) {
-                    bond(currentAtom.x, currentAtom.y, adjacentAtom.x, adjacentAtom.y, currentAtom.bondTypeList[j], foreground);
-                  }
-                }
-              }
-            }
-            
-            // render preexisting atoms
-            if (currentAtom.deleted) {
-              continue; // deleted atom
-            } else {
-              // account for the atom's charge, asumming it has hydrogens if it makes sense to assume so
-              let label = "";
-              if (currentAtom.element !== "C" || currentAtom.element === "C" && currentAtom.numBonds === 0) {
-                if (currentAtom.numH > 1) {
-                  let subscript = ["₀","₁","₂","₃","₄","₅","₆","₇","₈","₉"];
-                  let tens = currentAtom.numH;
-                  while (tens !== 0) {
-                    label = subscript[tens%10] + label;
-                    tens = Math.floor(tens/10);
-                  }
-                }
-                if (currentAtom.numH > 0) {
-                  label = "H" + label;
-                }
-              }
-              if ((currentAtom.element === "O" || currentAtom.element === "S") && currentAtom.numH >= 2 || currentAtom.isHydrogenHalide()) {
-                label += currentAtom.element;
-              } else if (currentAtom.element !== "C" || currentAtom.element === "C" && currentAtom.numBonds === 0) {
-                label = currentAtom.element + label;
-              }
-              if (Math.abs(currentAtom.charge) > 1) {
-                let temp = "";
-                let superscript = ["⁰","¹","²","³","⁴","⁵","⁶","⁷","⁸","⁹"];
-                let tens = Math.abs(currentAtom.charge);
-                while (tens !== 0) {
-                  temp = superscript[tens%10] + temp;
-                  tens = Math.floor(tens/10);
-                }
-                label += temp;
-              }
-              if (currentAtom.charge > 0) {
-                label += "⁺";
-              } else if (currentAtom.charge < 0) {
-                label += "⁻";
-              }
-              if (label !== "") {
-                foreground.noStroke();
-                foreground.fill(255);
-                let boundingBox = font.textBounds(label, currentAtom.x, currentAtom.y, 20, CENTER, CENTER);
-                foreground.rect(boundingBox.x-5-boundingBox.w/2, boundingBox.y-5+boundingBox.h/2, boundingBox.w+10, boundingBox.h+10); // TODO: figure out why this is so weird, especially with H2O
-                if (selectedTool === "moleculeDrag") {
-                  foreground.fill(48,227,255);
-                  foreground.text(label, currentAtom.x, currentAtom.y);
-                  foreground.stroke(48,227,255);
-                } else {
-                  foreground.fill(255,0,0);
-                  foreground.text(label, currentAtom.x, currentAtom.y);
-                  foreground.stroke(255,0,0);
+          // render preexisting bonds
+          if (currentAtom.numBonds !== 0) {
+            for (let j = 0; j < currentAtom.bondIdList.length; j++) {
+              // only draw it if it's a bond from a lesser ID to a greater ID. prevents drawing the bond twice (bonds don't go from atoms to themselves)
+              if (currentAtom.bondIdList[j] > currentAtom.id) {
+                let adjacentAtom = network[currentAtom.bondIdList[j]];
+                if (!adjacentAtom.deleted) {
+                  bond(currentAtom.x, currentAtom.y, adjacentAtom.x, adjacentAtom.y, currentAtom.bondTypeList[j], foreground);
                 }
               }
             }
           }
+          
+          // render preexisting atoms
+          if (currentAtom.deleted) {
+            continue; // deleted atom
+          } else {
+            // account for the atom's charge, asumming it has hydrogens if it makes sense to assume so
+            let label = "";
+            if (currentAtom.element !== "C" || currentAtom.element === "C" && currentAtom.numBonds === 0) {
+              if (currentAtom.numH > 1) {
+                let subscript = ["₀","₁","₂","₃","₄","₅","₆","₇","₈","₉"];
+                let tens = currentAtom.numH;
+                while (tens !== 0) {
+                  label = subscript[tens%10] + label;
+                  tens = Math.floor(tens/10);
+                }
+              }
+              if (currentAtom.numH > 0) {
+                label = "H" + label;
+              }
+            }
+            if ((currentAtom.element === "O" || currentAtom.element === "S") && currentAtom.numH >= 2 || currentAtom.isHydrogenHalide()) {
+              label += currentAtom.element;
+            } else if (currentAtom.element !== "C" || currentAtom.element === "C" && currentAtom.numBonds === 0) {
+              label = currentAtom.element + label;
+            }
+            if (Math.abs(currentAtom.charge) > 1) {
+              let temp = "";
+              let superscript = ["⁰","¹","²","³","⁴","⁵","⁶","⁷","⁸","⁹"];
+              let tens = Math.abs(currentAtom.charge);
+              while (tens !== 0) {
+                temp = superscript[tens%10] + temp;
+                tens = Math.floor(tens/10);
+              }
+              label += temp;
+            }
+            if (currentAtom.charge > 0) {
+              label += "⁺";
+            } else if (currentAtom.charge < 0) {
+              label += "⁻";
+            }
+            if (label !== "") {
+              foreground.noStroke();
+              foreground.fill(255);
+              let boundingBox = font.textBounds(label, currentAtom.x, currentAtom.y, 20, CENTER, CENTER);
+              foreground.rect(boundingBox.x-5-boundingBox.w/2, boundingBox.y-5+boundingBox.h/2, boundingBox.w+10, boundingBox.h+10); // TODO: figure out why this is so weird, especially with H2O
+              if (selectedTool === "moleculeDrag") {
+                foreground.fill(48,227,255);
+                foreground.text(label, currentAtom.x, currentAtom.y);
+                foreground.stroke(48,227,255);
+              } else {
+                foreground.fill(255,0,0);
+                foreground.text(label, currentAtom.x, currentAtom.y);
+                foreground.stroke(255,0,0);
+              }
+            }
+          }
+        }
         foreground.fill(0);
         foreground.strokeWeight(1);
         foreground.stroke(0);
@@ -1544,17 +1580,22 @@ function highlightedBond(x1,y1,x2,y2,num,colorArray,frame) {
   frame.stroke(0);
 }
 
-function bond(x1,y1,x2,y2,num,frame) {
+function bond(x1,y1,x2,y2,num,frame,optionalOrientation = "left") {
   if (num > 3) {
     throw new Error ("Too many bonds!");
   } else if (num < 1) {
     throw new Error ("Negative or zero bonds!");
   }
-  frame.line(x1,y1,x2,y2);
-  if (num >= 2) {
-    lineOffset(x1,y1,x2,y2,5,frame);
-    if (num === 3) {
-      lineOffset(x1,y1,x2,y2,-5,frame);
+  if (num === 2 && optionalOrientation === "middle") {
+    lineOffset(x1,y1,x2,y2,MULTIBOND_SEPARATION/2,frame);
+    lineOffset(x1,y1,x2,y2,-MULTIBOND_SEPARATION/2,frame);
+  } else {
+    frame.line(x1,y1,x2,y2);
+    if (num === 3 || num === 2 && optionalOrientation === "left") {
+      lineOffset(x1,y1,x2,y2,MULTIBOND_SEPARATION,frame);
+    }
+    if (num === 3 || num === 2 && optionalOrientation === "right") {
+      lineOffset(x1,y1,x2,y2,-MULTIBOND_SEPARATION,frame);
     }
   }
 }
@@ -2121,7 +2162,7 @@ function clickButton(selectedBox) {
       }
       break;
     case 36:
-      // TODO: several possible products
+      // TODO: many possible products!!
       let terminalAlkenes = [];
       for (let i = 0; i < network.length; ++i) {
         let currentAtom = network[i];
@@ -2142,7 +2183,7 @@ function clickButton(selectedBox) {
           let currentAtom2 = terminalAlkenes[i+1][0];
           let adjacentAtom2 = terminalAlkenes[i+1][1];
           if (adjacentAtom1.bondIdList.includes(adjacentAtom2.id)) {
-            // doeesn't work on but-1,3-ene
+            // doesn't work on but-1,3-ene
             continue;
           }
           currentAtom1.delete();
@@ -2449,6 +2490,7 @@ function clickButton(selectedBox) {
         }
         if (currentAtom.isHydroxyl()) {
           currentAtom.element = "OTBS";
+          currentAtom.numH = 0;
         }
       }
       break;
@@ -2460,6 +2502,7 @@ function clickButton(selectedBox) {
         }
         if (currentAtom.isProtectedHydroxyl()) {
           currentAtom.element = "O";
+          currentAtom.numH = 1;
         }
       }
       break;
