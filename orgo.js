@@ -1,5 +1,5 @@
 // Written by Joseph. github.com/OneRandomGithubUser
-const bondLength = 50;
+const BOND_LENGTH = 50;
 var nextNodeID = 0;
 var nextMoleculeID = 0;
 var bondType = 1;
@@ -194,8 +194,8 @@ class Node {
         bondAngle = optionalBondAngle;
       }
       let closestDestinationAtom = [];
-      let previewX2 = this.x + Math.cos(toRadians(360-bondAngle))*bondLength;
-      let previewY2 = this.y + Math.sin(toRadians(360-bondAngle))*bondLength;
+      let previewX2 = this.x + Math.cos(toRadians(360-bondAngle))*BOND_LENGTH;
+      let previewY2 = this.y + Math.sin(toRadians(360-bondAngle))*BOND_LENGTH;
       let id2 = nextNodeID;
       // connect to an existing atom, ignoring element
       closestDestinationAtom = findClosestDestinationAtom(previewX2,previewY2,[],network);
@@ -213,8 +213,8 @@ class Node {
           let simBonds = this.numBonds + 1;
           while (simBonds < 12) {
             bondAngle = this.calculateNextBondAngle(simBonds);
-            previewX2 = this.x + Math.cos(toRadians(360-bondAngle))*bondLength;
-            previewY2 = this.y + Math.sin(toRadians(360-bondAngle))*bondLength;
+            previewX2 = this.x + Math.cos(toRadians(360-bondAngle))*BOND_LENGTH;
+            previewY2 = this.y + Math.sin(toRadians(360-bondAngle))*BOND_LENGTH;
             closestDestinationAtom = findClosestDestinationAtom(previewX2,previewY2,[],network);
             if (closestDestinationAtom.length === 0) {
               break;
@@ -996,8 +996,8 @@ function draw() {
         }
         previewX1 = selectedAtom.x;
         previewY1 = selectedAtom.y;
-        previewX2 = selectedAtom.x + Math.cos(toRadians(360-bondAngle))*bondLength;
-        previewY2 = selectedAtom.y + Math.sin(toRadians(360-bondAngle))*bondLength;
+        previewX2 = selectedAtom.x + Math.cos(toRadians(360-bondAngle))*BOND_LENGTH;
+        previewY2 = selectedAtom.y + Math.sin(toRadians(360-bondAngle))*BOND_LENGTH;
       } else if (selectedAtom.length !== 0 && !mousePressed) {
         validAction = true;
         // when only one point is selected, not two, when selectedTool is atom or drag or delete or chargeH
@@ -1034,8 +1034,8 @@ function draw() {
               validAction = true;
               // round bond angle to nearest 30 degrees
             }
-            previewX2 = previewX1 + Math.cos(toRadians(360-bondAngle))*bondLength;
-            previewY2 = previewY1 + Math.sin(toRadians(360-bondAngle))*bondLength;
+            previewX2 = previewX1 + Math.cos(toRadians(360-bondAngle))*BOND_LENGTH;
+            previewY2 = previewY1 + Math.sin(toRadians(360-bondAngle))*BOND_LENGTH;
           } else {
             previewX2 = cachedMouseX;
             previewY2 = cachedMouseY;
@@ -1070,16 +1070,16 @@ function draw() {
                 for (let i = 0; i < selectedAtom.bondIdList.length; i++) {
                   let currentAtom = network[selectedAtom.bondIdList[i]];
                   let distance = pointDistance(currentAtom.x, currentAtom.y, cachedMouseX, cachedMouseY);
-                  if (distance < bondLength + SELECTION_DISTANCE && distance > bondLength - SELECTION_DISTANCE) {
-                    // initial check before doing intensive calculations
+                  if (distance < BOND_LENGTH + SELECTION_DISTANCE && distance > BOND_LENGTH - SELECTION_DISTANCE) { // initial check before doing intensive calculations
                     for (let i = 0; i < 12; i++) {
-                      let offsetedX = currentAtom.x - bondLength * Math.cos(toRadians(30*i));
-                      let offsetedY = currentAtom.y + bondLength * Math.sin(toRadians(30*i));
+                      let offsetedX = currentAtom.x - BOND_LENGTH * Math.cos(toRadians(30*i));
+                      let offsetedY = currentAtom.y + BOND_LENGTH * Math.sin(toRadians(30*i));
                       let currentDistance = pointDistance(offsetedX, offsetedY, cachedMouseX, cachedMouseY);
                       if (currentDistance < SELECTION_DISTANCE && currentDistance < trackedDistance) {
                         let closestAtom = findClosestDestinationAtom(offsetedX, offsetedY, currentAtom, network, selectedAtom);
+                        console.log(closestAtom);
                         // closestAtom is null if the closestAtom already has a bond with currentAtom. Prevents being able to make two bonds in the same place
-                        if (closestAtom !== null) {
+                        if (closestAtom !== null && closestAtom.length === 0) {
                           previewX1 = offsetedX;
                           previewY1 = offsetedY;
                           trackedDistance = currentDistance;
@@ -1114,8 +1114,8 @@ function draw() {
         previewX1 = cachedMouseX;
         previewY1 = cachedMouseY;
         bondAngle = 330;
-        previewX2 = cachedMouseX + Math.cos(toRadians(360-bondAngle))*bondLength;
-        previewY2 = cachedMouseY + Math.sin(toRadians(360-bondAngle))*bondLength;
+        previewX2 = cachedMouseX + Math.cos(toRadians(360-bondAngle))*BOND_LENGTH;
+        previewY2 = cachedMouseY + Math.sin(toRadians(360-bondAngle))*BOND_LENGTH;
       }
 
       if (renderMiddleground) {
@@ -1339,8 +1339,8 @@ function draw() {
           previewY2 = destinationAtom.y;
           if (selectedAtom.length === 0) {
             // if selectedAtom does not exist, snap previewX1 and previewY1
-            previewX1 = previewX2 - bondLength * Math.cos(toRadians(bondAngle));
-            previewY1 = previewY2 + bondLength * Math.sin(toRadians(bondAngle));
+            previewX1 = previewX2 - BOND_LENGTH * Math.cos(toRadians(bondAngle));
+            previewY1 = previewY2 + BOND_LENGTH * Math.sin(toRadians(bondAngle));
           } else {
             bondAngle = findBondAngle(previewX1,previewY1,previewX2,previewY2);
           }
@@ -2287,7 +2287,7 @@ function clickButton(selectedBox) {
         }
         for (let j = 0; j < currentAtom.bondTypeList.length; ++j) {
           if (currentAtom.bondTypeList[j] === 2 || currentAtom.bondTypeList[j] === 3) {
-            // count number of atoms within a region of 1.1 bondLength from the bond on either side
+            // count number of atoms within a region of 1.1 BOND_LENGTH from the bond on either side
             let adjacentAtom = network[currentAtom.bondIdList[j]];
             let side1 = 0;
             let side2 = 0;
@@ -2295,7 +2295,7 @@ function clickButton(selectedBox) {
             // TODO: yuck, O(n^2)
             for (let k = 0; k < network.length; ++k) {
               let currentAtom2 = network[k];
-              if (currentAtom2.distanceToBondOf(currentAtom, adjacentAtom) < 1.1 * bondLength) {
+              if (currentAtom2.distanceToBondOf(currentAtom, adjacentAtom) < 1.1 * BOND_LENGTH) {
                 let side = currentAtom2.sideOfBondOf(currentAtom, adjacentAtom);
                 if (side < 0) {
                   side1++;
@@ -2351,7 +2351,7 @@ function clickButton(selectedBox) {
         }
         for (let j = 0; j < currentAtom.bondTypeList.length; ++j) {
           if (currentAtom.bondTypeList[j] === 2) {
-            // only occurs for alkenes, count number of atoms within a region of 1.1 bondLength from the bond on either side
+            // only occurs for alkenes, count number of atoms within a region of 1.1 BOND_LENGTH from the bond on either side
             let adjacentAtom = network[currentAtom.bondIdList[j]];
             let side1 = 0;
             let side2 = 0;
@@ -2359,7 +2359,7 @@ function clickButton(selectedBox) {
             // TODO: yuck, O(n^2)
             for (let k = 0; k < network.length; ++k) {
               let currentAtom2 = network[k];
-              if (currentAtom2.distanceToBondOf(currentAtom, adjacentAtom) < 1.1 * bondLength) {
+              if (currentAtom2.distanceToBondOf(currentAtom, adjacentAtom) < 1.1 * BOND_LENGTH) {
                 let side = currentAtom2.sideOfBondOf(currentAtom, adjacentAtom);
                 if (side < 0) {
                   side1++;
