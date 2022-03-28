@@ -550,10 +550,9 @@ class Atom extends Node {
       this.numBonds += this.bondTypeList[i];
     }
     this.charge = 0;
-    this.numH = valenceOf(this.name);
+    this.numH = valenceOf(this.name) - this.numBonds;
     this.numLoneE = valenceElectronsOf(this.name) - valenceOf(this.name);
     // below is copy and pasted from changeNumBonds without changing this.numBonds
-    this.numH -= this.numBonds;
     if (this.numH < 0) {
       // if there aren't enough hydrogens to change into regular bonds, change the charge and number of unbonded electrons to cover the difference and maintain the octet
       this.charge -= this.numH;
@@ -2176,6 +2175,7 @@ function clickButton(selectedBox) {
         }
         if (currentAtom.isHydroxyl()) {
           currentAtom.name = "Br";
+          currentAtom.updateNumBonds();
         }
       }
       break;
@@ -2187,6 +2187,7 @@ function clickButton(selectedBox) {
         }
         if (currentAtom.isHydroxyl()) {
           currentAtom.name = "Cl";
+          currentAtom.updateNumBonds();
         }
       }
       break;
@@ -2198,6 +2199,7 @@ function clickButton(selectedBox) {
         }
         if (currentAtom.isHydroxyl()) {
           currentAtom.name = "Ts";
+          currentAtom.updateNumBonds();
         }
       }
       break;
