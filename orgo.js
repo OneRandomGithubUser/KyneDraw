@@ -1,6 +1,6 @@
 // Written by Joseph. github.com/OneRandomGithubUser
 const bondLength = 50;
-var nextAtomID = 0;
+var nextNodeID = 0;
 var nextMoleculeID = 0;
 var bondType = 1;
 var element = "C";
@@ -41,6 +41,7 @@ var selectedBond = [];
 var selectedMolecule = [];
 var somethingClicked = false;
 var buttonClicked = false;
+const POSSIBLE_ELEMENTS = ["C", "O", "N", "Br", "Cl", "S", "I", "F"];
 const INTRO_FADE_START_FRAME = 60;
 const INTRO_FADE_END_FRAME = 120;
 const MULTIBOND_SEPARATION = 6;
@@ -59,110 +60,39 @@ var tips = [
 ];
 // TODO: bad practice to make so many global variables, but p5.js leaves me no choice
 
-// define the Atom class
-// TODO: possible performance improvements by caching functional groups, though too small to worry about right now
-class Atom {
-  constructor(id,element,x,y,numBonds,charge,numH,numLoneE,deleted,predictedNextBondAngle,bondIdList,bondTypeList,moleculeID,functionalGroupList) {
+// define the Node class, which is to be used for either Atoms or FunctionalGroups
+class Node {
+  constructor(id,name,x,y,deleted,numBonds,predictedNextBondAngle,bondIdList,bondTypeList,moleculeID) {
     this.id = id;
-    this.element = element;
+    this.name = name;
     this.x = x;
     this.y = y;
-    this.numBonds = numBonds;
-    this.charge = charge;
-    this.numH = numH;
-    this.numLoneE = numLoneE;
     this.deleted = deleted;
+    this.numBonds = numBonds;
     this.predictedNextBondAngle = predictedNextBondAngle;
     this.bondIdList = bondIdList;
     this.bondTypeList = bondTypeList;
     this.moleculeID = moleculeID;
-    this.functionalGroupList = functionalGroupList;
-    this.length = -1; // because length doesn't make sense for an atom
-  }
-
-  delete() {
-    while (this.bondIdList.length > 0) {
-      let currentAtom = network[this.bondIdList[0]];
-      currentAtom.removeBondWith(this);
-    }
-    molecules[this.moleculeID].removeAtom(this);
-    this.deleted = true;
-    this.clearData();
-    return true;
+    this.length = -1; // because length doesn't make sense for a functional group
   }
 
   clearData() {
     if (!this.deleted) {
-      throw new Error("tried to clear data of nondeleted atom");
+      throw new Error("tried to clear data of nondeleted node");
     }
     this.id = null;
-    this.element = null;
+    this.name = null;
     this.x = null;
     this.y = null;
     this.numBonds = null;
-    this.charge = null;
-    this.numH = null;
-    this.numLoneE = null;
     this.predictedNextBondAngle = null;
     this.bondIdList = null;
     this.bondTypeList = null;
     this.moleculeID = null;
   }
-
-  insertAtom(element, bondType, connectToExistingAtoms, optionalBondAngle) {
-    if (bondType + this.numBonds > maxBonds(this.element) || bondType > maxBonds(element)) {
-      // bond makes too many bonds for a valid molecule
-      return false;
-    } else {
-      let bondAngle;
-      if (optionalBondAngle === undefined) {
-        bondAngle = this.getNextBondAngleOf(bondType);
-      } else {
-        bondAngle = optionalBondAngle;
-      }
-      let closestDestinationAtom = [];
-      let previewX2 = this.x + Math.cos(toRadians(360-bondAngle))*bondLength;
-      let previewY2 = this.y + Math.sin(toRadians(360-bondAngle))*bondLength;
-      let id2 = nextAtomID;
-      // connect to an existing atom, ignoring element
-      closestDestinationAtom = findClosestDestinationAtom(previewX2,previewY2,[],network);
-      if (closestDestinationAtom.length !== 0) {
-        if (connectToExistingAtoms && closestDestinationAtom.numBonds + bondType < maxBonds(closestDestinationAtom.element)) {
-          // if connectToExistingAtoms is true and the bondType is not too big to addition to the closestDestinationAtom, make the bond to it
-          this.createBondWith(closestDestinationAtom, bondType);
-
-          // then update the frame
-          renderFrame = true;
-          renderMiddleground = true;
-          return true;
-        } else {
-          // if connectToExistingAtoms is false, make the new bond somewhere else by simulating the next bond as if there were simBonds already on the atom
-          let simBonds = this.numBonds + 1;
-          while (simBonds < 12) {
-            bondAngle = this.calculateNextBondAngle(simBonds);
-            previewX2 = this.x + Math.cos(toRadians(360-bondAngle))*bondLength;
-            previewY2 = this.y + Math.sin(toRadians(360-bondAngle))*bondLength;
-            closestDestinationAtom = findClosestDestinationAtom(previewX2,previewY2,[],network);
-            if (closestDestinationAtom.length === 0) {
-              break;
-            }
-            simBonds++;
-          }
-        }
-      }
-      network.push(new Atom(id2, element, previewX2, previewY2, 0, 0, valenceOf(element), valenceElectronsOf(element) - valenceOf(element), false, 0, [], [], -1));
-      nextAtomID++;
-      this.createBondWith(network[id2], bondType);
-
-      // then update the frame
-      renderFrame = true;
-      renderMiddleground = true;
-      return true;
-    }
-  }
   
   alkeneAdditionOf(markovnikovElementToAdd, nonmarkovnikovElementToAdd, optionalMarkovnikovNumBondsToAdd = 1, optionalNonmarkovnikovNumBondsToAdd = 1) {
-    if (this.element != "C" || this.isBenzene()) {
+    if (this.name != "C" || this.isBenzene()) {
       // current element must be a carbon and not part of a benzene ring
       return false;
     } else {
@@ -171,7 +101,7 @@ class Atom {
         let reps = this.bondTypeList[i]-1; // number of times to repeat bond addition. reps = 1 if alkene, reps = 2 if alkyne
         if (reps === 1 || reps === 2) { // find the alkene/alkyne(s)
           let atom2 = network[this.bondIdList[i]];
-          if (atom2.element === "C") {
+          if (atom2.name === "C") {
             this.bondTypeList[i] -= reps;
             this.changeNumBonds(-reps);
             this.updateNextBondAngle();
@@ -210,7 +140,7 @@ class Atom {
   }
   
   alkyneAdditionOf(markovnikovElementToAdd, nonmarkovnikovElementToAdd, optionalMarkovnikovNumBondsToAdd = 1, optionalNonmarkovnikovNumBondsToAdd = 1) {
-    if (this.element != "C") {
+    if (this.name != "C") {
       // current element must be a carbon
       return false;
     } else {
@@ -218,7 +148,7 @@ class Atom {
       for (let i = 0; i < this.bondTypeList.length; i++) {
         if (this.bondTypeList[i] === 3) {
           let atom2 = network[this.bondIdList[i]];
-          if (atom2.element === "C") {
+          if (atom2.name === "C") {
             this.bondTypeList[i]-=2;
             this.changeNumBonds(-2);
             this.updateNextBondAngle();
@@ -252,65 +182,56 @@ class Atom {
     }
   }
 
-  changeNumBonds(changeNumBonds) {
-    // changes numBonds such that this.numH + this.numBonds - this.charge = valenceOf(this.element), minimizing charge if possible
-    // first convert between hydrogen bonds and regular bonds if possible 
-    this.numBonds += changeNumBonds;
-    this.numH -= changeNumBonds;
-    if (this.numH < 0) {
-      // if there aren't enough hydrogens to change into regular bonds, change the charge and number of unbonded electrons to cover the difference and maintain the octet
-      this.charge -= this.numH;
-      this.numLoneE += 2 * this.numH;
-      this.numH = 0;
-      if (this.numLoneE < 0) {
-        // if doing this uses too many unbonded electrons, violate the octet
-        this.charge += this.numLoneE;
-        this.numLoneE = 0;
-      }
-    } else if (this.numH > 0 && this.charge > 0) {
-      // if there is a positive charge and hydrogens that can be sacrified, break the bond to the hydrogen
-      if (this.numH > this.charge) {
-        this.numH -= this.charge;
-        this.charge = 0;
+  insertAtom(element, bondType, connectToExistingAtoms, optionalBondAngle) {
+    if (bondType + this.numBonds > maxBonds(this.name) || bondType > maxBonds(element)) {
+      // bond makes too many bonds for a valid molecule
+      return false;
+    } else {
+      let bondAngle;
+      if (optionalBondAngle === undefined) {
+        bondAngle = this.getNextBondAngleOf(bondType);
       } else {
-        this.charge -= this.numH;
-        this.numH = 0;
+        bondAngle = optionalBondAngle;
       }
-    }
-  }
-  
-  updateNumBonds() {
-    // resets the molecule to a lone atom and then adds in the bonds into the calculation
-    this.numBonds = 0;
-    for (let i = 0; i < this.bondTypeList.length; i++) {
-      this.numBonds += this.bondTypeList[i];
-    }
-    this.charge = 0;
-    this.numH = valenceOf(this.element);
-    this.numLoneE = valenceElectronsOf(this.element) - valenceOf(this.element);
-    // below is copy and pasted from changeNumBonds without changing this.numBonds
-    this.numH -= this.numBonds;
-    if (this.numH < 0) {
-      // if there aren't enough hydrogens to change into regular bonds, change the charge and number of unbonded electrons to cover the difference and maintain the octet
-      this.charge -= this.numH;
-      this.numLoneE += 2 * this.numH;
-      this.numH = 0;
-      if (this.numLoneE < 0) {
-        // if doing this uses too many unbonded electrons, violate the octet
-        this.charge += this.numLoneE;
-        this.numLoneE = 0;
+      let closestDestinationAtom = [];
+      let previewX2 = this.x + Math.cos(toRadians(360-bondAngle))*bondLength;
+      let previewY2 = this.y + Math.sin(toRadians(360-bondAngle))*bondLength;
+      let id2 = nextNodeID;
+      // connect to an existing atom, ignoring element
+      closestDestinationAtom = findClosestDestinationAtom(previewX2,previewY2,[],network);
+      if (closestDestinationAtom.length !== 0) {
+        if (connectToExistingAtoms && closestDestinationAtom.numBonds + bondType < maxBonds(closestDestinationAtom.name)) {
+          // if connectToExistingAtoms is true and the bondType is not too big to addition to the closestDestinationAtom, make the bond to it
+          this.createBondWith(closestDestinationAtom, bondType);
+
+          // then update the frame
+          renderFrame = true;
+          renderMiddleground = true;
+          return true;
+        } else {
+          // if connectToExistingAtoms is false, make the new bond somewhere else by simulating the next bond as if there were simBonds already on the atom
+          let simBonds = this.numBonds + 1;
+          while (simBonds < 12) {
+            bondAngle = this.calculateNextBondAngle(simBonds);
+            previewX2 = this.x + Math.cos(toRadians(360-bondAngle))*bondLength;
+            previewY2 = this.y + Math.sin(toRadians(360-bondAngle))*bondLength;
+            closestDestinationAtom = findClosestDestinationAtom(previewX2,previewY2,[],network);
+            if (closestDestinationAtom.length === 0) {
+              break;
+            }
+            simBonds++;
+          }
+        }
       }
-    } else if (this.numH > 0 && this.charge > 0) {
-      // if there is a positive charge and hydrogens that can be sacrified, break the bond to the hydrogen
-      if (this.numH > this.charge) {
-        this.numH -= this.charge;
-        this.charge = 0;
-      } else {
-        this.charge -= this.numH;
-        this.numH = 0;
-      }
+      network.push(new Atom(id2, element, previewX2, previewY2, 0, 0, valenceOf(element), valenceElectronsOf(element) - valenceOf(element), false, 0, [], [], -1));
+      nextNodeID++;
+      this.createBondWith(network[id2], bondType);
+
+      // then update the frame
+      renderFrame = true;
+      renderMiddleground = true;
+      return true;
     }
-    return true;
   }
 
   createBondWith(atom2, bondType) {
@@ -322,7 +243,7 @@ class Atom {
     atom2.changeNumBonds(bondType);
     this.updateNextBondAngle();
     atom2.updateNextBondAngle();
-    this.createBondWithHelper(atom2, bondType);
+    this.updateFunctionalGroup(atom2, bondType);
     // update the molecule data as necessary
     if (this.moleculeID === -1) {
       // if the moleculeID is -1, then it is not in any molecule yet
@@ -346,180 +267,15 @@ class Atom {
     }
   }
 
-  createBondWithHelper(atom, bondType) {
-    // gives new names to atom and this based on which one has the lower element index (done to avoid having repeated code depending on which orentation the bond is)
-    let atom1;
-    let atom2;
-    let indicies = ["C", "O", "N", "Br", "Cl", "S", "I", "F"];
-    atom1 = this;
-    console.log(this);
-    switch (bondType) {
-      case 1:
-        //
-        return;
-      case 2:
-        //
-        return;
-      case 3:
-        //
-        return;
+  delete() {
+    while (this.bondIdList.length > 0) {
+      let currentAtom = network[this.bondIdList[0]];
+      currentAtom.removeBondWith(this);
     }
-  }
-
-  removeBondWith(atom2) {
-    if (!this.bondIdList.includes(atom2.id)) {
-      return false;
-    }
-    let currentIndex = this.bondIdList.indexOf(atom2.id);
-    if (currentIndex !== -1) {
-      molecules[this.moleculeID].removeBondBetween(this, atom2);
-      let bonds = this.bondTypeList[currentIndex];
-      this.bondIdList.splice(currentIndex, 1);
-      this.bondTypeList.splice(currentIndex, 1);
-      let adjacentIndex = atom2.bondIdList.indexOf(this.id);
-      atom2.bondIdList.splice(adjacentIndex, 1);
-      atom2.bondTypeList.splice(adjacentIndex, 1);
-      this.changeNumBonds(-bonds);
-      this.updateNextBondAngle();
-      atom2.changeNumBonds(-bonds);
-      atom2.updateNextBondAngle();
-      return true;
-    } else {
-      return false;
-    }
-  }
-
-  changeMoleculeNumber(moleculeNumber) {
-    molecules[this.moleculeID].changeMoleculeNumber(moleculeNumber);
-  }
-
-  isMoreSubstitutedThan(atom) {
-    return this.bondIdList.length > atom.bondIdList.length;
-  }
-
-  isMoreStableCarbocationThan(atom) {
-    // TODO: finish isMoreStableCarbocationThan function: what if it is unknown?
-    return this.carbocationStabilityIndex() > atom.carbocationStabilityIndex();
-  }
-
-  carbocationStabilityIndex() {
-    return this.carbocationStabilityIndexHelper(0);
-  }
-
-  carbocationStabilityIndexHelper(index) {
-    // TODO: this is a really inefficient algorithm and this is a bad way to handle other carbocations and can get stuck on aromatic rings
-    if (this.element != "C") {
-      return 0;
-    }
-    let ans = 0;
-    if (index === 0) {
-      // if this is the first atom, find the number of bonded atoms, then add anything due to resonance
-      ans += this.bondIdList.length;
-      for (let i = 0; i < this.bondIdList.length; i++) {
-        ans += network[this.bondIdList[i]].carbocationStabilityIndexHelper(index+1);
-      }
-    } else {
-      for (let i = 0; i < this.bondIdList.length; i++) {
-        if (this.isBenzene()) {
-          // add 4 for the super stable benzene if it's next to the original, otherwise decrease it by half every atom it's away. probably not accurate
-          ans+=4/(2**index-1);
-        } else if (this.bondTypeList[i] === index % 2 + 1) {
-          // bad way to try to account for resonance. add 1/2+1/4+1/8+... for each resonance contributor. probably does not count all resonance
-          ans += 1/(2**index);
-          ans += network[this.bondIdList[i]].carbocationStabilityIndexHelper(index+1);
-        }
-      }
-    }
-    return ans;
-  }
-
-  getBondAngles() {
-    let ans = [];
-    for (let i = 0; i < this.bondIdList.length; i++) {
-      ans.push(Math.round(this.findBondAngleWith(network[this.bondIdList[i]])));
-    }
-    return ans;
-  }
-  
-  findBondAngleWith(atom2) {
-    return findBondAngle(this.x, this.y, atom2.x, atom2.y);
-  }
-
-  isHydroxyl() {
-    return this.element === "O" && this.numBonds === 1 && network[this.bondIdList[0]].element === "C" && this.charge === 0 && this.numH === 1 && this.numLoneE === 4;
-  }
-
-  isProtectedHydroxyl() {
-    return this.element === "OTBS" && this.numBonds === 1 && network[this.bondIdList[0]].element === "C" && this.charge === 0 && this.numH === 0 && this.numLoneE === 0;
-  }
-
-  isKetone() { // is ketone or aldehyde
-    return this.element === "O" && this.numBonds === 2 && this.bondIdList.length == 1 && network[this.bondIdList[0]].element === "C" && this.charge === 0 && this.numH === 0 && this.numLoneE === 4;
-  }
-
-  isLeavingGroup() {
-    return (this.element === "Br" || this.element === "Cl" || this.element === "F" || this.element === "I" || this.element === "Ts") && this.numBonds === 1 && this.bondIdList.length == 1 && network[this.bondIdList[0]].element === "C" && this.charge === 0 && this.numH === 0 && this.numLoneE === 6;
-  }
-
-  isHydrogenHalide() {
-    return (this.element === "Br" || this.element === "Cl" || this.element === "F" || this.element === "I") && this.numBonds === 0 && this.bondIdList.length == 0 && this.numH === 1 && this.charge === 0 && this.numLoneE === 6;
-  }
-
-  isHalide() {
-    return (this.element === "Br" || this.element === "Cl" || this.element === "F" || this.element === "I") && this.numBonds === 1 && this.bondIdList.length == 1 && network[this.bondIdList[0]].element === "C" && this.charge === 0 && this.numH === 0 && this.numLoneE === 6;
-  }
-
-  isLithiate() {
-    return this.element === "Li" && this.numBonds === 1 && this.bondIdList.length == 1 && network[this.bondIdList[0]].element === "C" && this.charge === 0 && this.numH === 0 && this.numLoneE === 0;
-  }
-
-  isBenzene() {
-    return this.isBenzeneHelper(0, this.id);
-  }
-  
-  // cycle through each bond one by one and see if there is a chain of 6 carbon atoms of single,double,single,double,single,double bonds (no need to check the other pattern since it's the same)
-  isBenzeneHelper(index, finalID) {
-    if (index === 6) {
-      if (this.id === finalID) { // see if, after 6 carbons, the chain cycles back to the original
-        return true;
-      } else {
-        return false;
-      }
-    } else if (this.element != "C") { // see if this atom is a carbon
-      return false;
-    } else {
-      // recursively run the helper function on atoms bonded with the next single/double bond
-      let ans = false;
-      for (let i = 0; i < this.bondTypeList.length; i++) {
-        if (this.bondTypeList[i] === index % 2 + 1) {
-          ans = ans || network[this.bondIdList[i]].isBenzeneHelper(index+1, finalID);
-        }
-      }
-      return ans;
-    }
-  }
-
-  distanceToBondOf(atom1, atom2) {
-    return distanceToBond(this.x, this.y, atom1.x, atom1.y, atom2.x, atom2.y);
-  }
-
-  sideOfBondOf(atom1, atom2) {
-    return sideOfBond(this.x, this.y, atom1.x, atom1.y, atom2.x, atom2.y);
-  }  
-
-  getNextBondAngleOf(bondType) {
-    if (this.numBonds === 0) {
-      // lone atom
-      return 330;
-    } else if (bondType === 3 || this.bondTypeList.includes(3)) {
-      // make linear triple bonds
-      return (this.getBondAngles()[0]+180)%360;
-    } else if (bondType === 2 && this.bondTypeList.includes(2)) {
-      // make linear allene
-      return (this.getBondAngles()[0]+180)%360;
-    } else {
-      return this.predictedNextBondAngle;
-    }
+    molecules[this.moleculeID].removeAtom(this);
+    this.deleted = true;
+    this.clearData();
+    return true;
   }
 
   updateNextBondAngle() {
@@ -588,20 +344,312 @@ class Atom {
         return ans;
     }
   }
+
+  removeBondWith(node2) {
+    if (!this.bondIdList.includes(node2.id)) {
+      return false;
+    }
+    let currentIndex = this.bondIdList.indexOf(node2.id);
+    if (currentIndex !== -1) {
+      molecules[this.moleculeID].removeBondBetween(this, node2);
+      let bonds = this.bondTypeList[currentIndex];
+      this.bondIdList.splice(currentIndex, 1);
+      this.bondTypeList.splice(currentIndex, 1);
+      let adjacentIndex = node2.bondIdList.indexOf(this.id);
+      node2.bondIdList.splice(adjacentIndex, 1);
+      node2.bondTypeList.splice(adjacentIndex, 1);
+      this.changeNumBonds(-bonds);
+      this.updateNextBondAngle();
+      node2.changeNumBonds(-bonds);
+      node2.updateNextBondAngle();
+      return true;
+    } else {
+      return false;
+    }
+  }
+
+  changeMoleculeNumber(moleculeNumber) {
+    molecules[this.moleculeID].changeMoleculeNumber(moleculeNumber);
+  }
+
+  isMoreSubstitutedThan(node) {
+    return this.bondIdList.length > node.bondIdList.length;
+  }
+
+  isMoreStableCarbocationThan(node) {
+    // TODO: finish isMoreStableCarbocationThan function: what if it is unknown?
+    return this.carbocationStabilityIndex() > node.carbocationStabilityIndex();
+  }
+
+  carbocationStabilityIndex() {
+    return this.carbocationStabilityIndexHelper(0);
+  }
+
+  carbocationStabilityIndexHelper(index) {
+    // TODO: this is a really inefficient algorithm and this is a bad way to handle other carbocations and can get stuck on aromatic rings
+    if (this.name != "C") {
+      return 0;
+    }
+    let ans = 0;
+    if (index === 0) {
+      // if this is the first atom, find the number of bonded atoms, then add anything due to resonance
+      ans += this.bondIdList.length;
+      for (let i = 0; i < this.bondIdList.length; i++) {
+        ans += network[this.bondIdList[i]].carbocationStabilityIndexHelper(index+1);
+      }
+    } else {
+      for (let i = 0; i < this.bondIdList.length; i++) {
+        if (this.isBenzene()) {
+          // add 4 for the super stable benzene if it's next to the original, otherwise decrease it by half every atom it's away. probably not accurate
+          ans+=4/(2**index-1);
+        } else if (this.bondTypeList[i] === index % 2 + 1) {
+          // bad way to try to account for resonance. add 1/2+1/4+1/8+... for each resonance contributor. probably does not count all resonance
+          ans += 1/(2**index);
+          ans += network[this.bondIdList[i]].carbocationStabilityIndexHelper(index+1);
+        }
+      }
+    }
+    return ans;
+  }
+
+  getBondAngles() {
+    let ans = [];
+    for (let i = 0; i < this.bondIdList.length; i++) {
+      ans.push(Math.round(this.findBondAngleWith(network[this.bondIdList[i]])));
+    }
+    return ans;
+  }
+  
+  findBondAngleWith(node2) {
+    return findBondAngle(this.x, this.y, node2.x, node2.y);
+  }
+
+  distanceToBondOf(node1, node2) {
+    return distanceToBond(this.x, this.y, node1.x, node1.y, node2.x, node2.y);
+  }
+
+  sideOfBondOf(node1, node2) {
+    return sideOfBond(this.x, this.y, node1.x, node1.y, node2.x, node2.y);
+  }  
+
+  getNextBondAngleOf(bondType) {
+    if (this.numBonds === 0) {
+      // lone atom
+      return 330;
+    } else if (bondType === 3 || this.bondTypeList.includes(3)) {
+      // make linear triple bonds
+      return (this.getBondAngles()[0]+180)%360;
+    } else if (bondType === 2 && this.bondTypeList.includes(2)) {
+      // make linear allene
+      return (this.getBondAngles()[0]+180)%360;
+    } else {
+      return this.predictedNextBondAngle;
+    }
+  }
+
+  /**
+   * Updates the functional group recursively based on the bonds between two atoms and the bondType between them
+   * @param {Node} node
+   * @param {Number} bondType 
+   * @returns
+   */
+  updateFunctionalGroup(node, bondType) {
+    // gives new names to atom and this based on which one has the lower element index (done to avoid having repeated code depending on which orentation the bond is)
+    let atom1;
+    let atom2;
+    if (POSSIBLE_ELEMENTS.indexOf(node.name) > POSSIBLE_ELEMENTS.indexOf(this.name)) {
+      atom2 = node;
+      atom1 = this;
+    } else {
+      atom1 = node;
+      atom2 = this;
+    }
+    // discriminates which possible functional groups have possibly been created first based on bondType, then based on atom1.name, then based on atom2.name (wow, a three dimensional switch statement!)
+    switch (bondType) {
+      case 1:
+        // possible bonds in functional groups: C-N, C-O, C-N, C-S, O-O, O-N, N-N
+        switch (atom1.name) {
+          case "C":
+            switch (atom2.name) {
+              case "N":
+                //
+                this.functionalGroup = this.updateFunctionalGroup
+                return;
+              case "O":
+                //
+                return;
+              case "S":
+                //
+                return;
+              default:
+                return;
+            }
+        }
+        return;
+      case 2:
+        //
+        return;
+      case 3:
+        //
+        return;
+      default:
+        throw new Error("passed an invalid bondType to updateFunctionalGroup")
+    }
+  }
 }
 
-class FunctionalGroup {
-  constructor(id,functionalGroup,x,y,deleted,predictedNextBondAngle,bondIdList,bondTypeList,moleculeID) {
-    this.id = id;
-    this.functionalGroup = functionalGroup;
-    this.x = x;
-    this.y = y;
-    this.deleted = deleted;
-    this.predictedNextBondAngle = predictedNextBondAngle;
-    this.bondIdList = bondIdList;
-    this.bondTypeList = bondTypeList;
-    this.moleculeID = moleculeID;
-    this.length = -1; // because length doesn't make sense for a functional group
+// define the Atom class, which is to be used for atoms
+// TODO: possible performance improvements by caching functional groups, though too small to worry about right now
+class Atom extends Node {
+  constructor(id,name,x,y,numBonds,charge,numH,numLoneE,deleted,predictedNextBondAngle,bondIdList,bondTypeList,moleculeID,functionalGroupList) {"C", x, y, 0, 0, valenceOf("C"), valenceElectronsOf("C") - valenceOf("C"), false, 330, [], [], nextMoleculeID
+    super(id,name,x,y,deleted,numBonds,predictedNextBondAngle,bondIdList,bondTypeList,moleculeID);
+    this.charge = charge;
+    this.numH = numH;
+    this.numLoneE = numLoneE;
+    this.functionalGroupList = functionalGroupList; // I don't anticipate that it will be possible for an atom to be in multiple functional groups that will be good for our uses, but make it a list anyways
+  }
+
+  clearData() {
+    super.clearData();
+    this.charge = null;
+    this.numH = null;
+    this.numLoneE = null;
+  }
+
+  changeNumBonds(changeNumBonds) {
+    // changes numBonds such that this.numH + this.numBonds - this.charge = valenceOf(this.name), minimizing charge if possible
+    // first convert between hydrogen bonds and regular bonds if possible 
+    this.numBonds += changeNumBonds;
+    this.numH -= changeNumBonds;
+    if (this.numH < 0) {
+      // if there aren't enough hydrogens to change into regular bonds, change the charge and number of unbonded electrons to cover the difference and maintain the octet
+      this.charge -= this.numH;
+      this.numLoneE += 2 * this.numH;
+      this.numH = 0;
+      if (this.numLoneE < 0) {
+        // if doing this uses too many unbonded electrons, violate the octet
+        this.charge += this.numLoneE;
+        this.numLoneE = 0;
+      }
+    } else if (this.numH > 0 && this.charge > 0) {
+      // if there is a positive charge and hydrogens that can be sacrified, break the bond to the hydrogen
+      if (this.numH > this.charge) {
+        this.numH -= this.charge;
+        this.charge = 0;
+      } else {
+        this.charge -= this.numH;
+        this.numH = 0;
+      }
+    }
+  }
+  
+  updateNumBonds() {
+    // resets the molecule to a lone atom and then adds in the bonds into the calculation
+    this.numBonds = 0;
+    for (let i = 0; i < this.bondTypeList.length; i++) {
+      this.numBonds += this.bondTypeList[i];
+    }
+    this.charge = 0;
+    this.numH = valenceOf(this.name);
+    this.numLoneE = valenceElectronsOf(this.name) - valenceOf(this.name);
+    // below is copy and pasted from changeNumBonds without changing this.numBonds
+    this.numH -= this.numBonds;
+    if (this.numH < 0) {
+      // if there aren't enough hydrogens to change into regular bonds, change the charge and number of unbonded electrons to cover the difference and maintain the octet
+      this.charge -= this.numH;
+      this.numLoneE += 2 * this.numH;
+      this.numH = 0;
+      if (this.numLoneE < 0) {
+        // if doing this uses too many unbonded electrons, violate the octet
+        this.charge += this.numLoneE;
+        this.numLoneE = 0;
+      }
+    } else if (this.numH > 0 && this.charge > 0) {
+      // if there is a positive charge and hydrogens that can be sacrified, break the bond to the hydrogen
+      if (this.numH > this.charge) {
+        this.numH -= this.charge;
+        this.charge = 0;
+      } else {
+        this.charge -= this.numH;
+        this.numH = 0;
+      }
+    }
+    return true;
+  }
+
+  isHydroxyl() {
+    return this.name === "O" && this.numBonds === 1 && network[this.bondIdList[0]].name === "C" && this.charge === 0 && this.numH === 1 && this.numLoneE === 4;
+  }
+
+  isProtectedHydroxyl() {
+    return this.name === "OTBS" && this.numBonds === 1 && network[this.bondIdList[0]].name === "C" && this.charge === 0 && this.numH === 0 && this.numLoneE === 0;
+  }
+
+  isKetone() { // is ketone or aldehyde
+    return this.name === "O" && this.numBonds === 2 && this.bondIdList.length == 1 && network[this.bondIdList[0]].name === "C" && this.charge === 0 && this.numH === 0 && this.numLoneE === 4;
+  }
+
+  isLeavingGroup() {
+    return (this.name === "Br" || this.name === "Cl" || this.name === "F" || this.name === "I" || this.name === "Ts") && this.numBonds === 1 && this.bondIdList.length == 1 && network[this.bondIdList[0]].name === "C" && this.charge === 0 && this.numH === 0 && this.numLoneE === 6;
+  }
+
+  isHydrogenHalide() {
+    return (this.name === "Br" || this.name === "Cl" || this.name === "F" || this.name === "I") && this.numBonds === 0 && this.bondIdList.length == 0 && this.numH === 1 && this.charge === 0 && this.numLoneE === 6;
+  }
+
+  isHalide() {
+    return (this.name === "Br" || this.name === "Cl" || this.name === "F" || this.name === "I") && this.numBonds === 1 && this.bondIdList.length == 1 && network[this.bondIdList[0]].name === "C" && this.charge === 0 && this.numH === 0 && this.numLoneE === 6;
+  }
+
+  isLithiate() {
+    return this.name === "Li" && this.numBonds === 1 && this.bondIdList.length == 1 && network[this.bondIdList[0]].name === "C" && this.charge === 0 && this.numH === 0 && this.numLoneE === 0;
+  }
+
+  isBenzene() {
+    return this.isBenzeneHelper(0, this.id);
+  }
+  
+  // cycle through each bond one by one and see if there is a chain of 6 carbon atoms of single,double,single,double,single,double bonds (no need to check the other pattern since it's the same)
+  isBenzeneHelper(index, finalID) {
+    if (index === 6) {
+      if (this.id === finalID) { // see if, after 6 carbons, the chain cycles back to the original
+        return true;
+      } else {
+        return false;
+      }
+    } else if (this.name != "C") { // see if this atom is a carbon
+      return false;
+    } else {
+      // recursively run the helper function on atoms bonded with the next single/double bond
+      let ans = false;
+      for (let i = 0; i < this.bondTypeList.length; i++) {
+        if (this.bondTypeList[i] === index % 2 + 1) {
+          ans = ans || network[this.bondIdList[i]].isBenzeneHelper(index+1, finalID);
+        }
+      }
+      return ans;
+    }
+  }
+}
+
+class FunctionalGroup extends Node {
+  constructor(id,name,x,y,deleted,numBonds,predictedNextBondAngle,bondIdList,bondTypeList,moleculeID) {
+    super(id,name,x,y,deleted,numBonds,predictedNextBondAngle,bondIdList,bondTypeList,moleculeID);
+  }
+
+  clearData() {
+    super.clearData();
+  }
+
+  changeNumBonds(changeNumBonds) {
+    this.numBonds += changeNumBonds;
+  }
+  
+  updateNumBonds() {
+    this.numBonds = 0;
+    for (let i = 0; i < this.bondTypeList.length; i++) {
+      this.numBonds += this.bondTypeList[i];
+    }
   }
 }
 
@@ -941,7 +989,7 @@ function draw() {
       if (selectedAtom.length !== 0 && !mousePressed && selectedTool === "bond") {
         validAction = true;
         // when there is a selectedAtom and the mouse is not being dragged and the bond tool is selected
-        if (selectedAtom.numBonds > maxBonds(selectedAtom.element)-bondType) {
+        if (selectedAtom.numBonds > maxBonds(selectedAtom.name)-bondType) {
           // too many bonds
           validAction = false;
         } else {
@@ -967,11 +1015,11 @@ function draw() {
           validAction = true;
         } else if (selectedTool === "chargeH") {
           // avoid causing a negative numH
-          if (element === "-H" && selectedAtom.numH <= 0 || element === "+H" && selectedAtom.numBonds + selectedAtom.numH >= valenceElectronsOf(selectedAtom.element)) {
+          if (element === "-H" && selectedAtom.numH <= 0 || element === "+H" && selectedAtom.numBonds + selectedAtom.numH >= valenceElectronsOf(selectedAtom.name)) {
             validAction = false;
-          } else if (element === "+2𝑒" && selectedAtom.numH + selectedAtom.numBonds - selectedAtom.charge >= valenceOf(selectedAtom.element) - 1 || element === "-2𝑒" && selectedAtom.numLoneE <= 1) {
-            // the number of unbonded electrons is valenceElectronsOf(selectedAtom.element) - (selectedAtom.numH + selectedAtom.numBonds) - selectedAtom.charge, as per the definition of formal charge
-            // the maximum number of unbonded electrons (full octet) is when selectedAtom.numH + selectedAtom.numBonds - selectedAtom.charge = valenceOf(selectedAtom.element)
+          } else if (element === "+2𝑒" && selectedAtom.numH + selectedAtom.numBonds - selectedAtom.charge >= valenceOf(selectedAtom.name) - 1 || element === "-2𝑒" && selectedAtom.numLoneE <= 1) {
+            // the number of unbonded electrons is valenceElectronsOf(selectedAtom.name) - (selectedAtom.numH + selectedAtom.numBonds) - selectedAtom.charge, as per the definition of formal charge
+            // the maximum number of unbonded electrons (full octet) is when selectedAtom.numH + selectedAtom.numBonds - selectedAtom.charge = valenceOf(selectedAtom.name)
             validAction = false;
           }
         }
@@ -979,7 +1027,7 @@ function draw() {
         // on mouse drag, stop updating previewX1 and previewY1 when selectedTool is bond
         if (selectedTool === "bond") {
           if (angleSnap) {
-            if (selectedAtom.numBonds > maxBonds(selectedAtom.element)-bondType) {
+            if (selectedAtom.numBonds > maxBonds(selectedAtom.name)-bondType) {
               // too many bonds
               validAction = false;
             } else {
@@ -992,7 +1040,7 @@ function draw() {
           } else {
             previewX2 = cachedMouseX;
             previewY2 = cachedMouseY;
-            if (selectedAtom.numBonds > maxBonds(selectedAtom.element)-bondType) {
+            if (selectedAtom.numBonds > maxBonds(selectedAtom.name)-bondType) {
               // too many bonds
               validAction = false;
             } else {
@@ -1106,7 +1154,7 @@ function draw() {
             continue;
           }
           let label = "";
-          if (currentAtom.element !== "C" || currentAtom.element === "C" && currentAtom.numBonds === 0) {
+          if (currentAtom.name !== "C" || currentAtom.name === "C" && currentAtom.numBonds === 0) {
             if (currentAtom.numH > 1) {
               let subscript = ["₀","₁","₂","₃","₄","₅","₆","₇","₈","₉"];
               let tens = currentAtom.numH;
@@ -1119,10 +1167,10 @@ function draw() {
               label = "H" + label;
             }
           }
-          if ((currentAtom.element === "O" || currentAtom.element === "S") && currentAtom.numH >= 2 || currentAtom.isHydrogenHalide()) {
-            label += currentAtom.element;
-          } else if (currentAtom.element !== "C" || currentAtom.element === "C" && currentAtom.numBonds === 0) {
-            label = currentAtom.element + label;
+          if ((currentAtom.name === "O" || currentAtom.name === "S") && currentAtom.numH >= 2 || currentAtom.isHydrogenHalide()) {
+            label += currentAtom.name;
+          } else if (currentAtom.name !== "C" || currentAtom.name === "C" && currentAtom.numBonds === 0) {
+            label = currentAtom.name + label;
           }
           if (Math.abs(currentAtom.charge) > 1) {
             let temp = "";
@@ -1165,7 +1213,7 @@ function draw() {
       // highlight selected bond when selectedTool is bond or atom drag
       if (selectedAtom.length === 0 && selectedBond.length !== 0 && (selectedTool === "bond" || selectedTool === "atomDrag" || selectedTool === "atomDelete")) {
         let color;
-        if (selectedTool === "bond" && (selectedBond[0].numBonds - selectedBond[2] + bondType > maxBonds(selectedBond[0].element) || selectedBond[1].numBonds - selectedBond[2] + bondType > maxBonds(selectedBond[1].element)) || selectedTool === "atomDelete") {
+        if (selectedTool === "bond" && (selectedBond[0].numBonds - selectedBond[2] + bondType > maxBonds(selectedBond[0].name) || selectedBond[1].numBonds - selectedBond[2] + bondType > maxBonds(selectedBond[1].name)) || selectedTool === "atomDelete") {
           // highlight red to not change selected bond if it would cause too many bonds only when the selectedTool is bond, or when the selectedTool is atomDelete
           color = [255,0,0];
           highlightedBond(selectedBond[0].x, selectedBond[0].y, selectedBond[1].x, selectedBond[1].y, selectedBond[2], color, foreground);
@@ -1222,7 +1270,7 @@ function draw() {
           } else {
             // account for the atom's charge, asumming it has hydrogens if it makes sense to assume so
             let label = "";
-            if (currentAtom.element !== "C" || currentAtom.element === "C" && currentAtom.numBonds === 0) {
+            if (currentAtom.name !== "C" || currentAtom.name === "C" && currentAtom.numBonds === 0) {
               if (currentAtom.numH > 1) {
                 let subscript = ["₀","₁","₂","₃","₄","₅","₆","₇","₈","₉"];
                 let tens = currentAtom.numH;
@@ -1235,10 +1283,10 @@ function draw() {
                 label = "H" + label;
               }
             }
-            if ((currentAtom.element === "O" || currentAtom.element === "S") && currentAtom.numH >= 2 || currentAtom.isHydrogenHalide()) {
-              label += currentAtom.element;
-            } else if (currentAtom.element !== "C" || currentAtom.element === "C" && currentAtom.numBonds === 0) {
-              label = currentAtom.element + label;
+            if ((currentAtom.name === "O" || currentAtom.name === "S") && currentAtom.numH >= 2 || currentAtom.isHydrogenHalide()) {
+              label += currentAtom.name;
+            } else if (currentAtom.name !== "C" || currentAtom.name === "C" && currentAtom.numBonds === 0) {
+              label = currentAtom.name + label;
             }
             if (Math.abs(currentAtom.charge) > 1) {
               let temp = "";
@@ -1297,7 +1345,7 @@ function draw() {
           } else {
             bondAngle = findBondAngle(previewX1,previewY1,previewX2,previewY2);
           }
-          if (destinationAtom.numBonds <= maxBonds(destinationAtom.element)-bondType && validAction) {
+          if (destinationAtom.numBonds <= maxBonds(destinationAtom.name)-bondType && validAction) {
             foreground.fill(48,227,255);
             foreground.circle(destinationAtom.x,destinationAtom.y,10);
             foreground.fill(255);
@@ -1838,11 +1886,11 @@ function clickButton(selectedBox) {
     case 11:
       network = [];
       molecules = [];
-      nextAtomID = 0;
+      nextNodeID = 0;
       nextMoleculeID = 0;
       break;
     case 12:
-      let startingID = nextAtomID;
+      let startingID = nextNodeID;
       let x;
       let y;
       if (hackerman) {
@@ -1854,9 +1902,9 @@ function clickButton(selectedBox) {
         x = windowWidth/2+(Math.random()-0.5)*windowWidth/2;
         y = windowHeight/2+(Math.random()-0.5)*windowHeight/2;
       }
-      network.push(new Atom(nextAtomID, "C", x, y, 0, 0, valenceOf("C"), valenceElectronsOf("C") - valenceOf("C"), false, 330, [], [], nextMoleculeID));
-      molecules.push(new Molecule(nextMoleculeID, x, y, x, y, false, [nextAtomID]));
-      nextAtomID++;
+      network.push(new Atom(nextNodeID, "C", x, y, 0, 0, valenceOf("C"), valenceElectronsOf("C") - valenceOf("C"), false, 330, [], [], nextMoleculeID));
+      molecules.push(new Molecule(nextMoleculeID, x, y, x, y, false, [nextNodeID]));
+      nextNodeID++;
       nextMoleculeID++;
       let generating = true;
       let minSize = 3;
@@ -1867,7 +1915,7 @@ function clickButton(selectedBox) {
       while (generating) {
         // only makes a randomAtom that is in the molecule that has just been created
         // No need to worry about race conditions because, if the user adds a new atom or something, that isn't processed until the next frame, and if the user presses the RANDOM MOLECULE twice in one frame, it is still only processed once
-        randomAtom = network[startingID + Math.floor(Math.random() * (nextAtomID-startingID))];
+        randomAtom = network[startingID + Math.floor(Math.random() * (nextNodeID-startingID))];
         randomNum = Math.random();
         if (randomNum < 0.85) {
           randomElement = "C";
@@ -1886,7 +1934,7 @@ function clickButton(selectedBox) {
         } else {
           randomBondNumber = 3;
         }
-        if (randomAtom.numBonds + randomBondNumber <= valenceOf(randomAtom.element)) {
+        if (randomAtom.numBonds + randomBondNumber <= valenceOf(randomAtom.name)) {
           // a similar condition is checked in insertAtom, but that uses maxBonds instead of valenceOf, which somtimes randomly makes charges, which aren't very desirable
           randomAtom.insertAtom(randomElement, randomBondNumber, true);
         }
@@ -1967,7 +2015,7 @@ function clickButton(selectedBox) {
           let mostSubstitutedAtom = [];
           for (let j = 0; j < adjacentAtom.bondIdList.length; j++) { // look at the atoms attached to the adjacentAtom
             let adjacentAdjacentAtom = network[adjacentAtom.bondIdList[j]];
-            if (adjacentAdjacentAtom.element != "C" || adjacentAdjacentAtom.id === currentAtom.id || adjacentAdjacentAtom.numBonds >= maxBonds(adjacentAdjacentAtom.element)) {
+            if (adjacentAdjacentAtom.name != "C" || adjacentAdjacentAtom.id === currentAtom.id || adjacentAdjacentAtom.numBonds >= maxBonds(adjacentAdjacentAtom.name)) {
               continue;
             } else if (mostSubstitutedAtom.length === 0 || adjacentAdjacentAtom.isMoreSubstitutedThan(mostSubstitutedAtom)) {
               mostSubstitutedAtom = adjacentAdjacentAtom; // TODO: consider what happens when equally substituted
@@ -2105,7 +2153,7 @@ function clickButton(selectedBox) {
         }
         if (currentAtom.isHydroxyl(currentAtom)) {
           adjacentAtom = network[currentAtom.bondIdList[0]];
-          if (adjacentAtom.numBonds >= maxBonds(adjacentAtom.element)) { // too many bonds to form another
+          if (adjacentAtom.numBonds >= maxBonds(adjacentAtom.name)) { // too many bonds to form another
             break;
           }
           currentAtom.bondTypeList[0] = 2;
@@ -2126,7 +2174,7 @@ function clickButton(selectedBox) {
           continue;
         }
         if (currentAtom.isHydroxyl()) {
-          currentAtom.element = "Br";
+          currentAtom.name = "Br";
         }
       }
       break;
@@ -2137,7 +2185,7 @@ function clickButton(selectedBox) {
           continue;
         }
         if (currentAtom.isHydroxyl()) {
-          currentAtom.element = "Cl";
+          currentAtom.name = "Cl";
         }
       }
       break;
@@ -2148,7 +2196,7 @@ function clickButton(selectedBox) {
           continue;
         }
         if (currentAtom.isHydroxyl()) {
-          currentAtom.element = "Ts";
+          currentAtom.name = "Ts";
         }
       }
       break;
@@ -2169,9 +2217,9 @@ function clickButton(selectedBox) {
         if (currentAtom.deleted) {
           continue;
         }
-        if (currentAtom.numBonds === 2 && currentAtom.bondIdList.length === 1 && currentAtom.element === "C") {
+        if (currentAtom.numBonds === 2 && currentAtom.bondIdList.length === 1 && currentAtom.name === "C") {
           let adjacentAtom = network[currentAtom.bondIdList[0]];
-          if (adjacentAtom.element === "C") {
+          if (adjacentAtom.name === "C") {
             terminalAlkenes.push([currentAtom,adjacentAtom]);
           }
         }
@@ -2196,7 +2244,7 @@ function clickButton(selectedBox) {
       // TODO: several possible products
       for (let i = 0; i < network.length; ++i) {
         let currentAtom = network[i];
-        if (currentAtom.deleted || currentAtom.element !== "C") {
+        if (currentAtom.deleted || currentAtom.name !== "C") {
           continue;
         }
         for (let j = 0; j < currentAtom.bondTypeList.length; ++j) {
@@ -2214,7 +2262,7 @@ function clickButton(selectedBox) {
       // TODO: several possible products
       for (let i = 0; i < network.length; ++i) {
         let currentAtom = network[i];
-        if (currentAtom.deleted || currentAtom.element !== "C") {
+        if (currentAtom.deleted || currentAtom.name !== "C") {
           continue;
         }
         for (let j = 0; j < currentAtom.bondTypeList.length; ++j) {
@@ -2231,7 +2279,7 @@ function clickButton(selectedBox) {
     case 39:
       for (let i = 0; i < network.length; ++i) {
         let currentAtom = network[i];
-        if (currentAtom.deleted || currentAtom.element !== "C") {
+        if (currentAtom.deleted || currentAtom.name !== "C") {
           continue;
         }
         for (let j = 0; j < currentAtom.bondTypeList.length; ++j) {
@@ -2258,7 +2306,7 @@ function clickButton(selectedBox) {
             } else {
               bondAngle = (bondAngle + 300) % 360;
             }
-            let newID = nextAtomID;
+            let newID = nextNodeID;
             currentAtom.bondTypeList[j]--;
             currentAtom.changeNumBonds(-1);
             currentAtom.insertAtom("C", 1, false, bondAngle);
@@ -2273,7 +2321,7 @@ function clickButton(selectedBox) {
     case 40:
       for (let i = 0; i < network.length; ++i) {
         let currentAtom = network[i];
-        if (currentAtom.deleted || currentAtom.element !== "C") {
+        if (currentAtom.deleted || currentAtom.name !== "C") {
           continue;
         }
         for (let j = 0; j < currentAtom.bondTypeList.length; ++j) {
@@ -2284,7 +2332,7 @@ function clickButton(selectedBox) {
     case 41:
       for (let i = 0; i < network.length; ++i) {
         let currentAtom = network[i];
-        if (currentAtom.deleted || currentAtom.element !== "C") {
+        if (currentAtom.deleted || currentAtom.name !== "C") {
           continue;
         }
         for (let j = 0; j < currentAtom.bondTypeList.length; ++j) {
@@ -2295,7 +2343,7 @@ function clickButton(selectedBox) {
     case 42:
       for (let i = 0; i < network.length; ++i) {
         let currentAtom = network[i];
-        if (currentAtom.deleted || currentAtom.element !== "C") {
+        if (currentAtom.deleted || currentAtom.name !== "C") {
           continue;
         }
         for (let j = 0; j < currentAtom.bondTypeList.length; ++j) {
@@ -2322,7 +2370,7 @@ function clickButton(selectedBox) {
             } else {
               bondAngle = (bondAngle + 300) % 360;
             }
-            let newID = nextAtomID;
+            let newID = nextNodeID;
             currentAtom.bondTypeList[j]--;
             currentAtom.changeNumBonds(-1);
             currentAtom.insertAtom("O", 1, false, bondAngle);
@@ -2346,12 +2394,12 @@ function clickButton(selectedBox) {
     case 44:
       for (let i = 0; i < network.length; ++i) {
         let currentAtom = network[i];
-        if (currentAtom.deleted || currentAtom.element !== "C") {
+        if (currentAtom.deleted || currentAtom.name !== "C") {
           continue;
         }
         for (let j = 0; j < currentAtom.bondTypeList.length; ++j) {
           let adjacentAtom = network[currentAtom.bondIdList[j]];
-          if (adjacentAtom.element === "C") {
+          if (adjacentAtom.name === "C") {
             let bondType = currentAtom.bondTypeList[j];
             if (bondType === 2 || bondType === 3) {
               currentAtom.removeBondWith(adjacentAtom);
@@ -2369,12 +2417,12 @@ function clickButton(selectedBox) {
     case 45:
       for (let i = 0; i < network.length; ++i) {
         let currentAtom = network[i];
-        if (currentAtom.deleted || currentAtom.element !== "C") {
+        if (currentAtom.deleted || currentAtom.name !== "C") {
           continue;
         }
         for (let j = 0; j < currentAtom.bondTypeList.length; ++j) {
           let adjacentAtom = network[currentAtom.bondIdList[j]];
-          if (adjacentAtom.element === "C") {
+          if (adjacentAtom.name === "C") {
             let bondType = currentAtom.bondTypeList[j];
             if (bondType === 2 || bondType === 3) {
               currentAtom.removeBondWith(adjacentAtom);
@@ -2385,17 +2433,17 @@ function clickButton(selectedBox) {
                 adjacentAtom.insertAtom("O", 1, false);
               }
               // turn aldehydes into carboxylic acids
-              if (currentAtom.numBonds < maxBonds(currentAtom.element)) {
+              if (currentAtom.numBonds < maxBonds(currentAtom.name)) {
                 currentAtom.insertAtom("O", 1, false);
               }
-              if (adjacentAtom.numBonds < maxBonds(adjacentAtom.element)) {
+              if (adjacentAtom.numBonds < maxBonds(adjacentAtom.name)) {
                 adjacentAtom.insertAtom("O", 1, false);
               }
               // do it again to turn formaldehyde into carbonic acid
-              if (currentAtom.numBonds < maxBonds(currentAtom.element)) {
+              if (currentAtom.numBonds < maxBonds(currentAtom.name)) {
                 currentAtom.insertAtom("O", 1, false);
               }
-              if (adjacentAtom.numBonds < maxBonds(adjacentAtom.element)) {
+              if (adjacentAtom.numBonds < maxBonds(adjacentAtom.name)) {
                 adjacentAtom.insertAtom("O", 1, false);
               }
             }
@@ -2410,7 +2458,7 @@ function clickButton(selectedBox) {
           continue;
         }
         if (currentAtom.isHalide()) {
-          currentAtom.element = "Mg" + currentAtom.element;
+          currentAtom.name = "Mg" + currentAtom.name;
         }
       }
       break;
@@ -2421,7 +2469,7 @@ function clickButton(selectedBox) {
           continue;
         }
         if (currentAtom.isHalide()) {
-          currentAtom.element = "Li";
+          currentAtom.name = "Li";
         }
       }
       break;
@@ -2432,7 +2480,7 @@ function clickButton(selectedBox) {
           continue;
         }
         if (currentAtom.isLithiate()) {
-          currentAtom.element = "CuLi×2";
+          currentAtom.name = "CuLi×2";
         }
       }
       break;
@@ -2444,7 +2492,7 @@ function clickButton(selectedBox) {
         }
         if (currentAtom.isHydroxyl(currentAtom)) {
           adjacentAtom = network[currentAtom.bondIdList[0]];
-          if (adjacentAtom.numBonds >= maxBonds(adjacentAtom.element)) { // too many bonds to form another
+          if (adjacentAtom.numBonds >= maxBonds(adjacentAtom.name)) { // too many bonds to form another
             break;
           }
           currentAtom.bondTypeList[0] = 2;
@@ -2476,7 +2524,7 @@ function clickButton(selectedBox) {
             }
           }
           // turn aldehyde into carboxylic acid
-          if (adjacentAtom.numBonds < maxBonds(adjacentAtom.element)) {
+          if (adjacentAtom.numBonds < maxBonds(adjacentAtom.name)) {
             adjacentAtom.insertAtom("O", 1, false);
           }
         }
@@ -2489,7 +2537,7 @@ function clickButton(selectedBox) {
           continue;
         }
         if (currentAtom.isHydroxyl()) {
-          currentAtom.element = "OTBS";
+          currentAtom.name = "OTBS";
           currentAtom.numH = 0;
         }
       }
@@ -2501,7 +2549,7 @@ function clickButton(selectedBox) {
           continue;
         }
         if (currentAtom.isProtectedHydroxyl()) {
-          currentAtom.element = "O";
+          currentAtom.name = "O";
           currentAtom.numH = 1;
         }
       }
@@ -2536,16 +2584,16 @@ function clickButton(selectedBox) {
         if (selectedAtom.length !== 0) {
           atom1 = selectedAtom;
         } else {
-          network.push(new Atom(nextAtomID, element, previewX1, previewY1, 0, 0, valenceOf(element), valenceElectronsOf(element) - valenceOf(element), false, 0, [], [], -1));
-          atom1 = network[nextAtomID];
-          nextAtomID++;
+          network.push(new Atom(nextNodeID, element, previewX1, previewY1, 0, 0, valenceOf(element), valenceElectronsOf(element) - valenceOf(element), false, 0, [], [], -1));
+          atom1 = network[nextNodeID];
+          nextNodeID++;
         }
         if (destinationAtom.length !== 0) {
           atom2 = destinationAtom;
         } else {
-          network.push(new Atom(nextAtomID, element, previewX2, previewY2, 0, 0, valenceOf(element), valenceElectronsOf(element) - valenceOf(element), false, 0, [], [], -1));
-          atom2 = network[nextAtomID];
-          nextAtomID++;
+          network.push(new Atom(nextNodeID, element, previewX2, previewY2, 0, 0, valenceOf(element), valenceElectronsOf(element) - valenceOf(element), false, 0, [], [], -1));
+          atom2 = network[nextNodeID];
+          nextNodeID++;
         }
         atom1.createBondWith(atom2, bondType);
         // the molecule IDs are handled in createBondWith
@@ -2555,19 +2603,19 @@ function clickButton(selectedBox) {
       if (!validAction) {
         break;
       } else if (selectedAtom.length !== 0) {
-        if (selectedAtom.element !== element) {
-          selectedAtom.element = element;
+        if (selectedAtom.name !== element) {
+          selectedAtom.name = element;
           selectedAtom.updateNumBonds();
         }
       } else {
-        network.push(new Atom(nextAtomID, element, previewX1, previewY1, 0, 0, valenceOf(element), valenceElectronsOf(element) - valenceOf(element), false, 0, [], [], nextMoleculeID));
-        molecules.push(new Molecule(nextMoleculeID, previewX1, previewY1, previewX1, previewY1, false, [nextAtomID]));
-        network[nextAtomID].updateNextBondAngle();
-        nextAtomID++;
+        network.push(new Atom(nextNodeID, element, previewX1, previewY1, 0, 0, valenceOf(element), valenceElectronsOf(element) - valenceOf(element), false, 0, [], [], nextMoleculeID));
+        molecules.push(new Molecule(nextMoleculeID, previewX1, previewY1, previewX1, previewY1, false, [nextNodeID]));
+        network[nextNodeID].updateNextBondAngle();
+        nextNodeID++;
         nextMoleculeID++;
       }
     } else if (selectedTool === "chargeH") {
-      // changes charge and numH such that this.numH + this.numBonds - this.charge = valenceOf(this.element), keeping numBonds constant
+      // changes charge and numH such that this.numH + this.numBonds - this.charge = valenceOf(this.name), keeping numBonds constant
       if (selectedAtom.length !== 0 && validAction) {
         switch (element) {
           case "+H":
