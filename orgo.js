@@ -62,13 +62,16 @@ var tips = [
 
 // define the Node class, which is to be used for either Atoms or FunctionalGroups
 class Node {
-  constructor(id,name,x,y,deleted,numBonds,predictedNextBondAngle,bondIdList,bondTypeList,moleculeID) {
+  constructor(id,name,x,y,numBonds,charge,numH,numLoneE,deleted,predictedNextBondAngle,bondIdList,bondTypeList,moleculeID) {
     this.id = id;
     this.name = name;
     this.x = x;
     this.y = y;
     this.deleted = deleted;
     this.numBonds = numBonds;
+    this.charge = charge;
+    this.numH = numH;
+    this.numLoneE = numLoneE;
     this.predictedNextBondAngle = predictedNextBondAngle;
     this.bondIdList = bondIdList;
     this.bondTypeList = bondTypeList;
@@ -85,6 +88,9 @@ class Node {
     this.x = null;
     this.y = null;
     this.numBonds = null;
+    this.charge = null;
+    this.numH = null;
+    this.numLoneE = null;
     this.predictedNextBondAngle = null;
     this.bondIdList = null;
     this.bondTypeList = null;
@@ -223,13 +229,55 @@ class Node {
           }
         }
       }
-      network.push(new Atom(id2, element, previewX2, previewY2, 0, 0, valenceOf(element), valenceElectronsOf(element) - valenceOf(element), false, 0, [], [], -1));
+      network.push(new Atom(id2, element, previewX2, previewY2, 0, 0, valenceOf(element), valenceElectronsOf(element) - valenceOf(element), false, 0, [], [], -1, []));
       nextNodeID++;
       this.createBondWith(network[id2], bondType);
 
       // then update the frame
       renderFrame = true;
       renderMiddleground = true;
+      return true;
+    }
+  }
+  
+  // TODO: maybe make this work with bonds that are not bridges? would need some more advanced logic
+  /**
+   * Rotates the branch at Node this, including Node this if optionalRotateThis is true, about Node atom2 by Number degrees. Returns false and does nothing if the bond between the atoms is not a bridge
+   * @param {Node} atom2 
+   * @param {Number} degrees
+   * @returns {Boolean} 
+   */
+  rotateBranchAboutBondWith(atom2,degrees,optionalRotateAboutAtom2 = true) {
+    let branch = molecules[this.moleculeID].calculateBranch(this,atom2);
+    if (branch.size === 0) {
+      return false;
+    } else {
+      let rotateAxisAtom;
+      if (optionalRotateAboutAtom2) {
+        rotateAxisAtom = atom2;
+      } else {
+        branch.delete(this);
+        rotateAxisAtom = this;
+      }
+      // change positions
+      for (let currentAtom of branch) {
+        currentAtom.x -= rotateAxisAtom.x;
+        currentAtom.y -= rotateAxisAtom.y;
+        let s = sin(toRadians(360-degrees));
+        let c = cos(toRadians(360-degrees));
+        let newX = currentAtom.x * c - currentAtom.y * s;
+        let newY = currentAtom.y * c + currentAtom.x * s;
+        currentAtom.x = newX + rotateAxisAtom.x;
+        currentAtom.y = newY + rotateAxisAtom.y;
+      }
+      // loop again to update next bond angles
+      for (let currentAtom of branch) {
+        currentAtom.updateNextBondAngle();
+      }
+      atom2.updateNextBondAngle();
+      if (optionalRotateAboutAtom2) {
+        this.updateNextBondAngle();
+      }
       return true;
     }
   }
@@ -285,15 +333,15 @@ class Node {
 
   // TODO: this is really poorly written. but it works at least.
   // optionalPriority is the number of preexisting bonds that this function will pretend that the atom has
-  calculateNextBondAngle(optionalPriority = this.bondIdList.length) {
+  calculateNextBondAngle(optionalPriority = this.bondIdList.length, optionalBondIdList = this.bondIdList) {
+    let currentBondAngles = this.getBondAngles(optionalBondIdList);
     let currentBondSectors = []; // ranges from 0 to 11 for each 30 degree sector, starting at -15 degrees
-    let currentBondAngles = this.getBondAngles();
     if (this.numBonds !== 0) {
-      for (let i = 0; i < this.bondIdList.length; i++) {
-        currentBondSectors.push(Math.floor((this.findBondAngleWith(network[this.bondIdList[i]])+15)/30));
+      for (let i = 0; i < optionalBondIdList.length; i++) {
+        currentBondSectors.push(Math.floor((this.findBondAngleWith(network[optionalBondIdList[i]])+15)/30));
       }
     }
-    if (optionalPriority > this.bondIdList.length) {
+    if (optionalPriority > optionalBondIdList.length) {
       // if optionalPriority is more than the actual number of bonded atoms to the atom, do the default case from the switch statement
       let ans = optionalPriority;
       while (currentBondSectors.includes(ans) && ans < 12) {
@@ -301,7 +349,7 @@ class Node {
       }
       ans *= 30;
       return ans;
-    } 
+    }
     switch (optionalPriority) {
       case 0:
         return 330;
@@ -412,14 +460,20 @@ class Node {
     return ans;
   }
 
-  getBondAngles() {
+  getBondAngles(optionalIdList = this.bondIdList) {
     let ans = [];
-    for (let i = 0; i < this.bondIdList.length; i++) {
-      ans.push(Math.round(this.findBondAngleWith(network[this.bondIdList[i]])));
+    for (let i = 0; i < optionalIdList.length; i++) {
+      ans.push(Math.round(this.findBondAngleWith(network[optionalIdList[i]])));
     }
     return ans;
   }
   
+
+  /**
+   * Returns the bond angle from Node this to Node atom2
+   * @param {Node} atom2 
+   * @returns {Number}
+   */
   findBondAngleWith(node2) {
     return findBondAngle(this.x, this.y, node2.x, node2.y);
   }
@@ -495,25 +549,6 @@ class Node {
       default:
         throw new Error("passed an invalid bondType to updateFunctionalGroup")
     }
-  }
-}
-
-// define the Atom class, which is to be used for atoms
-// TODO: possible performance improvements by caching functional groups, though too small to worry about right now
-class Atom extends Node {
-  constructor(id,name,x,y,numBonds,charge,numH,numLoneE,deleted,predictedNextBondAngle,bondIdList,bondTypeList,moleculeID,functionalGroupList) {"C", x, y, 0, 0, valenceOf("C"), valenceElectronsOf("C") - valenceOf("C"), false, 330, [], [], nextMoleculeID
-    super(id,name,x,y,deleted,numBonds,predictedNextBondAngle,bondIdList,bondTypeList,moleculeID);
-    this.charge = charge;
-    this.numH = numH;
-    this.numLoneE = numLoneE;
-    this.functionalGroupList = functionalGroupList; // I don't anticipate that it will be possible for an atom to be in multiple functional groups that will be good for our uses, but make it a list anyways
-  }
-
-  clearData() {
-    super.clearData();
-    this.charge = null;
-    this.numH = null;
-    this.numLoneE = null;
   }
 
   changeNumBonds(changeNumBonds) {
@@ -631,24 +666,29 @@ class Atom extends Node {
   }
 }
 
-class FunctionalGroup extends Node {
-  constructor(id,name,x,y,deleted,numBonds,predictedNextBondAngle,bondIdList,bondTypeList,moleculeID) {
-    super(id,name,x,y,deleted,numBonds,predictedNextBondAngle,bondIdList,bondTypeList,moleculeID);
+// define the Atom class, which is to be used for atoms
+// TODO: possible performance improvements by caching functional groups, though too small to worry about right now
+class Atom extends Node {
+  constructor(id,name,x,y,numBonds,charge,numH,numLoneE,deleted,predictedNextBondAngle,bondIdList,bondTypeList,moleculeID,functionalGroupList) {
+    super(id,name,x,y,numBonds,charge,numH,numLoneE,deleted,predictedNextBondAngle,bondIdList,bondTypeList,moleculeID);
+    this.functionalGroupList = functionalGroupList; // I don't anticipate that it will be possible for an atom to be in multiple functional groups that will be good for our uses, but make it a list anyways
   }
 
   clearData() {
     super.clearData();
+    this.functionalGroupList = null;
+  }
+}
+
+class FunctionalGroup extends Node {
+  constructor(id,name,x,y,deleted,numBonds,predictedNextBondAngle,bondIdList,bondTypeList,moleculeID,containedAtomList) {
+    super(id,name,x,y,deleted,numBonds,predictedNextBondAngle,bondIdList,bondTypeList,moleculeID);
+    this.containedAtomList = containedAtomList;
   }
 
-  changeNumBonds(changeNumBonds) {
-    this.numBonds += changeNumBonds;
-  }
-  
-  updateNumBonds() {
-    this.numBonds = 0;
-    for (let i = 0; i < this.bondTypeList.length; i++) {
-      this.numBonds += this.bondTypeList[i];
-    }
+  clearData() {
+    super.clearData();
+    this.containedAtomList = null;
   }
 }
 
@@ -838,35 +878,173 @@ class Molecule {
     if (!this.atomIDs.includes(atom1.id) || !this.atomIDs.includes(atom2.id)) {
       return false;
     }
-    let seenNetwork = {};
-    seenNetwork[atom1.id] = true;
-    seenNetwork[atom2.id] = true;
+    let seenAtomIDS = new Set();
+    seenAtomIDS.add(atom1.id);
     let ans = true;
     for (let i = 0; i < atom1.bondIdList.length; i++) {
       let currentAtom = network[atom1.bondIdList[i]];
-      if (currentAtom.id === atom2.id) {
-        // skip the bond between atom1 and atom2 if it exists
+      if (currentAtom.id === atom2.id || seenAtomIDS.has(atom2.id)) {
+        // skip the bond between atom1 and atom2 if it exists without checking again in the recursi ve function
         continue;
       } else {
         // isBridgeHelper returns false if it IS a bridge
-        ans = ans && !this.isBridgeHelper(currentAtom, atom2, seenNetwork);
+        ans = ans && !this.isBridgeHelper(currentAtom, atom2, seenAtomIDS);
       }
     }
     return ans;
   }
 
-  isBridgeHelper(currentAtom, targetAtom, seenNetwork) {
-    seenNetwork[currentAtom.id] = true;
+  isBridgeHelper(currentAtom, targetAtom, seenAtomIDS) {
+    seenAtomIDS.add(currentAtom.id);
     let ans = false;
     for (let i = 0; i < currentAtom.bondIdList.length; i++) {
       let currentAtom2 = network[currentAtom.bondIdList[i]];
       if (targetAtom.id === currentAtom2.id) {
         return true;
-      } else if (!seenNetwork[currentAtom2.id]) {
-        ans = ans || this.isBridgeHelper(currentAtom2, targetAtom, seenNetwork);
+      } else if (!seenAtomIDS.has(currentAtom2.id)) {
+        ans = ans || this.isBridgeHelper(currentAtom2, targetAtom, seenAtomIDS);
       }
     }
     return ans;
+  }
+
+/**
+ * Sees if Node atom1 is a bigger branch than Node atom2. Returns 0 if Node atom1 is bigger, 1 if Node atom2 is bigger, 2 if they are the same size, and -1 if atom1 and atom2 is not a bridge
+ * @param {Node} atom1 
+ * @param {Node} atom2 
+ * @returns {Number}
+ */
+ compareBranchSize(atom1, atom2) {
+    if (this.deleted) {
+      throw new Error("biggerBranch referenced deleted molecule");
+    }
+    if (atom1.deleted || atom2.deleted) {
+      throw new Error("biggerBranch referenced deleted atoms");
+    }
+    if (!this.atomIDs.includes(atom1.id) || !this.atomIDs.includes(atom2.id)) {
+      throw new Error("biggerBranch referenced atoms not in the molecule");
+    }
+    if (!this.isBridge(atom1, atom2)) {
+      return -1;
+    } else {
+      switch (Math.sign(this.branchSize(atom1, atom2) - this.branchSize(atom2, atom1))) {
+        case 1:
+          return 0;
+        case 0:
+          return 2;
+        case -1:
+          return 1;
+      }
+    }
+  }
+
+  /**
+   * Returns the size of the branch attached to Node atom1, ignoring Node atom2. Returns -1 if the bond between atom1 and atom2 is a bridge
+   * @param {Node} atom1 
+   * @param {Node} atom2 
+   * @returns {Number}
+   */
+  branchSize(atom1, atom2) {
+    if (this.deleted) {
+      throw new Error("firstNodeIsBiggerBranch referenced deleted molecule");
+    }
+    if (atom1.deleted || atom2.deleted) {
+      throw new Error("firstNodeIsBiggerBranch referenced deleted atoms");
+    }
+    if (!this.atomIDs.includes(atom1.id) || !this.atomIDs.includes(atom2.id)) {
+      throw new Error("firstNodeIsBiggerBranch referenced atoms not in the molecule");
+    }
+    // TODO: incorporate isBridge logic into the recursive function
+    if (!this.isBridge(atom1, atom2)) {
+      return -1;
+    }
+    let seenAtomIDS = new Set();
+    seenAtomIDS.add(atom1.id);
+    let ans = 0;
+    ans++;
+    let isBridge = true;
+    // this initial for loop is done to skip the bond between atom1 and atom2 while not needing to check it every time in the recursion loop
+    for (let i = 0; i < atom1.bondIdList.length; i++) {
+      let currentAtom = network[atom1.bondIdList[i]];
+      if (currentAtom.id === atom2.id || seenAtomIDS.has(currentAtom.id)) {
+        continue;
+      } else {
+        ans += this.branchSizeHelper(currentAtom, atom1, atom2, seenAtomIDS, ans, isBridge);
+      }
+    }
+    return ans;
+  }
+
+  branchSizeHelper(currentAtom, startAtom, endAtom, seenAtomIDS, currentAns, isBridge) {
+    seenAtomIDS.add(currentAtom.id);
+    let ans = 1;
+    for (let i = 0; i < currentAtom.bondIdList.length; i++) {
+      if (currentAns !== -1) {
+        let currentAtom2 = network[currentAtom.bondIdList[i]];
+        if (!seenAtomIDS.has(currentAtom2.id)) {
+          ans += this.branchSizeHelper(currentAtom2, startAtom, endAtom, seenAtomIDS, currentAns, isBridge);
+        }
+      } else {
+        // to exit out of the recursion
+        currentAns = -1;
+        break;
+      }
+    }
+    return ans;
+  }
+
+  /**
+   * Calculates the set of all Nodes in the branch from Node atom1 that does not include Node atom2 but does include Node atom1. Returns an empty set if atom1 and atom2 is not a bridge
+   * @param {Node} atom1 
+   * @param {Node} atom2 
+   * @returns {Set}
+   */
+  calculateBranch(atom1, atom2) {
+    if (this.deleted) {
+      throw new Error("calculateBranch referenced deleted molecule");
+    }
+    if (atom1.deleted || atom2.deleted) {
+      throw new Error("calculateBranch referenced deleted atoms");
+    }
+    if (!this.atomIDs.includes(atom1.id) || !this.atomIDs.includes(atom2.id)) {
+      throw new Error("calculateBranch referenced atoms not in the molecule");
+    }
+    // TODO: incorporate isBridge logic into the recursive function
+    if (!this.isBridge(atom1, atom2)) {
+      return new Set();
+    }
+    let seenAtomIDS = new Set();
+    seenAtomIDS.add(atom1.id);
+    let ans = new Set();
+    ans.add(atom1);
+    let isBridge = true;
+    // this initial for loop is done to skip the bond between atom1 and atom2 while not needing to check it every time in the recursion loop
+    for (let i = 0; i < atom1.bondIdList.length; i++) {
+      let currentAtom = network[atom1.bondIdList[i]];
+      if (currentAtom.id === atom2.id || seenAtomIDS.has(currentAtom.id)) {
+        continue;
+      } else {
+        this.calculateBranchHelper(currentAtom, atom1, atom2, seenAtomIDS, ans, isBridge);
+      }
+    }
+    return ans;
+  }
+
+  calculateBranchHelper(currentAtom, startAtom, endAtom, seenAtomIDS, currentAns, isBridge) {
+    seenAtomIDS.add(currentAtom.id);
+    currentAns.add(currentAtom);
+    for (let i = 0; i < currentAtom.bondIdList.length; i++) {
+      if (isBridge) {
+        let currentAtom2 = network[currentAtom.bondIdList[i]];
+        if (!seenAtomIDS.has(currentAtom2.id)) {
+          this.calculateBranchHelper(currentAtom2, startAtom, endAtom, seenAtomIDS, currentAns, isBridge);
+        }
+      } else {
+        // to exit out of the recursion
+        currentAns = [];
+        break;
+      }
+    }
   }
 }
 
@@ -1077,7 +1255,6 @@ function draw() {
                       let currentDistance = pointDistance(offsetedX, offsetedY, cachedMouseX, cachedMouseY);
                       if (currentDistance < SELECTION_DISTANCE && currentDistance < trackedDistance) {
                         let closestAtom = findClosestDestinationAtom(offsetedX, offsetedY, currentAtom, network, selectedAtom);
-                        console.log(closestAtom);
                         // closestAtom is null if the closestAtom already has a bond with currentAtom. Prevents being able to make two bonds in the same place
                         if (closestAtom !== null && closestAtom.length === 0) {
                           previewX1 = offsetedX;
@@ -1902,7 +2079,7 @@ function clickButton(selectedBox) {
         x = windowWidth/2+(Math.random()-0.5)*windowWidth/2;
         y = windowHeight/2+(Math.random()-0.5)*windowHeight/2;
       }
-      network.push(new Atom(nextNodeID, "C", x, y, 0, 0, valenceOf("C"), valenceElectronsOf("C") - valenceOf("C"), false, 330, [], [], nextMoleculeID));
+      network.push(new Atom(nextNodeID, "C", x, y, 0, 0, valenceOf("C"), valenceElectronsOf("C") - valenceOf("C"), false, 330, [], [], nextMoleculeID, []));
       molecules.push(new Molecule(nextMoleculeID, x, y, x, y, false, [nextNodeID]));
       nextNodeID++;
       nextMoleculeID++;
@@ -2568,6 +2745,30 @@ function clickButton(selectedBox) {
           if (selectedBond[0].bondIdList[i] === selectedBond[1].id) {
             selectedBond[0].bondTypeList[i] = bondType;
             selectedBond[0].changeNumBonds(bondType - selectedBond[2]);
+            if (angleSnap) {
+              let selectedMolecule = molecules[selectedBond[0].moleculeID];
+              let largerBranchNode;
+              let smallerBranchNode;
+              if (selectedMolecule.compareBranchSize(selectedBond[0],selectedBond[1]) === 0) {
+                largerBranchNode = selectedBond[0];
+                smallerBranchNode = selectedBond[1];
+              } else {
+                largerBranchNode = selectedBond[1];
+                smallerBranchNode = selectedBond[0];
+              }
+              let truncatedBondIdList = [...largerBranchNode.bondIdList];
+              truncatedBondIdList.splice(largerBranchNode.bondIdList.indexOf(smallerBranchNode.id),1);
+              let bondAngleShift = largerBranchNode.calculateNextBondAngle(largerBranchNode.bondIdList.length-1, truncatedBondIdList) - largerBranchNode.findBondAngleWith(smallerBranchNode);
+              if (bondAngleShift !== 0) {
+                smallerBranchNode.rotateBranchAboutBondWith(largerBranchNode,bondAngleShift,true);
+              }
+              truncatedBondIdList = [...smallerBranchNode.bondIdList];
+              truncatedBondIdList.splice(smallerBranchNode.bondIdList.indexOf(largerBranchNode.id),1);
+              bondAngleShift = smallerBranchNode.calculateNextBondAngle(smallerBranchNode.bondIdList.length-1, truncatedBondIdList) - smallerBranchNode.findBondAngleWith(largerBranchNode);
+              if (bondAngleShift !== 0) {
+                smallerBranchNode.rotateBranchAboutBondWith(largerBranchNode,bondAngleShift,false);
+              }
+            }
           }
         }
         for (let i = 0; i < selectedBond[1].bondTypeList.length; i++) {
@@ -2587,14 +2788,14 @@ function clickButton(selectedBox) {
         if (selectedAtom.length !== 0) {
           atom1 = selectedAtom;
         } else {
-          network.push(new Atom(nextNodeID, element, previewX1, previewY1, 0, 0, valenceOf(element), valenceElectronsOf(element) - valenceOf(element), false, 0, [], [], -1));
+          network.push(new Atom(nextNodeID, element, previewX1, previewY1, 0, 0, valenceOf(element), valenceElectronsOf(element) - valenceOf(element), false, 0, [], [], -1, []));
           atom1 = network[nextNodeID];
           nextNodeID++;
         }
         if (destinationAtom.length !== 0) {
           atom2 = destinationAtom;
         } else {
-          network.push(new Atom(nextNodeID, element, previewX2, previewY2, 0, 0, valenceOf(element), valenceElectronsOf(element) - valenceOf(element), false, 0, [], [], -1));
+          network.push(new Atom(nextNodeID, element, previewX2, previewY2, 0, 0, valenceOf(element), valenceElectronsOf(element) - valenceOf(element), false, 0, [], [], -1, []));
           atom2 = network[nextNodeID];
           nextNodeID++;
         }
@@ -2611,7 +2812,7 @@ function clickButton(selectedBox) {
           selectedAtom.updateNumBonds();
         }
       } else {
-        network.push(new Atom(nextNodeID, element, previewX1, previewY1, 0, 0, valenceOf(element), valenceElectronsOf(element) - valenceOf(element), false, 0, [], [], nextMoleculeID));
+        network.push(new Atom(nextNodeID, element, previewX1, previewY1, 0, 0, valenceOf(element), valenceElectronsOf(element) - valenceOf(element), false, 0, [], [], nextMoleculeID, []));
         molecules.push(new Molecule(nextMoleculeID, previewX1, previewY1, previewX1, previewY1, false, [nextNodeID]));
         network[nextNodeID].updateNextBondAngle();
         nextNodeID++;
