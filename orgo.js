@@ -298,7 +298,7 @@ class Node {
       if (atom2.moleculeID === -1) {
         this.moleculeID = nextMoleculeID;
         atom2.moleculeID = nextMoleculeID;
-        molecules.push(new Molecule(nextMoleculeID, Math.min(this.x,atom2.x), Math.min(this.y,atom2.y), Math.max(this.x,atom2.x), Math.max(this.y,atom2.y), false, [this.id, atom2.id]));
+        molecules.push(new Molecule(nextMoleculeID, Math.min(this.x,atom2.x), Math.min(this.y,atom2.y), Math.max(this.x,atom2.x), Math.max(this.y,atom2.y), false, [this, atom2]));
         nextMoleculeID++;
       } else {
         molecules[atom2.moleculeID].addNewAtom(this);
@@ -709,8 +709,8 @@ class Atom extends Node {
 }
 
 class FunctionalGroup extends Node {
-  constructor(id,name,x,y,deleted,numBonds,predictedNextBondAngleList,bondIdList,bondTypeList,moleculeID,containedAtomList) {
-    super(id,name,x,y,deleted,numBonds,predictedNextBondAngleList,bondIdList,bondTypeList,moleculeID);
+  constructor(id,name,x,y,numBonds,charge,numH,numLoneE,deleted,predictedNextBondAngleList,bondIdList,bondTypeList,moleculeID,containedAtomList) {
+    super(id,name,x,y,numBonds,charge,numH,numLoneE,deleted,predictedNextBondAngleList,bondIdList,bondTypeList,moleculeID);
     this.containedAtomList = containedAtomList;
   }
 
@@ -721,20 +721,19 @@ class FunctionalGroup extends Node {
 }
 
 class Molecule {
-  constructor(id,x1,y1,x2,y2,deleted,atomIDs) {
+  constructor(id,x1,y1,x2,y2,deleted,containedAtomList) {
     this.id = id;
     this.x1 = x1;
     this.y1 = y1;
     this.x2 = x2;
     this.y2 = y2;
     this.deleted = deleted;
-    this.atomIDs = atomIDs;
+    this.containedAtomList = containedAtomList;
     this.length = -1; // because length doesn't make sense for a molecule
   }
 
   delete() {
-    for (let i = 0; i < this.atomIDs.length; i++) {
-      let currentAtom = network[this.atomIDs[i]];
+    for (let currentAtom of containedAtomList) {
       currentAtom.deleted = true;
       currentAtom.clearData();
     }
@@ -743,11 +742,23 @@ class Molecule {
     return true;
   }
 
+  clearData() {
+    if (!this.deleted) {
+      throw new Error("tried to clear data of nondeleted molecule");
+    }
+    this.id = null;
+    this.x1 = null;
+    this.y1 = null;
+    this.x2 = null;
+    this.y2 = null;
+    this.containedAtomList = null;
+  }
+
   addNewAtom(atom) {
     if (this.deleted) {
       throw new Error("referenced deleted molecule");
     }
-    this.atomIDs.push(atom.id);
+    this.containedAtomList.push(atom);
     if (atom.x < this.x1) {
       this.x1 = atom.x;
     }
@@ -767,15 +778,14 @@ class Molecule {
     if (this.deleted) {
       throw new Error("referenced deleted molecule");
     }
-    if (this.atomIDs.length === 0) {
+    if (this.containedAtomList.length === 0) {
       throw new Error("tried to recalculate x1 of empty molecule")
     }
-    let x1 = network[this.atomIDs[0]].x;
-    let y1 = network[this.atomIDs[0]].y;
-    let x2 = network[this.atomIDs[0]].x;
-    let y2 = network[this.atomIDs[0]].y;
-    for (let i = 0; i < this.atomIDs.length; i++) {
-      let currentAtom = network[this.atomIDs[i]];
+    let x1 = containedAtomList[0].x;
+    let y1 = containedAtomList[0].y;
+    let x2 = containedAtomList[0].x;
+    let y2 = containedAtomList[0].y;
+    for (let currentAtom of containedAtomList) {
       if (currentAtom.x < x1) {
         x1 = currentAtom.x;
       }
@@ -810,26 +820,14 @@ class Molecule {
     if (atom.deleted) {
       throw new Error("referenced deleted atom - delete atom AFTER molecule.remove(atom)");
     }
-    if (!this.atomIDs.includes(atom.id)) {
+    if (!this.containedAtomList.includes(atom)) {
       return false;
     }
-    this.atomIDs.splice(this.atomIDs.indexOf(atom.id), 1);
+    this.containedAtomList.splice(this.containedAtomList.indexOf(atom), 1);
     for (let i = 0; i < atom.bondIdList.length; i++) {
       this.removeBondBetween(atom, network[atom.bondIdList[i]]);
     }
     this.delete();
-  }
-
-  clearData() {
-    if (!this.deleted) {
-      throw new Error("tried to clear data of nondeleted molecule");
-    }
-    this.id = null;
-    this.x1 = null;
-    this.y1 = null;
-    this.x2 = null;
-    this.y2 = null;
-    this.atomIDs = null;
   }
 
   combineWith(molecule) {
@@ -851,12 +849,12 @@ class Molecule {
     if (molecule.y2 > this.y2) {
       this.y2 = molecule.y2;
     }
-    for (let i = 0; i < molecule.atomIDs.length; i++) {
-      let currentAtomId = molecule.atomIDs[i];
-      this.atomIDs.push(currentAtomId);
-      network[currentAtomId].moleculeID = this.id;
+    for (let currentAtom of molecule.containedAtomList) {
+      this.containedAtomList.push(currentAtom);
+      currentAtom.moleculeID = this.id;
     }
     molecule.deleted = true;
+    molecule.clearData();
   }
 
   removeBondBetween(atom1, atom2) {
@@ -866,7 +864,7 @@ class Molecule {
     if (atom1.deleted || atom2.deleted) {
       throw new Error("removeBondBetween referenced deleted atoms");
     }
-    if (!this.atomIDs.includes(atom1.id) || !this.atomIDs.includes(atom2.id)) {
+    if (!this.containedAtomList.includes(atom1) || !this.containedAtomList.includes(atom2)) {
       return false;
     }
     if (!atom1.bondIdList.includes(atom2.id)) {
@@ -887,7 +885,7 @@ class Molecule {
     seenNetwork[atom.id] = true;
     atom.moleculeID = moleculeID;
     molecules[nextMoleculeID].addNewAtom(atom);
-    this.atomIDs.splice(this.atomIDs.indexOf(atom.id), 1);
+    this.containedAtomList.splice(this.containedAtomList.indexOf(atom), 1);
     for (let i = 0; i < atom.bondIdList.length; i++) {
       let currentAtom = network[atom.bondIdList[i]];
       if (!seenNetwork[currentAtom.id]) {
@@ -903,7 +901,7 @@ class Molecule {
     if (atom1.deleted || atom2.deleted) {
       throw new Error("isBridge referenced deleted atoms");
     }
-    if (!this.atomIDs.includes(atom1.id) || !this.atomIDs.includes(atom2.id)) {
+    if (!this.containedAtomList.includes(atom1) || !this.containedAtomList.includes(atom2)) {
       return false;
     }
     let seenAtomIDS = new Set();
@@ -949,7 +947,7 @@ class Molecule {
     if (atom1.deleted || atom2.deleted) {
       throw new Error("biggerBranch referenced deleted atoms");
     }
-    if (!this.atomIDs.includes(atom1.id) || !this.atomIDs.includes(atom2.id)) {
+    if (!this.containedAtomList.includes(atom1) || !this.containedAtomList.includes(atom2)) {
       throw new Error("biggerBranch referenced atoms not in the molecule");
     }
     if (!this.isBridge(atom1, atom2)) {
@@ -979,7 +977,7 @@ class Molecule {
     if (atom1.deleted || atom2.deleted) {
       throw new Error("firstNodeIsBiggerBranch referenced deleted atoms");
     }
-    if (!this.atomIDs.includes(atom1.id) || !this.atomIDs.includes(atom2.id)) {
+    if (!this.containedAtomList.includes(atom1) || !this.containedAtomList.includes(atom2)) {
       throw new Error("firstNodeIsBiggerBranch referenced atoms not in the molecule");
     }
     // TODO: incorporate isBridge logic into the recursive function
@@ -1034,7 +1032,7 @@ class Molecule {
     if (atom1.deleted || atom2.deleted) {
       throw new Error("calculateBranch referenced deleted atoms");
     }
-    if (!this.atomIDs.includes(atom1.id) || !this.atomIDs.includes(atom2.id)) {
+    if (!this.containedAtomList.includes(atom1) || !this.containedAtomList.includes(atom2)) {
       throw new Error("calculateBranch referenced atoms not in the molecule");
     }
     // TODO: incorporate isBridge logic into the recursive function
@@ -1302,8 +1300,7 @@ function draw() {
             // selectedTool is moleculeDrag
             if (selectedMolecule.length !== 0){
               selectedMolecule.moveBounds(diffX, diffY);
-              for (let i = 0; i < selectedMolecule.atomIDs.length; i++) {
-                let currentAtom = network[selectedMolecule.atomIDs[i]];
+              for (let currentAtom of containedAtomList) {
                 currentAtom.x += diffX;
                 currentAtom.y += diffY;
               }
@@ -1449,8 +1446,7 @@ function draw() {
           foreground.stroke(255,0,0);
           foreground.fill(255,0,0);
         }
-        for (let i = 0; i < selectedMolecule.atomIDs.length; i++) {
-          let currentAtom = network[selectedMolecule.atomIDs[i]];
+        for (let currentAtom of containedAtomList) {
           // don't even consider deleted atoms
           if (currentAtom.deleted) {
             continue;
@@ -2109,7 +2105,7 @@ function clickButton(selectedBox) {
       }
       network.push(new Atom(nextNodeID, "C", x, y, 0, 0, valenceOf("C"), valenceElectronsOf("C") - valenceOf("C"), false, [], [], [], nextMoleculeID, []));
       network[nextNodeID].updateNextBondAngleList();
-      molecules.push(new Molecule(nextMoleculeID, x, y, x, y, false, [nextNodeID]));
+      molecules.push(new Molecule(nextMoleculeID, x, y, x, y, false, [network[nextNodeID]]));
       nextNodeID++;
       nextMoleculeID++;
       let generating = true;
@@ -2144,7 +2140,7 @@ function clickButton(selectedBox) {
           // a similar condition is checked in insertAtom, but that uses maxBonds instead of valenceOf, which somtimes randomly makes charges, which aren't very desirable
           randomAtom.insertAtom(randomElement, randomBondNumber, true);
         }
-        if (Math.random() > 0.9 && molecules[network[startingID].moleculeID].atomIDs.length > minSize) {
+        if (Math.random() > 0.9 && molecules[network[startingID].moleculeID].containedAtomList.length > minSize) {
           generating = false;
         }
       }
@@ -2838,7 +2834,7 @@ function clickButton(selectedBox) {
         }
       } else {
         network.push(new Atom(nextNodeID, element, previewX1, previewY1, 0, 0, valenceOf(element), valenceElectronsOf(element) - valenceOf(element), false, [], [], [], nextMoleculeID, []));
-        molecules.push(new Molecule(nextMoleculeID, previewX1, previewY1, previewX1, previewY1, false, [nextNodeID]));
+        molecules.push(new Molecule(nextMoleculeID, previewX1, previewY1, previewX1, previewY1, false, [network[nextNodeID]]));
         network[nextNodeID].updateNextBondAngleList();
         nextNodeID++;
         nextMoleculeID++;
