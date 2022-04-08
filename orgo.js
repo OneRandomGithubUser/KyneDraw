@@ -218,7 +218,7 @@ class Node {
           // if connectToExistingAtoms is false, make the new bond somewhere else by simulating the next bond as if there were simBonds already on the atom
           let simBonds = this.numBonds + 1;
           while (simBonds < 12) {
-            bondAngle = this.calculateNextBondAngle(simBonds);
+            bondAngle = this.calculateNextBondAngle(bondType, simBonds);
             previewX2 = this.x + Math.cos(toRadians(360-bondAngle))*BOND_LENGTH;
             previewY2 = this.y + Math.sin(toRadians(360-bondAngle))*BOND_LENGTH;
             closestDestinationAtom = findClosestDestinationAtom(previewX2,previewY2,[],network);
@@ -364,7 +364,7 @@ class Node {
     let bondIdList = [...this.bondIdList];
     let bondTypeList = [...this.bondTypeList];
     for (let currentAtom of optionalExcludeAtomsList) {
-      let index = largerBranchNode.bondIdList.indexOf(currentAtom.id);
+      let index = currentAtom.bondIdList.indexOf(currentAtom.id);
       bondIdList.splice(index,1);
       bondTypeList.splice(index,1);
     }
@@ -2786,11 +2786,10 @@ function clickButton(selectedBox) {
                 largerBranchNode = selectedBond[1];
                 smallerBranchNode = selectedBond[0];
               }
-              let bondAngleShift = largerBranchNode.calculateNextBondAngle(largerBranchNode.bondIdList.length-1, [smallerBranchNode]) - largerBranchNode.findBondAngleWith(smallerBranchNode);
-              if (bondAngleShift !== 0) {
+              let bondAngleShift = largerBranchNode.calculateNextBondAngle(selectedBond[2], largerBranchNode.bondIdList.length-1, [smallerBranchNode]) - largerBranchNode.findBondAngleWith(smallerBranchNode);              if (bondAngleShift !== 0) {
                 smallerBranchNode.rotateBranchAboutBondWith(largerBranchNode,bondAngleShift,true);
               }
-              bondAngleShift = smallerBranchNode.calculateNextBondAngle(smallerBranchNode.bondIdList.length-1, [smallerBranchNode]) - smallerBranchNode.findBondAngleWith(largerBranchNode);
+              bondAngleShift = smallerBranchNode.calculateNextBondAngle(selectedBond[2], smallerBranchNode.bondIdList.length-1, [smallerBranchNode]) - smallerBranchNode.findBondAngleWith(largerBranchNode);
               if (bondAngleShift !== 0) {
                 smallerBranchNode.rotateBranchAboutBondWith(largerBranchNode,bondAngleShift,false);
               }
