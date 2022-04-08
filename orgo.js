@@ -62,7 +62,7 @@ var tips = [
 
 // define the Node class, which is to be used for either Atoms or FunctionalGroups
 class Node {
-  constructor(id,name,x,y,numBonds,charge,numH,numLoneE,deleted,predictedNextBondAngle,bondIdList,bondTypeList,moleculeID) {
+  constructor(id,name,x,y,numBonds,charge,numH,numLoneE,deleted,predictedNextBondAngleList,bondIdList,bondTypeList,moleculeID) {
     this.id = id;
     this.name = name;
     this.x = x;
@@ -72,7 +72,7 @@ class Node {
     this.charge = charge;
     this.numH = numH;
     this.numLoneE = numLoneE;
-    this.predictedNextBondAngle = predictedNextBondAngle;
+    this.predictedNextBondAngleList = predictedNextBondAngleList;
     this.bondIdList = bondIdList;
     this.bondTypeList = bondTypeList;
     this.moleculeID = moleculeID;
@@ -91,7 +91,7 @@ class Node {
     this.charge = null;
     this.numH = null;
     this.numLoneE = null;
-    this.predictedNextBondAngle = null;
+    this.predictedNextBondAngleList = null;
     this.bondIdList = null;
     this.bondTypeList = null;
     this.moleculeID = null;
@@ -110,14 +110,14 @@ class Node {
           if (atom2.name === "C") {
             this.bondTypeList[i] -= reps;
             this.changeNumBonds(-reps);
-            this.updateNextBondAngle();
+            this.updateNextBondAngleList();
             for (let j = 0; j < atom2.bondIdList.length; j++) {
               if (atom2.bondIdList[j] === this.id) {
                 atom2.bondTypeList[j] -= reps;
                 atom2.changeNumBonds(-reps);
               }
             }
-            atom2.updateNextBondAngle();
+            atom2.updateNextBondAngleList();
             if (this.isMoreStableCarbocationThan(atom2)) {
               for (let j = 0; j < reps; j++) {
                 if (markovnikovElementToAdd != "") {
@@ -157,14 +157,14 @@ class Node {
           if (atom2.name === "C") {
             this.bondTypeList[i]-=2;
             this.changeNumBonds(-2);
-            this.updateNextBondAngle();
+            this.updateNextBondAngleList();
             for (let j = 0; j < atom2.bondIdList.length; j++) {
               if (atom2.bondIdList[j] === this.id) {
                 atom2.bondTypeList[j]-=2;
                 atom2.changeNumBonds(-2);
               }
             }
-            atom2.updateNextBondAngle();
+            atom2.updateNextBondAngleList();
             if (this.isMoreStableCarbocationThan(atom2)) {
               if (markovnikovElementToAdd != "") {
                 this.insertAtom(markovnikovElementToAdd, optionalMarkovnikovNumBondsToAdd, false);
@@ -195,7 +195,7 @@ class Node {
     } else {
       let bondAngle;
       if (optionalBondAngle === undefined) {
-        bondAngle = this.getNextBondAngleOf(bondType);
+        bondAngle = this.predictedNextBondAngleList[bondType-1];
       } else {
         bondAngle = optionalBondAngle;
       }
@@ -229,7 +229,7 @@ class Node {
           }
         }
       }
-      network.push(new Atom(id2, element, previewX2, previewY2, 0, 0, valenceOf(element), valenceElectronsOf(element) - valenceOf(element), false, 0, [], [], -1, []));
+      network.push(new Atom(id2, element, previewX2, previewY2, 0, 0, valenceOf(element), valenceElectronsOf(element) - valenceOf(element), false, [], [], [], -1, []));
       nextNodeID++;
       this.createBondWith(network[id2], bondType);
 
@@ -272,11 +272,11 @@ class Node {
       }
       // loop again to update next bond angles
       for (let currentAtom of branch) {
-        currentAtom.updateNextBondAngle();
+        currentAtom.updateNextBondAngleList();
       }
-      atom2.updateNextBondAngle();
+      atom2.updateNextBondAngleList();
       if (optionalRotateAboutAtom2) {
-        this.updateNextBondAngle();
+        this.updateNextBondAngleList();
       }
       return true;
     }
@@ -289,8 +289,8 @@ class Node {
     atom2.bondTypeList.push(bondType);
     this.changeNumBonds(bondType);
     atom2.changeNumBonds(bondType);
-    this.updateNextBondAngle();
-    atom2.updateNextBondAngle();
+    this.updateNextBondAngleList();
+    atom2.updateNextBondAngleList();
     this.updateFunctionalGroup(atom2, bondType);
     // update the molecule data as necessary
     if (this.moleculeID === -1) {
@@ -326,22 +326,66 @@ class Node {
     return true;
   }
 
-  updateNextBondAngle() {
-    this.predictedNextBondAngle = this.calculateNextBondAngle();
+  updateNextBondAngleList() {
+    // use bondType = 0 to get the nonlinear next bond angle
+    let nonlinearNextBondAngle = this.calculateNextBondAngle(0);
+    let currentBondAngles = this.getBondAngles();
+    let linearNextBondAngle = (currentBondAngles[0]+180)%360
+    // then check for special cases. repeated logic
+    if (this.bondTypeList.includes(3)) {
+      // make linear triple bonds: need 3+x bonds
+      this.predictedNextBondAngleList[1] = linearNextBondAngle;
+      this.predictedNextBondAngleList[0] = linearNextBondAngle;
+    } else if (bondType === 2 && this.bondTypeList.includes(2)) {
+      // make linear allene: need 2+2 bonds
+      this.predictedNextBondAngleList[1] = linearNextBondAngle;
+      this.predictedNextBondAngleList[0] = nonlinearNextBondAngle;
+    } else {
+      this.predictedNextBondAngleList[1] = nonlinearNextBondAngle;
+      this.predictedNextBondAngleList[0] = nonlinearNextBondAngle;
+    }
+    // also linear triple bonds: need x+3 bonds
+    this.predictedNextBondAngleList[2] = linearNextBondAngle;
     return true;
   }
 
+  /**
+   * Returns the calculated next bond angle, with Number optionalPriority being used to simulate the effect of more/less total connections and optionalExcludeAtomsList including atoms to exclude.
+   * Use bondType = 0 to get the next bond angle without any effects of linear bonds, etc.
+   * @param {Number} bondType 
+   * @param {Number} optionalPriority 
+   * @param {Array<Atom>} optionalExcludeAtomsList 
+   * @returns {Number}
+   */
   // TODO: this is really poorly written. but it works at least.
   // optionalPriority is the number of preexisting bonds that this function will pretend that the atom has
-  calculateNextBondAngle(optionalPriority = this.bondIdList.length, optionalBondIdList = this.bondIdList) {
-    let currentBondAngles = this.getBondAngles(optionalBondIdList);
+  calculateNextBondAngle(bondType, optionalPriority = this.bondIdList.length, optionalExcludeAtomsList = []) {
+    // if I could just use pointers, I wouldn't have to deal with arrays being mutable...
+    let bondIdList = [...this.bondIdList];
+    let bondTypeList = [...this.bondTypeList];
+    for (let currentAtom of optionalExcludeAtomsList) {
+      let index = largerBranchNode.bondIdList.indexOf(currentAtom.id);
+      bondIdList.splice(index,1);
+      bondTypeList.splice(index,1);
+    }
+    let currentBondAngles = this.getBondAngles(bondIdList);
+
+    // check for special cases first
+    if (bondType === 3 || bondTypeList.includes(3)) {
+      // make linear triple bonds: need 3+x bonds
+      return (currentBondAngles[0]+180)%360;
+    } else if (bondType === 2 && bondTypeList.includes(2)) {
+      // make linear allene: need 2+2 bonds
+      return (currentBondAngles[0]+180)%360;
+    }
+
     let currentBondSectors = []; // ranges from 0 to 11 for each 30 degree sector, starting at -15 degrees
     if (this.numBonds !== 0) {
-      for (let i = 0; i < optionalBondIdList.length; i++) {
-        currentBondSectors.push(Math.floor((this.findBondAngleWith(network[optionalBondIdList[i]])+15)/30));
+      for (let i = 0; i < bondIdList.length; i++) {
+        currentBondSectors.push(Math.floor((this.findBondAngleWith(network[bondIdList[i]])+15)/30));
       }
     }
-    if (optionalPriority > optionalBondIdList.length) {
+    if (optionalPriority > bondIdList.length) {
       // if optionalPriority is more than the actual number of bonded atoms to the atom, do the default case from the switch statement
       let ans = optionalPriority;
       while (currentBondSectors.includes(ans) && ans < 12) {
@@ -407,9 +451,9 @@ class Node {
       node2.bondIdList.splice(adjacentIndex, 1);
       node2.bondTypeList.splice(adjacentIndex, 1);
       this.changeNumBonds(-bonds);
-      this.updateNextBondAngle();
+      this.updateNextBondAngleList();
       node2.changeNumBonds(-bonds);
-      node2.updateNextBondAngle();
+      node2.updateNextBondAngleList();
       return true;
     } else {
       return false;
@@ -484,21 +528,6 @@ class Node {
 
   sideOfBondOf(node1, node2) {
     return sideOfBond(this.x, this.y, node1.x, node1.y, node2.x, node2.y);
-  }  
-
-  getNextBondAngleOf(bondType) {
-    if (this.numBonds === 0) {
-      // lone atom
-      return 330;
-    } else if (bondType === 3 || this.bondTypeList.includes(3)) {
-      // make linear triple bonds
-      return (this.getBondAngles()[0]+180)%360;
-    } else if (bondType === 2 && this.bondTypeList.includes(2)) {
-      // make linear allene
-      return (this.getBondAngles()[0]+180)%360;
-    } else {
-      return this.predictedNextBondAngle;
-    }
   }
 
   /**
@@ -669,8 +698,8 @@ class Node {
 // define the Atom class, which is to be used for atoms
 // TODO: possible performance improvements by caching functional groups, though too small to worry about right now
 class Atom extends Node {
-  constructor(id,name,x,y,numBonds,charge,numH,numLoneE,deleted,predictedNextBondAngle,bondIdList,bondTypeList,moleculeID,functionalGroupList) {
-    super(id,name,x,y,numBonds,charge,numH,numLoneE,deleted,predictedNextBondAngle,bondIdList,bondTypeList,moleculeID);
+  constructor(id,name,x,y,numBonds,charge,numH,numLoneE,deleted,predictedNextBondAngleList,bondIdList,bondTypeList,moleculeID,functionalGroupList) {
+    super(id,name,x,y,numBonds,charge,numH,numLoneE,deleted,predictedNextBondAngleList,bondIdList,bondTypeList,moleculeID);
     this.functionalGroupList = functionalGroupList; // I don't anticipate that it will be possible for an atom to be in multiple functional groups that will be good for our uses, but make it a list anyways
   }
 
@@ -681,8 +710,8 @@ class Atom extends Node {
 }
 
 class FunctionalGroup extends Node {
-  constructor(id,name,x,y,deleted,numBonds,predictedNextBondAngle,bondIdList,bondTypeList,moleculeID,containedAtomList) {
-    super(id,name,x,y,deleted,numBonds,predictedNextBondAngle,bondIdList,bondTypeList,moleculeID);
+  constructor(id,name,x,y,deleted,numBonds,predictedNextBondAngleList,bondIdList,bondTypeList,moleculeID,containedAtomList) {
+    super(id,name,x,y,deleted,numBonds,predictedNextBondAngleList,bondIdList,bondTypeList,moleculeID);
     this.containedAtomList = containedAtomList;
   }
 
@@ -1170,7 +1199,7 @@ function draw() {
           // too many bonds
           validAction = false;
         } else {
-          bondAngle = selectedAtom.getNextBondAngleOf(bondType);
+          bondAngle = selectedAtom.predictedNextBondAngleList[bondType-1];
         }
         previewX1 = selectedAtom.x;
         previewY1 = selectedAtom.y;
@@ -2079,7 +2108,8 @@ function clickButton(selectedBox) {
         x = windowWidth/2+(Math.random()-0.5)*windowWidth/2;
         y = windowHeight/2+(Math.random()-0.5)*windowHeight/2;
       }
-      network.push(new Atom(nextNodeID, "C", x, y, 0, 0, valenceOf("C"), valenceElectronsOf("C") - valenceOf("C"), false, 330, [], [], nextMoleculeID, []));
+      network.push(new Atom(nextNodeID, "C", x, y, 0, 0, valenceOf("C"), valenceElectronsOf("C") - valenceOf("C"), false, [], [], [], nextMoleculeID, []));
+      network[nextNodeID].updateNextBondAngleList();
       molecules.push(new Molecule(nextMoleculeID, x, y, x, y, false, [nextNodeID]));
       nextNodeID++;
       nextMoleculeID++;
@@ -2202,7 +2232,7 @@ function clickButton(selectedBox) {
             // remove hydroxyl group (currentAtom)
             adjacentAtom.removeBondWith(currentAtom);
             currentAtom.delete();
-            mostSubstitutedAtom.updateNextBondAngle();
+            mostSubstitutedAtom.updateNextBondAngleList();
             // add another bond to the mostSubstitutedAtom to the adjacentAtom
             for (let j = 0; j < mostSubstitutedAtom.bondIdList.length; j++) {
               if (mostSubstitutedAtom.bondIdList[j] === adjacentAtom.id) {
@@ -2756,15 +2786,11 @@ function clickButton(selectedBox) {
                 largerBranchNode = selectedBond[1];
                 smallerBranchNode = selectedBond[0];
               }
-              let truncatedBondIdList = [...largerBranchNode.bondIdList];
-              truncatedBondIdList.splice(largerBranchNode.bondIdList.indexOf(smallerBranchNode.id),1);
-              let bondAngleShift = largerBranchNode.calculateNextBondAngle(largerBranchNode.bondIdList.length-1, truncatedBondIdList) - largerBranchNode.findBondAngleWith(smallerBranchNode);
+              let bondAngleShift = largerBranchNode.calculateNextBondAngle(largerBranchNode.bondIdList.length-1, [smallerBranchNode]) - largerBranchNode.findBondAngleWith(smallerBranchNode);
               if (bondAngleShift !== 0) {
                 smallerBranchNode.rotateBranchAboutBondWith(largerBranchNode,bondAngleShift,true);
               }
-              truncatedBondIdList = [...smallerBranchNode.bondIdList];
-              truncatedBondIdList.splice(smallerBranchNode.bondIdList.indexOf(largerBranchNode.id),1);
-              bondAngleShift = smallerBranchNode.calculateNextBondAngle(smallerBranchNode.bondIdList.length-1, truncatedBondIdList) - smallerBranchNode.findBondAngleWith(largerBranchNode);
+              bondAngleShift = smallerBranchNode.calculateNextBondAngle(smallerBranchNode.bondIdList.length-1, [smallerBranchNode]) - smallerBranchNode.findBondAngleWith(largerBranchNode);
               if (bondAngleShift !== 0) {
                 smallerBranchNode.rotateBranchAboutBondWith(largerBranchNode,bondAngleShift,false);
               }
@@ -2788,14 +2814,14 @@ function clickButton(selectedBox) {
         if (selectedAtom.length !== 0) {
           atom1 = selectedAtom;
         } else {
-          network.push(new Atom(nextNodeID, element, previewX1, previewY1, 0, 0, valenceOf(element), valenceElectronsOf(element) - valenceOf(element), false, 0, [], [], -1, []));
+          network.push(new Atom(nextNodeID, element, previewX1, previewY1, 0, 0, valenceOf(element), valenceElectronsOf(element) - valenceOf(element), false, [], [], [], -1, []));
           atom1 = network[nextNodeID];
           nextNodeID++;
         }
         if (destinationAtom.length !== 0) {
           atom2 = destinationAtom;
         } else {
-          network.push(new Atom(nextNodeID, element, previewX2, previewY2, 0, 0, valenceOf(element), valenceElectronsOf(element) - valenceOf(element), false, 0, [], [], -1, []));
+          network.push(new Atom(nextNodeID, element, previewX2, previewY2, 0, 0, valenceOf(element), valenceElectronsOf(element) - valenceOf(element), false, [], [], [], -1, []));
           atom2 = network[nextNodeID];
           nextNodeID++;
         }
@@ -2812,9 +2838,9 @@ function clickButton(selectedBox) {
           selectedAtom.updateNumBonds();
         }
       } else {
-        network.push(new Atom(nextNodeID, element, previewX1, previewY1, 0, 0, valenceOf(element), valenceElectronsOf(element) - valenceOf(element), false, 0, [], [], nextMoleculeID, []));
+        network.push(new Atom(nextNodeID, element, previewX1, previewY1, 0, 0, valenceOf(element), valenceElectronsOf(element) - valenceOf(element), false, [], [], [], nextMoleculeID, []));
         molecules.push(new Molecule(nextMoleculeID, previewX1, previewY1, previewX1, previewY1, false, [nextNodeID]));
-        network[nextNodeID].updateNextBondAngle();
+        network[nextNodeID].updateNextBondAngleList();
         nextNodeID++;
         nextMoleculeID++;
       }
