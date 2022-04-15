@@ -2781,11 +2781,12 @@ function clickButton(selectedBox) {
                 largerBranchNode = selectedBond[1];
                 smallerBranchNode = selectedBond[0];
               }
-              let bondAngleShift = largerBranchNode.calculateNextBondAngle(bondType, largerBranchNode.bondIdList.length-1, [smallerBranchNode]) - largerBranchNode.findBondAngleWith(smallerBranchNode);
+              let bondAngleShift;
+              bondAngleShift = largerBranchNode.calculateNextBondAngle(bondType, largerBranchNode.bondIdList.length-1, [smallerBranchNode]) - largerBranchNode.findBondAngleWith(smallerBranchNode);
               if (bondAngleShift !== 0) {
                 smallerBranchNode.rotateBranchAboutBondWith(largerBranchNode,bondAngleShift,true);
               }
-              bondAngleShift = smallerBranchNode.calculateNextBondAngle(bondType, smallerBranchNode.bondIdList.length-1, [largerBranchNode]) - smallerBranchNode.findBondAngleWith(largerBranchNode);
+              bondAngleShift = - smallerBranchNode.calculateNextBondAngle(bondType, smallerBranchNode.bondIdList.length-1, [largerBranchNode]) + smallerBranchNode.findBondAngleWith(largerBranchNode);
               if (bondAngleShift !== 0) {
                 smallerBranchNode.rotateBranchAboutBondWith(largerBranchNode,bondAngleShift,false);
               }
