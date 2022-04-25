@@ -1,0 +1,385 @@
+body {
+    margin: 0 !important;
+    padding: 0 !important;
+    font-family: Arial, sans-serif;
+    -webkit-tap-highlight-color: transparent; /* apparently does not work with Firefox mobile? */
+    cursor: crosshair;
+}
+
+/* min for top UI: 905px */
+
+#canvas {
+  position: fixed;
+}
+
+#ui {
+  position: fixed;
+  min-width: 1000px;
+  width: 100%;
+  min-height: 720px;
+  height: 100%;
+  overflow: auto;
+}
+
+#error {
+  position: fixed;
+  z-index: 100;
+  top: 100px;
+  left: 100px;
+  display: none;
+}
+
+.warning {
+    position: fixed;
+    width: 100%;
+    height: 100%;
+    z-index: 1 !important;
+    background:white;
+    font-size: xx-large;
+    align-items: center;
+    justify-content: center;
+    display: flex;
+}
+
+/* to allow the buttons behind their labels to be clicked */
+.label {
+  pointer-events: none;
+}
+
+/* Adapted from https://stackoverflow.com/a/16243163 */
+
+.button,
+.selectable-button label,
+.selectable-button input {
+  font-size: 16px;
+  font-weight: bold;
+  text-align: center;
+  align-items: center;
+  justify-content: center;
+  position: absolute;
+  display: flex;
+  border: 1px solid black;
+  margin: 0;
+  z-index: 0;
+  padding: 0;
+  cursor: pointer;
+  background: #E6E6EA;
+  transition-duration: 0.15s;
+  user-select: none;
+  -webkit-user-select: none;
+  /* Apparently some elements have box-sizing of border-box by default... why must backwards compatibility be such a pain to debug */
+  box-sizing: content-box;
+}
+
+.selectable-button input[type="radio"],
+.selectable-button input[type="checkbox"] {
+  display: none;
+}
+
+.button:hover,
+.selectable-button label:hover,
+.button-text {
+  padding: 2px;
+  z-index: 1;
+  border: 1px solid white;
+}
+
+.dropdown-header:hover {
+  padding: 0;
+}
+
+.selectable-button input[type="radio"]:checked + label,
+.selectable-button input[type="checkbox"]:checked + label {
+  background: #CDCDD6;
+}
+
+.square-button,
+.square label,
+.square input {
+  width: 75px;
+  height: 75px;
+}
+
+.thin-button,
+.thin label,
+.thin input {
+  width: 100px;
+  height: 50px;
+}
+
+.long-button,
+.long label,
+.long input {
+  width: 200px;
+  height: 50px;
+}
+
+.dropdown:hover .dropdown-content {
+  display: flex;
+}
+
+.dropdown-content {
+  display: none;
+}
+
+.atomLabel {
+  font-weight: normal !important;
+  font-size: 36px !important;
+}
+
+#bonds {
+  top: 20px;
+  left: 20px;
+}
+#single {
+  top: 95px;
+  left: 20px;
+}
+#double {
+  top: 170px;
+  left: 20px;
+}
+#triple {
+  top: 245px;
+  left: 20px;
+}
+
+#atoms {
+  top: 20px;
+  left: 115px;
+}
+#carbon {
+  top: 95px;
+  left: 115px;
+}
+#oxygen {
+  top: 170px;
+  left: 115px;
+}
+#nitrogen {
+  top: 245px;
+  left: 115px;
+}
+#bromine {
+  top: 320px;
+  left: 115px;
+}
+#chlorine {
+  top: 395px;
+  left: 115px;
+}
+#sulfur {
+  top: 470px;
+  left: 115px;
+}
+
+#drag-delete-tools {
+  top: 20px;
+  left: 210px;
+}
+#atom-bond-drag {
+  top: 95px;
+  left: 210px;
+}
+#molecule-drag {
+  top: 170px;
+  left: 210px;
+}
+#atom-bond-delete {
+  top: 245px;
+  left: 210px;
+}
+#molecule-delete {
+  top: 320px;
+  left: 210px;
+}
+
+#charge-h-tools {
+  top: 20px;
+  left: 305px;
+}
+#add-charge {
+  top: 95px;
+  left: 305px;
+}
+#subtract-charge {
+  top: 170px;
+  left: 305px;
+}
+#add-h {
+  top: 245px;
+  left: 305px;
+}
+#subtract-h {
+  top: 320px;
+  left: 305px;
+}
+
+#freeform {
+  top: 20px;
+  right: 20px;
+}
+#snap {
+  top: 20px;
+  right: 120px;
+}
+#clear {
+  top: 20px;
+  right: 240px;
+}
+#random {
+  top: 20px;
+  right: 360px;
+}
+#hackerman {
+  top: 20px;
+  right: 480px;
+}
+
+#sn-e {
+  bottom: 20px;
+  left: 20px;
+}
+
+#alkene-addition {
+  bottom: 20px;
+  left: 240px;
+}
+#ring-metathesis {
+  bottom: 70px;
+  left: 240px;
+}
+#hbr-addition {
+  bottom: 120px;
+  left: 240px;
+}
+#radical-hbr {
+  bottom: 170px;
+  left: 240px;
+}
+#halogenation {
+  bottom: 220px;
+  left: 240px;
+}
+#halohydrin-formation {
+  bottom: 270px;
+  left: 240px;
+}
+#hydrogenation {
+  bottom: 320px;
+  left: 240px;
+}
+#cis-hydrogenation {
+  bottom: 370px;
+  left: 240px;
+}
+#trans-hydrogenation {
+  bottom: 420px;
+  left: 240px;
+}
+#cyclopropanation {
+  bottom: 470px;
+  left: 240px;
+}
+
+#alkene-oxidation {
+  bottom: 20px;
+  left: 460px;
+}
+#acid-hydration {
+  bottom: 70px;
+  left: 460px;
+}
+#oxymercuration {
+  bottom: 120px;
+  left: 460px;
+}
+#hydroboration {
+  bottom: 170px;
+  left: 460px;
+}
+#alkyne-hydration {
+  bottom: 220px;
+  left: 460px;
+}
+#alkyne-hydroboration {
+  bottom: 270px;
+  left: 460px;
+}
+#epoxidation {
+  bottom: 320px;
+  left: 460px;
+}
+#dihydroxylation {
+  bottom: 370px;
+  left: 460px;
+}
+#wacker-oxidation {
+  bottom: 420px;
+  left: 460px;
+}
+#ozonolysis {
+  bottom: 470px;
+  left: 460px;
+}
+#oxidative-cleavage {
+  bottom: 520px;
+  left: 460px;
+}
+
+#alcohol-reactions {
+  bottom: 20px;
+  left: 680px;
+}
+#gringard-formation {
+  bottom: 70px;
+  left: 680px;
+}
+#organolithiate-formation {
+  bottom: 120px;
+  left: 680px;
+}
+#organocopper-formation {
+  bottom: 170px;
+  left: 680px;
+}
+#dehydration {
+  bottom: 220px;
+  left: 680px;
+}
+#weak-reduction {
+  bottom: 270px;
+  left: 680px;
+}
+#strong-reduction {
+  bottom: 320px;
+  left: 680px;
+}
+#weak-oxidation {
+  bottom: 370px;
+  left: 680px;
+}
+#jones-oxidation {
+  bottom: 420px;
+  left: 680px;
+}
+#bromination {
+  bottom: 470px;
+  left: 680px;
+}
+#chlorination {
+  bottom: 520px;
+  left: 680px;
+}
+#tosylation {
+  bottom: 570px;
+  left: 680px;
+}
+#hydroxyl-protection {
+  bottom: 620px;
+  left: 680px;
+}
+#hydroxyl-unprotection {
+  bottom: 670px;
+  left: 680px;
+}
