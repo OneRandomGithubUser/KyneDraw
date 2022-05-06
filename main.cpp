@@ -6,52 +6,80 @@
 #include <iostream>
 #include <fstream>
 #include <unordered_map>
-#include <boost/uuid/uuid.hpp>                  // uuid class
-#include <boost/uuid/uuid_generators.hpp>       // uuid generators
-// #include <boost/uuid/uuid_io.hpp>            // uuid streaming operators
-#include <boost/functional/hash.hpp>            // to make the unordered map
+#include <unordered_set>
+#include <vector>
+#include <memory>
+#include <queue>
+#include <boost/uuid/uuid.hpp>            // uuid class
+#include <boost/uuid/uuid_generators.hpp> // generators
+#include <boost/functional/hash.hpp>
 // #include <boost/json.hpp>                    // parse JSON
-
+   
 namespace kynedraw
 {
-  class Node
+  class Molecule;
+  class Bond;
+  class VisibleNode;
+  class Node;
+  class Molecule {
+    //
+  };
+  class Bond
   {
     //
-  }
-  class VisibleNode
+  };
+  class Node
   {
-    private:
+    protected:
+    std::string name;
+    int numBonds;
+    int charge;
     int numH;
-    long x;
-    long y;
+    int numLoneE;
+    std::weak_ptr<kynedraw::Molecule> molecule;
+    std::unordered_map<boost::uuids::uuid, std::weak_ptr<kynedraw::Bond>, boost::hash<boost::uuids::uuid>> bondList;
+    std::unordered_map<boost::uuids::uuid, std::weak_ptr<kynedraw::VisibleNode>, boost::hash<boost::uuids::uuid>> nodeList;
 
     public:
-    Node(long x, long y)
+    Node(std::string name)
+    {
+      this->name = name;
+    }
+  };
+  class VisibleNode : protected Node
+  {
+    protected:
+    double x;
+    double y;
+    double predictedNextBondAngleList[3];
+
+    public:
+    VisibleNode(std::string name, double x, double y) : Node(name)
     {
       this->x = x;
       this->y = y;
     }
-    int get_x()
+    int get_x() const
     {
       return x;
     }
-    void change_x(long change)
+    void change_x(double change_x)
     {
-      x += change;
+      x += change_x;
     }
-    void set_x(long x)
+    void set_x(double x)
     {
       this->x = x;
     }
-    int get_y()
+    int get_y() const
     {
       return y;
     }
-    void change_y(long change)
+    void change_y(double change_y)
     {
-      y += change;
+      y += change_y;
     }
-    void set_y(long y)
+    void set_y(double y)
     {
       this->y = y;
     }
@@ -63,9 +91,9 @@ int frameCount = 0;
 emscripten::val window = emscripten::val::global("window");
 emscripten::val document = emscripten::val::global("document");
 emscripten::val localStorage = emscripten::val::global("localStorage");
+boost::uuids::random_generator uuidGenerator;
 std::string selectedTool;
 std::string bondSnapSetting;
-boost::uuids::random_generator generator;
 std::unordered_map<boost::uuids::uuid, kynedraw::VisibleNode, boost::hash<boost::uuids::uuid>> visibleNetwork;
 std::unordered_map<boost::uuids::uuid, kynedraw::Node, boost::hash<boost::uuids::uuid>> network;
 std::unordered_map<boost::uuids::uuid, kynedraw::VisibleNode, boost::hash<boost::uuids::uuid>> visiblePreview;
@@ -217,16 +245,16 @@ void render()
   ctx.call<void>("beginPath");
   ctx.call<void>("arc", 100 * sin(frameCount/360.0), 100 * cos(frameCount/360.0), 5, 0, 2 * pi);
   ctx.call<void>("stroke");
-  for (auto & [ key, value ] : visibleNetwork)
+  for (const auto& [uuid, currentVisibleNode] : visibleNetwork)
   {
     ctx.call<void>("beginPath");
-    ctx.call<void>("arc", value.get_x(), value.get_y(), 5, 0, 2 * pi);
+    ctx.call<void>("arc", currentVisibleNode.get_x(), currentVisibleNode.get_y(), 5, 0, 2 * pi);
     ctx.call<void>("stroke");
   }
-  for (auto & [ key, value ] : visiblePreview)
+  for (const auto& [uuid, currentVisiblePreviewNode] : visiblePreview)
   {
     ctx.call<void>("beginPath");
-    ctx.call<void>("arc", value.get_x(), value.get_y(), 5, 0, 2 * pi);
+    ctx.call<void>("arc", currentVisiblePreviewNode.get_x(), currentVisiblePreviewNode.get_y(), 5, 0, 2 * pi);
     ctx.call<void>("stroke");
   }
   frameCount++;
@@ -234,9 +262,10 @@ void render()
 
 void Click(emscripten::val event)
 {
-  boost::uuids::uuid uuid = generator();
-  kynedraw::Node node(event["pageX"].as<int>(), event["pageY"].as<int>());
-  network.insert(std::make_pair(uuid, node));
+  kynedraw::Node node("C");
+  network.try_emplace(uuidGenerator(), node);
+  kynedraw::VisibleNode visibleNode("C", event["pageX"].as<double>(), event["pageY"].as<double>());
+  visibleNetwork.try_emplace(uuidGenerator(), visibleNode);
 }
 
 void AddButtonEventListeners(emscripten::val element, emscripten::val index, emscripten::val array)
@@ -299,7 +328,7 @@ void InitializeAllSettings()
   selectedTool = RetrieveAndTickSetting("selectedTool", "single");
   bondSnapSetting = RetrieveAndTickSetting("bondSnapSetting", "freeform");
 
-  // initialize the selectedTool
+  // TODO: initialize the selectedTool
 }
 
 void MovePreview(emscripten::val event)
@@ -308,16 +337,17 @@ void MovePreview(emscripten::val event)
   int pageY = event["pageY"].as<int>();
   if (previousPageX == -1 || previousPageY == -1)
   {
-    boost::uuids::uuid uuid = generator();
-    kynedraw::Node node(event["pageX"].as<int>(), event["pageY"].as<int>());
-    visiblePreview.insert(std::make_pair(uuid, node));
+    kynedraw::Node node("C");
+    preview.try_emplace(uuidGenerator(), node);
+    kynedraw::VisibleNode visibleNode("C", event["pageX"].as<double>(), event["pageY"].as<double>());
+    visiblePreview.try_emplace(uuidGenerator(), visibleNode);
   }
   else
   {
-    for (auto & [ key, value ] : preview)
+    for (auto& [uuid, currentVisiblePreviewNode] : visiblePreview)
     {
-      value.change_x(pageX - previousPageX);
-      value.change_y(pageY - previousPageY);
+      currentVisiblePreviewNode.change_x(pageX - previousPageX);
+      currentVisiblePreviewNode.change_y(pageY - previousPageY);
     }
   }
   previousPageX = pageX;
