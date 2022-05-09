@@ -3,6 +3,7 @@
 #include <emscripten/emscripten.h>
 #include <string>
 #include <math.h>
+#include <numbers>
 #include <iostream>
 #include <fstream>
 #include <unordered_map>
@@ -19,8 +20,8 @@ namespace kynedraw
 {
   class Molecule;
   class Bond;
-  class VisibleNode;
   class Node;
+  class Atom;
   class Molecule {
     //
   };
@@ -28,7 +29,7 @@ namespace kynedraw
   {
     //
   };
-  class Node
+  class Atom
   {
     protected:
     std::string name;
@@ -38,15 +39,15 @@ namespace kynedraw
     int numLoneE;
     std::weak_ptr<kynedraw::Molecule> molecule;
     std::unordered_map<boost::uuids::uuid, std::weak_ptr<kynedraw::Bond>, boost::hash<boost::uuids::uuid>> bondList;
-    std::unordered_map<boost::uuids::uuid, std::weak_ptr<kynedraw::VisibleNode>, boost::hash<boost::uuids::uuid>> nodeList;
+    std::unordered_map<boost::uuids::uuid, std::weak_ptr<kynedraw::Node>, boost::hash<boost::uuids::uuid>> nodeList;
 
     public:
-    Node(std::string name)
+    Atom(std::string name)
     {
       this->name = name;
     }
   };
-  class VisibleNode : protected Node
+  class Node : protected Atom
   {
     protected:
     double x;
@@ -54,7 +55,7 @@ namespace kynedraw
     double predictedNextBondAngleList[3];
 
     public:
-    VisibleNode(std::string name, double x, double y) : Node(name)
+    Node(std::string name, double x, double y) : Atom(name)
     {
       this->x = x;
       this->y = y;
@@ -86,7 +87,7 @@ namespace kynedraw
   };
 }
 
-const double pi = M_PI; // once C++20 is added to emscripten, this can be changed to std::numbers::pi
+const double pi = std::numbers::pi;
 int frameCount = 0;
 emscripten::val window = emscripten::val::global("window");
 emscripten::val document = emscripten::val::global("document");
@@ -94,18 +95,17 @@ emscripten::val localStorage = emscripten::val::global("localStorage");
 boost::uuids::random_generator uuidGenerator;
 std::string selectedTool;
 std::string bondSnapSetting;
-std::unordered_map<boost::uuids::uuid, kynedraw::VisibleNode, boost::hash<boost::uuids::uuid>> visibleNetwork;
-std::unordered_map<boost::uuids::uuid, kynedraw::Node, boost::hash<boost::uuids::uuid>> network;
-std::unordered_map<boost::uuids::uuid, kynedraw::VisibleNode, boost::hash<boost::uuids::uuid>> visiblePreview;
-std::unordered_map<boost::uuids::uuid, kynedraw::Node, boost::hash<boost::uuids::uuid>> preview;
-int previousPageX = -1;
-int previousPageY = -1;
-std::unordered_map<std::string, int> buttonIDs = {
+std::unordered_map<boost::uuids::uuid, kynedraw::Node, boost::hash < boost::uuids::uuid>> visibleNetwork;
+std::unordered_map<boost::uuids::uuid, kynedraw::Atom, boost::hash < boost::uuids::uuid>> network;
+std::unordered_map<boost::uuids::uuid, kynedraw::Node, boost::hash < boost::uuids::uuid>> visiblePreview;
+std::unordered_map<boost::uuids::uuid, kynedraw::Atom, boost::hash < boost::uuids::uuid>> preview;
+const std::unordered_map<std::string, int> buttonIDs = {
   {"bonds", -1},
   {"single", 10},
   {"double", 11},
   {"triple", 12},
   {"atoms", -2},
+  {"hydrogen", 20},
   {"carbon", 21},
   {"oxygen", 22},
   {"nitrogen", 23},
@@ -235,6 +235,7 @@ void render()
   // NOTE: if this is not defined in the function, embind throws an error at runtime
   emscripten::val canvas = document.call<emscripten::val>("getElementById", emscripten::val("canvas"));
   emscripten::val ctx = canvas.call<emscripten::val>("getContext", emscripten::val("2d"));
+
   ctx.call<void>("clearRect", 0, 0, canvas["width"], canvas["height"]);
   ctx.set("fillStyle", "green");
   ctx.call<void>("beginPath");
@@ -262,10 +263,16 @@ void render()
 
 void Click(emscripten::val event)
 {
-  kynedraw::Node node("C");
-  network.try_emplace(uuidGenerator(), node);
-  kynedraw::VisibleNode visibleNode("C", event["pageX"].as<double>(), event["pageY"].as<double>());
-  visibleNetwork.try_emplace(uuidGenerator(), visibleNode);
+  static double mouseDownPageX, mouseDownPageY;
+  std::string eventName = event["type"].as<std::string>();
+  std::cout << eventName << "\n";
+  if (eventName == "mousedown") {
+    // TODO: make a dead zone so slightly dragging the mouse doesn't count as a drag, and also find out how to concatenate two maps
+    kynedraw::Atom node("C");
+    network.try_emplace(uuidGenerator(), node);
+    kynedraw::Node visibleNode("C", event["pageX"].as<double>(), event["pageY"].as<double>());
+    visibleNetwork.try_emplace(uuidGenerator(), visibleNode);
+  }
 }
 
 void AddButtonEventListeners(emscripten::val element, emscripten::val index, emscripten::val array)
@@ -276,7 +283,7 @@ void AddButtonEventListeners(emscripten::val element, emscripten::val index, ems
 
 void ClickButton(emscripten::val event)
 {
-  int clickedButtonID = buttonIDs[event["target"]["id"].as<std::string>()];
+  int clickedButtonID = buttonIDs.at(event["target"]["id"].as<std::string>());
   event.call<void>("stopPropagation");
 }
 
@@ -300,16 +307,27 @@ void StoreBondSnapSetting(emscripten::val event)
   localStorage.call<void>("setItem", emscripten::val("bondSnapSetting"), event["target"]["id"]);
 }
 
-void UpdateSelectedTool()
+void UpdateSelectedTool(std::string tool)
 {
-  //
+  int toolID = buttonIDs.at(tool);
+  preview.clear();
+  visiblePreview.clear();
+  switch (buttonIDs.at(tool)) {
+    case 21:
+      // carbon
+      kynedraw::Atom node("C");
+      preview.try_emplace(uuidGenerator(), node);
+      kynedraw::Node visibleNode("C", -1.0, -1.0);
+      visiblePreview.try_emplace(uuidGenerator(), visibleNode);
+      break;
+  }
 }
 
 std::string RetrieveAndTickSetting(std::string settingType, std::string defaultName)
 {
   emscripten::val storedValue = localStorage.call<emscripten::val>("getItem", emscripten::val(settingType));
   std::string value;
-  // checks if there is such a stored value: typeOf will be "object" when the emmscripten::val is null
+  // checks if there is such a stored value: typeOf will be "object" when the emscripten::val is null
   if (storedValue.typeOf().as<std::string>() == "string")
   {
     value = storedValue.as<std::string>();
@@ -328,27 +346,20 @@ void InitializeAllSettings()
   selectedTool = RetrieveAndTickSetting("selectedTool", "single");
   bondSnapSetting = RetrieveAndTickSetting("bondSnapSetting", "freeform");
 
-  // TODO: initialize the selectedTool
+  // initialize the selectedTool
+  UpdateSelectedTool(selectedTool);
 }
 
 void MovePreview(emscripten::val event)
 {
-  int pageX = event["pageX"].as<int>();
-  int pageY = event["pageY"].as<int>();
-  if (previousPageX == -1 || previousPageY == -1)
+  static double previousPageX;
+  static double previousPageY;
+  double pageX = event["pageX"].as<double>();
+  double pageY = event["pageY"].as<double>();
+  for (auto& [uuid, currentVisiblePreviewNode] : visiblePreview)
   {
-    kynedraw::Node node("C");
-    preview.try_emplace(uuidGenerator(), node);
-    kynedraw::VisibleNode visibleNode("C", event["pageX"].as<double>(), event["pageY"].as<double>());
-    visiblePreview.try_emplace(uuidGenerator(), visibleNode);
-  }
-  else
-  {
-    for (auto& [uuid, currentVisiblePreviewNode] : visiblePreview)
-    {
-      currentVisiblePreviewNode.change_x(pageX - previousPageX);
-      currentVisiblePreviewNode.change_y(pageY - previousPageY);
-    }
+    currentVisiblePreviewNode.change_x(pageX - previousPageX);
+    currentVisiblePreviewNode.change_y(pageY - previousPageY);
   }
   previousPageX = pageX;
   previousPageY = pageY;
