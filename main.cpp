@@ -376,6 +376,8 @@ int FRAME_COUNT = 0;
 double DEADZONE_WIDTH = 5;
 double DEADZONE_HEIGHT = 5;
 double BOND_LENGTH = 50;
+double MOUSE_SNAP_RADIUS = 15;
+double BOND_SNAP_RADIUS = 5;
 boost::uuids::random_generator uuidGenerator;
 emscripten::val window = emscripten::val::global("window");
 emscripten::val document = emscripten::val::global("document");
@@ -394,7 +396,7 @@ void RenderBackground(double DOMHighResTimeStamp)
   for (const auto& [uuid, currentVisibleNode] : network.get_visible_nodes())
   {
     ctx.call<void>("beginPath");
-    ctx.call<void>("arc", currentVisibleNode.get_x(), currentVisibleNode.get_y(), 5, 0, 2 * pi);
+    ctx.call<void>("arc", currentVisibleNode.get_x(), currentVisibleNode.get_y(), MOUSE_SNAP_RADIUS, 0, 2 * pi);
     ctx.call<void>("stroke");
   }
   ctx.call<void>("beginPath");
@@ -416,7 +418,7 @@ void RenderForeground(double DOMHighResTimeStamp)
   for (const auto& [uuid, currentVisibleNode] : preview.get_visible_nodes())
   {
     ctx.call<void>("beginPath");
-    ctx.call<void>("arc", currentVisibleNode.get_x(), currentVisibleNode.get_y(), 5, 0, 2 * pi);
+    ctx.call<void>("arc", currentVisibleNode.get_x(), currentVisibleNode.get_y(), BOND_SNAP_RADIUS, 0, 2 * pi);
     ctx.call<void>("stroke");
   }
   ctx.call<void>("beginPath");
@@ -520,6 +522,7 @@ void ClickButton(emscripten::val event)
 {
   selectedTool = event["target"]["id"].as<std::string>();
   ResetPreview(selectedTool, event["pageX"].as<double>(), event["pageY"].as<double>());
+  window.call<void>("requestAnimationFrame", emscripten::val::module_property("RenderForeground"));
   event.call<void>("stopPropagation");
 }
 
