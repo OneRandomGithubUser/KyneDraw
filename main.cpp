@@ -7,10 +7,7 @@
 #include <iostream>
 #include <fstream>
 #include <unordered_map>
-#include <unordered_set>
 #include <vector>
-#include <memory>
-#include <queue>
 #include <boost/uuid/uuid.hpp>            // uuid class
 #include <boost/uuid/uuid_generators.hpp> // generators
 #include <boost/functional/hash.hpp>
@@ -95,24 +92,24 @@ namespace kynedraw
   class Node : public GenericNode
   {
    protected:
-    std::unordered_set<kynedraw::Bond*> linkedBonds;
-    std::unordered_set<kynedraw::VisibleNode*> linkedNodes;
+    std::vector<kynedraw::Bond*> linkedBonds;
+    std::vector<kynedraw::VisibleNode*> linkedNodes;
   public:
     Node(boost::uuids::uuid uuid, std::string name) : GenericNode(uuid, name)
     {
       //
     }
-    const std::unordered_set<kynedraw::Bond*>& get_linked_bonds() const
+    const std::vector<kynedraw::Bond*>& get_linked_bonds() const
     {
       return linkedBonds;
     }
-    const std::unordered_set<kynedraw::VisibleNode*>& get_linked_nodes() const
+    const std::vector<kynedraw::VisibleNode*>& get_linked_nodes() const
     {
       return linkedNodes;
     }
     void add_bond (kynedraw::Bond &bond)
     {
-      this->linkedBonds.insert(&bond);
+      this->linkedBonds.push_back(&bond);
     }
   };
   class VisibleNode : public GenericNode
@@ -121,19 +118,19 @@ namespace kynedraw
     double x;
     double y;
     double predictedNextBondAngleList[3];
-    std::unordered_set<kynedraw::VisibleBond*> linkedBonds;
-    std::unordered_set<kynedraw::Node*> linkedNodes;
+    std::vector<kynedraw::VisibleBond*> linkedBonds;
+    std::vector<kynedraw::Node*> linkedNodes;
   public:
     VisibleNode(boost::uuids::uuid uuid, std::string name, double x, double y) : GenericNode(uuid, name)
     {
       this->x = x;
       this->y = y;
     }
-    const std::unordered_set<kynedraw::VisibleBond*>& get_linked_bonds() const
+    const std::vector<kynedraw::VisibleBond*>& get_linked_bonds() const
     {
       return linkedBonds;
     }
-    const std::unordered_set<kynedraw::Node*>& get_linked_nodes() const
+    const std::vector<kynedraw::Node*>& get_linked_nodes() const
     {
       return linkedNodes;
     }
@@ -163,7 +160,7 @@ namespace kynedraw
     }
     void add_bond (kynedraw::VisibleBond& bond)
     {
-      this->linkedBonds.insert(&bond);
+      this->linkedBonds.push_back(&bond);
     }
   };
   class Graph
@@ -389,20 +386,12 @@ std::string bondSnapSetting;
 kynedraw::Graph network;
 kynedraw::Preview preview;
 
-void render()
+void RenderBackground(double DOMHighResTimeStamp)
 {
-  // NOTE: if this is not defined in the function, embind throws an error at runtime
-  emscripten::val canvas = document.call<emscripten::val>("getElementById", emscripten::val("canvas"));
+  emscripten::val canvas = document.call<emscripten::val>("getElementById", emscripten::val("canvas-background"));
   emscripten::val ctx = canvas.call<emscripten::val>("getContext", emscripten::val("2d"));
-
   ctx.call<void>("clearRect", 0, 0, canvas["width"], canvas["height"]);
   for (const auto& [uuid, currentVisibleNode] : network.get_visible_nodes())
-  {
-    ctx.call<void>("beginPath");
-    ctx.call<void>("arc", currentVisibleNode.get_x(), currentVisibleNode.get_y(), 5, 0, 2 * pi);
-    ctx.call<void>("stroke");
-  }
-  for (const auto& [uuid, currentVisibleNode] : preview.get_visible_nodes())
   {
     ctx.call<void>("beginPath");
     ctx.call<void>("arc", currentVisibleNode.get_x(), currentVisibleNode.get_y(), 5, 0, 2 * pi);
@@ -414,12 +403,28 @@ void render()
     ctx.call<void>("moveTo", currentVisibleBond.get_linked_nodes()[0]->get_x(), currentVisibleBond.get_linked_nodes()[0]->get_y());
     ctx.call<void>("lineTo", currentVisibleBond.get_linked_nodes()[1]->get_x(), currentVisibleBond.get_linked_nodes()[1]->get_y());
   }
+  ctx.call<void>("stroke");
+}
+
+void RenderForeground(double DOMHighResTimeStamp)
+{
+  // NOTE: if this is not defined in the function, embind throws an error at runtime
+  emscripten::val canvas = document.call<emscripten::val>("getElementById", emscripten::val("canvas-foreground"));
+  emscripten::val ctx = canvas.call<emscripten::val>("getContext", emscripten::val("2d"));
+
+  ctx.call<void>("clearRect", 0, 0, canvas["width"], canvas["height"]);
+  for (const auto& [uuid, currentVisibleNode] : preview.get_visible_nodes())
+  {
+    ctx.call<void>("beginPath");
+    ctx.call<void>("arc", currentVisibleNode.get_x(), currentVisibleNode.get_y(), 5, 0, 2 * pi);
+    ctx.call<void>("stroke");
+  }
+  ctx.call<void>("beginPath");
   for (const auto& [uuid, currentVisiblePreviewBond] : preview.get_visible_bonds())
   {
     ctx.call<void>("moveTo", currentVisiblePreviewBond.get_linked_nodes()[0]->get_x(), currentVisiblePreviewBond.get_linked_nodes()[0]->get_y());
     ctx.call<void>("lineTo", currentVisiblePreviewBond.get_linked_nodes()[1]->get_x(), currentVisiblePreviewBond.get_linked_nodes()[1]->get_y());
   }
-
   ctx.call<void>("stroke");
 
   FRAME_COUNT++;
@@ -549,27 +554,37 @@ void InteractWithCanvas(emscripten::val event)
     mouseIsPressed = true;
   } else if (eventName == "mouseup") {
     // If mouseIsPressed is false and there is a mouseup event, that means that the mouse was clicked and dragged from a UI button to the canvas
+    /* TODO: create an UpdateAndRenderBackground that determines if the action of merging network and preview will not
+     * need to clear the screen and render everything again, which is an expensive operation, by seeing if the only
+     * changes that occur are either that no node/bonds have been merged or only carbon atoms that don't have a label
+     * have been merged */
     network.merge(preview);
     mouseIsPressed = false;
     ResetPreview(selectedTool, pageX, pageY);
+    window.call<void>("requestAnimationFrame", emscripten::val::module_property("RenderBackground"));
   }
+  window.call<void>("requestAnimationFrame", emscripten::val::module_property("RenderForeground"));
 }
 
-void ResizeCanvas(emscripten::val event)
+void ResizeCanvas(emscripten::val canvas, emscripten::val index, emscripten::val array)
 {
-  emscripten::val canvas = document.call<emscripten::val>("getElementById", emscripten::val("canvas"));
   canvas.set("width", window["innerWidth"]);
   canvas.set("height", window["innerHeight"]);
 }
 
+void ResizeCanvases(emscripten::val event)
+{
+  document.call<emscripten::val>("getElementsByClassName", emscripten::val("canvas")).call<void>("forEach", emscripten::val::module_property("ResizeCanvas"));;
+}
+
 void RunMainLoop()
 {
-  emscripten_set_main_loop(render, 0, 1);
+  // emscripten_set_main_loop(RenderForeground, 0, 1);
 }
 
 int main()
 {
-  window.call<void>("addEventListener", emscripten::val("resize"), emscripten::val::module_property("ResizeCanvas"));
+  window.call<void>("addEventListener", emscripten::val("resize"), emscripten::val::module_property("ResizeCanvases"));
   document.call<void>("addEventListener", emscripten::val("mousedown"), emscripten::val::module_property("InteractWithCanvas"));
   document.call<void>("addEventListener", emscripten::val("mouseup"), emscripten::val::module_property("InteractWithCanvas"));
   document.call<void>("addEventListener", emscripten::val("mousemove"), emscripten::val::module_property("InteractWithCanvas"));
@@ -581,21 +596,22 @@ int main()
   document.call<emscripten::val>("querySelectorAll", emscripten::val("button, [name=tool-selection-button] + label, [name=bond-snap-selection-button] + label")).call<void>("forEach", emscripten::val::module_property("AddButtonEventListeners"));
 
   // initialize width and height of the canvas
-  emscripten::val canvas = document.call<emscripten::val>("getElementById", emscripten::val("canvas"));
-  canvas.set("width", window["innerWidth"]);
-  canvas.set("height", window["innerHeight"]);
+  document.call<emscripten::val>("querySelectorAll", emscripten::val(".canvas")).call<void>("forEach", emscripten::val::module_property("ResizeCanvas"));
 
   // retrieve all settings from localStorage and set the appropriate boxes to "checked" and put the appropriate data into preview
   InitializeAllSettings();
 
-  RunMainLoop();
+  // RunMainLoop();
   return 0;
 }
 
 EMSCRIPTEN_BINDINGS(bindings)
 {
   emscripten::function("InteractWithCanvas", InteractWithCanvas);
+  emscripten::function("ResizeCanvases", ResizeCanvases);;
   emscripten::function("ResizeCanvas", ResizeCanvas);
+  emscripten::function("RenderBackground", RenderBackground);
+  emscripten::function("RenderForeground", RenderForeground);
   emscripten::function("ClickButton", ClickButton);
   emscripten::function("AddButtonEventListeners", AddButtonEventListeners);
   emscripten::function("AddToolButtonEventListener", AddToolButtonEventListener);

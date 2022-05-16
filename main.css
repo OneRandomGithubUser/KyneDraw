@@ -6,8 +6,16 @@ body {
   cursor: crosshair;
 }
 
-#canvas {
+.canvas {
   position: fixed;
+}
+#canvas-background
+{
+  z-index: 0;
+}
+#canvas-foreground
+{
+  z-index: 1;
 }
 
 #ui {
