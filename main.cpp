@@ -7,10 +7,17 @@
 #include <iostream>
 #include <fstream>
 #include <unordered_map>
+#include <map>
 #include <vector>
+#include <ranges>
 #include <boost/uuid/uuid.hpp>            // uuid class
 #include <boost/uuid/uuid_generators.hpp> // generators
+#include <boost/uuid/uuid_io.hpp>         // streaming operators
 #include <boost/functional/hash.hpp>
+#include <boost/geometry.hpp>
+#include <boost/geometry/geometries/point.hpp>
+#include <boost/geometry/geometries/segment.hpp>
+#include <boost/geometry/index/rtree.hpp>
 // #include <boost/json.hpp>                    // parse JSON
 
 namespace kynedraw
@@ -89,6 +96,7 @@ namespace kynedraw
       return this->uuid == rhs.uuid;
     }
   };
+
   class Node : public GenericNode
   {
    protected:
@@ -163,6 +171,40 @@ namespace kynedraw
       this->linkedBonds.push_back(&bond);
     }
   };
+  /*
+  struct Pixel
+  {
+    int x, y;
+    Pixel(int x, int y)
+    {
+      this->x = x;
+      this->y = y;
+    }
+    bool operator<(const kynedraw::Pixel& pixel) const
+    {
+      return x < pixel.x || y < pixel.y;
+    }
+    bool operator==(const kynedraw::Pixel& pixel) const
+    {
+      return x == pixel.x && y == pixel.y;
+    }
+  };
+   */
+
+  // RTree boilerplate taken from https://stackoverflow.com/a/25083918
+
+  // Convenient namespaces
+  namespace bg = boost::geometry;
+  namespace bgm = boost::geometry::model;
+  namespace bgi = boost::geometry::index;
+
+  // Convenient types
+  typedef bgm::point<double, 2, bg::cs::cartesian> point;
+  typedef bgm::segment<point> segment;
+  // The boost::uuids::uuid stores the uuids of the segment (VisibleBond) or of the point (VisibleNode)
+  typedef bgi::rtree<std::pair<segment, boost::uuids::uuid>, bgi::rstar<16>> segment_rtree;
+  typedef bgi::rtree<std::pair<point, boost::uuids::uuid>, bgi::rstar<16>> point_rtree;
+
   class Graph
   {
    protected:
@@ -170,7 +212,63 @@ namespace kynedraw
     std::unordered_map<boost::uuids::uuid, kynedraw::Node, boost::hash<boost::uuids::uuid>> nodes;
     std::unordered_map<boost::uuids::uuid, kynedraw::VisibleBond, boost::hash<boost::uuids::uuid>> visibleBonds;
     std::unordered_map<boost::uuids::uuid, kynedraw::Bond, boost::hash<boost::uuids::uuid>> bonds;
+    /*
+    std::map<kynedraw::Pixel, std::vector<kynedraw::VisibleNode*>> closestNode;
+    std::map<kynedraw::Pixel, std::vector<kynedraw::VisibleBond*>> closestBond;
+    int currentWidth = 0;
+    int currentHeight = 0;
+     */
+
+    // The container for pairs of segments and IDs
+    segment_rtree segments;
+    point_rtree points;
   public:
+    /*
+    void change_raster_size(int deltaWidth, int deltaHeight)
+    {
+      int positiveDeltaWidth, positiveDeltaHeight;
+      deltaWidth > 0 ? positiveDeltaWidth = deltaWidth : positiveDeltaWidth = 0;
+      deltaHeight > 0 ? positiveDeltaHeight = deltaHeight : positiveDeltaHeight = 0;
+      // expand the map when deltaWidth or deltaHeight is positive
+      std::cout << "1\n";
+      for (int i = 0; i < positiveDeltaWidth; i++)
+      {
+        for (int j = 0; j < currentHeight + positiveDeltaHeight; j++)
+        {
+          closestNode.try_emplace(Pixel(currentWidth + i, j), std::vector<kynedraw::VisibleNode*>(0));
+        }
+      }
+      std::cout << "2\n";
+      for (int i = 0; i < currentWidth; i++)
+      {
+        for (int j = 0; j < positiveDeltaHeight; j++)
+        {
+          closestNode.try_emplace(Pixel(i, currentHeight + j), std::vector<kynedraw::VisibleNode*>(0));
+        }
+      }
+      std::cout << "3\n";
+      // contract the map when deltaWidth or deltaHeight is negative
+      for (int i = 0; i < -deltaWidth; i++)
+      {
+        for (int j = 0; j < currentHeight; j++)
+        {
+          closestNode.erase(Pixel(currentWidth - i, j));
+        }
+      }
+      std::cout << "4\n";
+      for (int i = 0; i < currentWidth + deltaWidth; i++)
+      {
+        for (int j = 0; j < -deltaHeight; j++)
+        {
+          closestNode.erase(Pixel(currentWidth - i, currentHeight - j));
+        }
+      }
+      std::cout << "5\n";
+      currentWidth += deltaWidth;
+      currentHeight += deltaHeight;
+      std::cout << currentWidth << " " << currentHeight << "\n";
+    }
+     */
     const std::unordered_map<boost::uuids::uuid, kynedraw::VisibleNode, boost::hash<boost::uuids::uuid>>& get_visible_nodes() const
     {
       return visibleNodes;
@@ -194,7 +292,10 @@ namespace kynedraw
     }
     kynedraw::VisibleNode& create_visible_node(boost::uuids::uuid uuid, std::string name, double pageX, double pageY)
     {
-      auto insertion = this->visibleNodes.try_emplace(uuid, kynedraw::VisibleNode(uuid, "C", pageX, pageY));
+      kynedraw::VisibleNode node(uuid, "C", pageX, pageY);
+      auto insertion = this->visibleNodes.try_emplace(uuid, node);
+      point p(node.get_x(), node.get_y());
+      points.insert(std::make_pair(p, uuid));
       return insertion.first->second;
     }
     kynedraw::Bond& create_bond_between(boost::uuids::uuid uuid, int numBonds, kynedraw::Node& node1, kynedraw::Node& node2)
@@ -209,6 +310,8 @@ namespace kynedraw
       auto insertion = this->visibleBonds.try_emplace(uuid, kynedraw::VisibleBond(numBonds, node1, node2));
       node1.add_bond(insertion.first->second);
       node2.add_bond(insertion.first->second);
+      segment seg(point(node1.get_x(), node1.get_y()), point(node2.get_x(), node2.get_y()));
+      segments.insert(std::make_pair(seg, uuid));
       return insertion.first->second;
     }
     void merge(Graph& graph)
@@ -218,6 +321,8 @@ namespace kynedraw
       this->visibleNodes.merge(graph.visibleNodes);
       this->bonds.merge(graph.bonds);
       this->visibleBonds.merge(graph.visibleBonds);
+      this->segments.insert(graph.segments.begin(), graph.segments.end());
+      this->points.insert(graph.points.begin(), graph.points.end());
     }
     void clear()
     {
@@ -232,6 +337,22 @@ namespace kynedraw
         currentVisibleNode.change_x(changeX);
         currentVisibleNode.change_y(changeY);
       }
+    }
+    kynedraw::VisibleNode& find_closest_visible_node_to(double x, double y)
+    {
+      // NOTE: if ans.size() is 0 (that is, there are no visible nodes to be closest to), this will throw an error
+      // Check for ans.size through get_visible_nodes().size() whenever you call this function
+      std::vector<std::pair<point, boost::uuids::uuid>> ans;
+      points.query(bgi::nearest(point(x, y), 1), std::back_inserter(ans));
+      return visibleNodes.at(ans[0].second);
+    }
+    kynedraw::VisibleBond& find_closest_visible_bond_to(double x, double y)
+    {
+      // NOTE: if ans.size() is 0 (that is, there are no visible bonds to be closest to), this will throw an error
+      // Check for ans.size through get_visible_bonds().size() whenever you call this function
+      std::vector<std::pair<segment, boost::uuids::uuid>> ans;
+      segments.query(bgi::nearest(point(x, y), 1), std::back_inserter(ans));
+      return visibleBonds.at(ans[0].second);
     }
   };
   class Preview : public Graph
@@ -567,6 +688,14 @@ void InteractWithCanvas(emscripten::val event)
     window.call<void>("requestAnimationFrame", emscripten::val::module_property("RenderBackground"));
   }
   window.call<void>("requestAnimationFrame", emscripten::val::module_property("RenderForeground"));
+  if (network.get_visible_nodes().size() != 0)
+  {
+    //kynedraw::VisibleNode& closestVisibleNode = network.find_closest_visible_node_to(pageX, pageY);
+  }
+  if (network.get_visible_bonds().size() != 0)
+  {
+    kynedraw::VisibleBond& closestVisibleBond = network.find_closest_visible_bond_to(pageX, pageY);
+  }
 }
 
 void ResizeCanvas(emscripten::val canvas, emscripten::val index, emscripten::val array)
@@ -577,7 +706,18 @@ void ResizeCanvas(emscripten::val canvas, emscripten::val index, emscripten::val
 
 void ResizeCanvases(emscripten::val event)
 {
-  document.call<emscripten::val>("getElementsByClassName", emscripten::val("canvas")).call<void>("forEach", emscripten::val::module_property("ResizeCanvas"));;
+  /*
+  static double previousWidth = 0;
+  static double previousHeight = 0;
+   */
+  document.call<emscripten::val>("querySelectorAll", emscripten::val(".canvas")).call<void>("forEach", emscripten::val::module_property("ResizeCanvas"));
+  /*
+  double currentWidth = window["innerWidth"].as<double>();
+  double currentHeight = window["innerHeight"].as<double>();
+  network.change_raster_size(int(currentWidth-previousWidth), int(currentHeight-previousHeight));
+  previousWidth = currentWidth;
+  previousHeight = currentHeight;
+   */
 }
 
 void RunMainLoop()
