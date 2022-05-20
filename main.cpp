@@ -635,18 +635,7 @@ void ResizeCanvas(emscripten::val canvas, emscripten::val index, emscripten::val
 
 void ResizeCanvases(emscripten::val event)
 {
-  /*
-  static double previousWidth = 0;
-  static double previousHeight = 0;
-   */
   document.call<emscripten::val>("querySelectorAll", emscripten::val(".canvas")).call<void>("forEach", emscripten::val::module_property("ResizeCanvas"));
-  /*
-  double currentWidth = window["innerWidth"].as<double>();
-  double currentHeight = window["innerHeight"].as<double>();
-  network.change_raster_size(int(currentWidth-previousWidth), int(currentHeight-previousHeight));
-  previousWidth = currentWidth;
-  previousHeight = currentHeight;
-   */
 }
 
 void RunMainLoop()
