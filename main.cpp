@@ -16,7 +16,9 @@
 #include <boost/functional/hash.hpp>
 #include <boost/geometry.hpp>
 #include <boost/geometry/geometries/point.hpp>
+#include <boost/geometry/geometries/register/point.hpp>
 #include <boost/geometry/geometries/segment.hpp>
+#include <boost/geometry/geometries/register/segment.hpp>
 #include <boost/geometry/index/rtree.hpp>
 // #include <boost/json.hpp>                    // parse JSON
 
@@ -142,7 +144,7 @@ namespace kynedraw
     {
       return linkedNodes;
     }
-    int get_x() const
+    double get_x() const
     {
       return x;
     }
@@ -154,7 +156,7 @@ namespace kynedraw
     {
       this->x = x;
     }
-    int get_y() const
+    double get_y() const
     {
       return y;
     }
@@ -172,6 +174,55 @@ namespace kynedraw
     }
   };
 
+  // Pointers are stored rather than the actual objects so that the rtree can rebalance itself without having to worry about the pointers pointing to it
+  class RTreeVisibleNodePointer
+  {
+   public:
+    kynedraw::VisibleNode* pointer;
+    RTreeVisibleNodePointer(kynedraw::VisibleNode& node)
+    {
+      this->pointer = &node;
+    }
+    // copy constructor
+    RTreeVisibleNodePointer(const RTreeVisibleNodePointer& point)
+    {
+      pointer = point.pointer;
+    }
+    double get_x() const
+    {
+      return pointer->get_x();
+    }
+    double get_y() const
+    {
+      return pointer->get_y();
+    }
+    void set_x(double x)
+    {
+      pointer->set_x(x);
+    }
+    void set_y(double y)
+    {
+      pointer->set_y(y);
+    }
+  };
+/*
+  template <typename Container>
+  class RTreeIndexable
+  {
+    typedef typename Container::size_type size_t;
+    typedef typename Container::const_reference cref;
+    Container const& container;
+
+   public:
+    typedef cref result_type;
+    explicit RTreeIndexable(Container const& c) : container(c) {}
+    result_type operator()(size_t i) const { return container[i]; }
+  };*/
+}
+BOOST_GEOMETRY_REGISTER_POINT_2D_GET_SET(kynedraw::RTreeVisibleNodePointer, double, boost::geometry::cs::cartesian, get_x, get_y, set_x, set_y)
+
+namespace kynedraw
+{
   // RTree boilerplate taken from https://stackoverflow.com/a/25083918
 
   // Convenient namespaces
@@ -181,10 +232,12 @@ namespace kynedraw
 
   // Convenient types
   typedef bgm::point<double, 2, bg::cs::cartesian> point;
-  typedef bgm::segment<point> segment;
+  typedef bgm::segment<RTreeVisibleNodePointer> segment;
   // The boost::uuids::uuid stores the uuids of the segment (VisibleBond) or of the point (VisibleNode)
+  typedef bgi::rtree<std::pair<RTreeVisibleNodePointer, boost::uuids::uuid>, bgi::rstar<16>> point_rtree;
   typedef bgi::rtree<std::pair<segment, boost::uuids::uuid>, bgi::rstar<16>> segment_rtree;
-  typedef bgi::rtree<std::pair<point, boost::uuids::uuid>, bgi::rstar<16>> point_rtree;
+
+// TODO: finish
 
   class Graph
   {
@@ -222,26 +275,25 @@ namespace kynedraw
     kynedraw::VisibleNode& create_visible_node(boost::uuids::uuid uuid, std::string name, double pageX, double pageY)
     {
       kynedraw::VisibleNode node(uuid, "C", pageX, pageY);
-      auto insertion = this->visibleNodes.try_emplace(uuid, node);
-      point p(node.get_x(), node.get_y());
+      kynedraw::VisibleNode& insertedNode = this->visibleNodes.try_emplace(uuid, node).first->second;
+      kynedraw::RTreeVisibleNodePointer p(insertedNode);
       points.insert(std::make_pair(p, uuid));
-      return insertion.first->second;
+      return insertedNode;
     }
     kynedraw::Bond& create_bond_between(boost::uuids::uuid uuid, int numBonds, kynedraw::Node& node1, kynedraw::Node& node2)
     {
-      auto insertion = this->bonds.try_emplace(uuid, kynedraw::Bond(numBonds, node1, node2));
-      node1.add_bond(insertion.first->second);
-      node2.add_bond(insertion.first->second);
-      return insertion.first->second;
+      kynedraw::Bond& insertedBond = this->bonds.try_emplace(uuid, kynedraw::Bond(numBonds, node1, node2)).first->second;
+      node1.add_bond(insertedBond);
+      node2.add_bond(insertedBond);
+      return insertedBond;
     }
     kynedraw::VisibleBond& create_visible_bond_between(boost::uuids::uuid uuid, int numBonds, kynedraw::VisibleNode& node1, kynedraw::VisibleNode& node2)
     {
-      auto insertion = this->visibleBonds.try_emplace(uuid, kynedraw::VisibleBond(numBonds, node1, node2));
-      node1.add_bond(insertion.first->second);
-      node2.add_bond(insertion.first->second);
-      segment seg(point(node1.get_x(), node1.get_y()), point(node2.get_x(), node2.get_y()));
-      segments.insert(std::make_pair(seg, uuid));
-      return insertion.first->second;
+      VisibleBond& insertedBond = this->visibleBonds.try_emplace(uuid, kynedraw::VisibleBond(numBonds, node1, node2)).first->second;
+      node1.add_bond(insertedBond);
+      node2.add_bond(insertedBond);
+      segments.insert(std::make_pair(segment(kynedraw::RTreeVisibleNodePointer(*(insertedBond.get_linked_nodes()[0])), kynedraw::RTreeVisibleNodePointer(*(insertedBond.get_linked_nodes()[1]))), uuid));
+      return insertedBond;
     }
     void merge(Graph& graph)
     {
@@ -271,7 +323,7 @@ namespace kynedraw
     {
       // NOTE: if ans.size() is 0 (that is, there are no visible nodes to be closest to), this will throw an error
       // Check for ans.size through get_visible_nodes().size() whenever you call this function
-      std::vector<std::pair<point, boost::uuids::uuid>> ans;
+      std::vector<std::pair<RTreeVisibleNodePointer, boost::uuids::uuid>> ans;
       points.query(bgi::nearest(point(x, y), 1), std::back_inserter(ans));
       return visibleNodes.at(ans[0].second);
     }
@@ -625,6 +677,7 @@ void InteractWithCanvas(emscripten::val event)
   {
     kynedraw::VisibleBond& closestVisibleBond = network.find_closest_visible_bond_to(pageX, pageY);
   }
+  // TODO: use the closest visible nodes and bonds to customize the preview
 }
 
 void ResizeCanvas(emscripten::val canvas, emscripten::val index, emscripten::val array)
@@ -666,17 +719,17 @@ int main()
   return 0;
 }
 
-EMSCRIPTEN_BINDINGS(bindings)
-{
-  emscripten::function("InteractWithCanvas", InteractWithCanvas);
-  emscripten::function("ResizeCanvases", ResizeCanvases);;
-  emscripten::function("ResizeCanvas", ResizeCanvas);
-  emscripten::function("RenderBackground", RenderBackground);
-  emscripten::function("RenderForeground", RenderForeground);
-  emscripten::function("ClickButton", ClickButton);
-  emscripten::function("AddButtonEventListeners", AddButtonEventListeners);
-  emscripten::function("AddToolButtonEventListener", AddToolButtonEventListener);
-  emscripten::function("StoreSelectedTool", StoreSelectedTool);
-  emscripten::function("AddBondSnapButtonEventListener", AddBondSnapButtonEventListener);
-  emscripten::function("StoreBondSnapSetting", StoreBondSnapSetting); 
-}
+EMSCRIPTEN_BINDINGS(bindings)\
+{\
+  emscripten::function("InteractWithCanvas", InteractWithCanvas);\
+  emscripten::function("ResizeCanvases", ResizeCanvases);\
+  emscripten::function("ResizeCanvas", ResizeCanvas);\
+  emscripten::function("RenderBackground", RenderBackground);\
+  emscripten::function("RenderForeground", RenderForeground);\
+  emscripten::function("ClickButton", ClickButton);\
+  emscripten::function("AddButtonEventListeners", AddButtonEventListeners);\
+  emscripten::function("AddToolButtonEventListener", AddToolButtonEventListener);\
+  emscripten::function("StoreSelectedTool", StoreSelectedTool);\
+  emscripten::function("AddBondSnapButtonEventListener", AddBondSnapButtonEventListener);\
+  emscripten::function("StoreBondSnapSetting", StoreBondSnapSetting);\
+};
