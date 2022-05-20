@@ -171,25 +171,6 @@ namespace kynedraw
       this->linkedBonds.push_back(&bond);
     }
   };
-  /*
-  struct Pixel
-  {
-    int x, y;
-    Pixel(int x, int y)
-    {
-      this->x = x;
-      this->y = y;
-    }
-    bool operator<(const kynedraw::Pixel& pixel) const
-    {
-      return x < pixel.x || y < pixel.y;
-    }
-    bool operator==(const kynedraw::Pixel& pixel) const
-    {
-      return x == pixel.x && y == pixel.y;
-    }
-  };
-   */
 
   // RTree boilerplate taken from https://stackoverflow.com/a/25083918
 
@@ -212,63 +193,11 @@ namespace kynedraw
     std::unordered_map<boost::uuids::uuid, kynedraw::Node, boost::hash<boost::uuids::uuid>> nodes;
     std::unordered_map<boost::uuids::uuid, kynedraw::VisibleBond, boost::hash<boost::uuids::uuid>> visibleBonds;
     std::unordered_map<boost::uuids::uuid, kynedraw::Bond, boost::hash<boost::uuids::uuid>> bonds;
-    /*
-    std::map<kynedraw::Pixel, std::vector<kynedraw::VisibleNode*>> closestNode;
-    std::map<kynedraw::Pixel, std::vector<kynedraw::VisibleBond*>> closestBond;
-    int currentWidth = 0;
-    int currentHeight = 0;
-     */
 
     // The container for pairs of segments and IDs
     segment_rtree segments;
     point_rtree points;
   public:
-    /*
-    void change_raster_size(int deltaWidth, int deltaHeight)
-    {
-      int positiveDeltaWidth, positiveDeltaHeight;
-      deltaWidth > 0 ? positiveDeltaWidth = deltaWidth : positiveDeltaWidth = 0;
-      deltaHeight > 0 ? positiveDeltaHeight = deltaHeight : positiveDeltaHeight = 0;
-      // expand the map when deltaWidth or deltaHeight is positive
-      std::cout << "1\n";
-      for (int i = 0; i < positiveDeltaWidth; i++)
-      {
-        for (int j = 0; j < currentHeight + positiveDeltaHeight; j++)
-        {
-          closestNode.try_emplace(Pixel(currentWidth + i, j), std::vector<kynedraw::VisibleNode*>(0));
-        }
-      }
-      std::cout << "2\n";
-      for (int i = 0; i < currentWidth; i++)
-      {
-        for (int j = 0; j < positiveDeltaHeight; j++)
-        {
-          closestNode.try_emplace(Pixel(i, currentHeight + j), std::vector<kynedraw::VisibleNode*>(0));
-        }
-      }
-      std::cout << "3\n";
-      // contract the map when deltaWidth or deltaHeight is negative
-      for (int i = 0; i < -deltaWidth; i++)
-      {
-        for (int j = 0; j < currentHeight; j++)
-        {
-          closestNode.erase(Pixel(currentWidth - i, j));
-        }
-      }
-      std::cout << "4\n";
-      for (int i = 0; i < currentWidth + deltaWidth; i++)
-      {
-        for (int j = 0; j < -deltaHeight; j++)
-        {
-          closestNode.erase(Pixel(currentWidth - i, currentHeight - j));
-        }
-      }
-      std::cout << "5\n";
-      currentWidth += deltaWidth;
-      currentHeight += deltaHeight;
-      std::cout << currentWidth << " " << currentHeight << "\n";
-    }
-     */
     const std::unordered_map<boost::uuids::uuid, kynedraw::VisibleNode, boost::hash<boost::uuids::uuid>>& get_visible_nodes() const
     {
       return visibleNodes;
@@ -690,7 +619,7 @@ void InteractWithCanvas(emscripten::val event)
   window.call<void>("requestAnimationFrame", emscripten::val::module_property("RenderForeground"));
   if (network.get_visible_nodes().size() != 0)
   {
-    //kynedraw::VisibleNode& closestVisibleNode = network.find_closest_visible_node_to(pageX, pageY);
+    kynedraw::VisibleNode& closestVisibleNode = network.find_closest_visible_node_to(pageX, pageY);
   }
   if (network.get_visible_bonds().size() != 0)
   {
