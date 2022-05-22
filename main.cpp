@@ -11,215 +11,16 @@
 #include <vector>
 #include <ranges>
 #include <boost/uuid/uuid.hpp>            // uuid class
-#include <boost/uuid/uuid_generators.hpp> // generators
-#include <boost/uuid/uuid_io.hpp>         // streaming operators
+#include <boost/uuid/uuid_generators.hpp> // uuid generators
+#include <boost/uuid/uuid_io.hpp>         // uuid streaming operators
 #include <boost/functional/hash.hpp>
 #include <boost/geometry.hpp>
 #include <boost/geometry/geometries/point.hpp>
-#include <boost/geometry/geometries/register/point.hpp>
 #include <boost/geometry/geometries/segment.hpp>
-#include <boost/geometry/geometries/register/segment.hpp>
 #include <boost/geometry/index/rtree.hpp>
 // #include <boost/json.hpp>                    // parse JSON
 
-namespace kynedraw
-{
-  class Molecule;
-  class VisibleMolecule;
-  class Bond;
-  class VisibleBond;
-  class Node;
-  class VisibleNode;
-  class Molecule {
-    //
-  };
-  class GenericBond
-  {
-  protected:
-    int numBonds;
-  public:
-    GenericBond(int numBonds)
-    {
-      this->numBonds = numBonds;
-    }
-  };
-  class Bond : public GenericBond
-  {
-   protected:
-    std::vector<kynedraw::Node*> linkedNodes;
-  public:
-    Bond(int numBonds, kynedraw::Node &node1, kynedraw::Node &node2) : GenericBond(numBonds)
-    {
-      this->linkedNodes.push_back(&node1);
-      this->linkedNodes.push_back(&node2);
-    }
-    const std::vector<kynedraw::Node*>& get_linked_nodes() const
-    {
-      return linkedNodes;
-    }
-  };
-  class VisibleBond : public GenericBond
-  {
-   protected:
-    std::vector<kynedraw::VisibleNode*> linkedNodes;
-  public:
-    VisibleBond(int numBonds, kynedraw::VisibleNode &node1, kynedraw::VisibleNode &node2) : GenericBond(numBonds)
-    {
-      this->linkedNodes.push_back(&node1);
-      this->linkedNodes.push_back(&node2);
-    }
-    const std::vector<kynedraw::VisibleNode*>& get_linked_nodes() const
-    {
-      return linkedNodes;
-    }
-  };
-  class GenericNode
-  {
-  protected:
-    boost::uuids::uuid uuid;
-    std::string name;
-    int numBonds;
-    int charge;
-    int numH;
-    int numLoneE;
-    kynedraw::Molecule* molecule;
-  public:
-    GenericNode(boost::uuids::uuid uuid, std::string name)
-    {
-      this->uuid = uuid;
-      this->name = name;
-    }
-    std::string get_name() const
-    {
-      return name;
-    }
-    bool operator==(const GenericNode& rhs) const noexcept
-    {
-      return this->uuid == rhs.uuid;
-    }
-  };
-
-  class Node : public GenericNode
-  {
-   protected:
-    std::vector<kynedraw::Bond*> linkedBonds;
-    std::vector<kynedraw::VisibleNode*> linkedNodes;
-  public:
-    Node(boost::uuids::uuid uuid, std::string name) : GenericNode(uuid, name)
-    {
-      //
-    }
-    const std::vector<kynedraw::Bond*>& get_linked_bonds() const
-    {
-      return linkedBonds;
-    }
-    const std::vector<kynedraw::VisibleNode*>& get_linked_nodes() const
-    {
-      return linkedNodes;
-    }
-    void add_bond (kynedraw::Bond &bond)
-    {
-      this->linkedBonds.push_back(&bond);
-    }
-  };
-  class VisibleNode : public GenericNode
-  {
-  protected:
-    double x;
-    double y;
-    double predictedNextBondAngleList[3];
-    std::vector<kynedraw::VisibleBond*> linkedBonds;
-    std::vector<kynedraw::Node*> linkedNodes;
-  public:
-    VisibleNode(boost::uuids::uuid uuid, std::string name, double x, double y) : GenericNode(uuid, name)
-    {
-      this->x = x;
-      this->y = y;
-    }
-    const std::vector<kynedraw::VisibleBond*>& get_linked_bonds() const
-    {
-      return linkedBonds;
-    }
-    const std::vector<kynedraw::Node*>& get_linked_nodes() const
-    {
-      return linkedNodes;
-    }
-    double get_x() const
-    {
-      return x;
-    }
-    void change_x(double change_x)
-    {
-      x += change_x;
-    }
-    void set_x(double x)
-    {
-      this->x = x;
-    }
-    double get_y() const
-    {
-      return y;
-    }
-    void change_y(double change_y)
-    {
-      y += change_y;
-    }
-    void set_y(double y)
-    {
-      this->y = y;
-    }
-    void add_bond (kynedraw::VisibleBond& bond)
-    {
-      this->linkedBonds.push_back(&bond);
-    }
-  };
-
-  // Pointers are stored rather than the actual objects so that the rtree can rebalance itself without having to worry about the pointers pointing to it
-  class RTreeVisibleNodePointer
-  {
-   public:
-    kynedraw::VisibleNode* pointer;
-    RTreeVisibleNodePointer(kynedraw::VisibleNode& node)
-    {
-      this->pointer = &node;
-    }
-    // copy constructor
-    RTreeVisibleNodePointer(const RTreeVisibleNodePointer& point)
-    {
-      pointer = point.pointer;
-    }
-    double get_x() const
-    {
-      return pointer->get_x();
-    }
-    double get_y() const
-    {
-      return pointer->get_y();
-    }
-    void set_x(double x)
-    {
-      pointer->set_x(x);
-    }
-    void set_y(double y)
-    {
-      pointer->set_y(y);
-    }
-  };
-/*
-  template <typename Container>
-  class RTreeIndexable
-  {
-    typedef typename Container::size_type size_t;
-    typedef typename Container::const_reference cref;
-    Container const& container;
-
-   public:
-    typedef cref result_type;
-    explicit RTreeIndexable(Container const& c) : container(c) {}
-    result_type operator()(size_t i) const { return container[i]; }
-  };*/
-}
-BOOST_GEOMETRY_REGISTER_POINT_2D_GET_SET(kynedraw::RTreeVisibleNodePointer, double, boost::geometry::cs::cartesian, get_x, get_y, set_x, set_y)
+import kynedraw;
 
 namespace kynedraw
 {
@@ -232,12 +33,17 @@ namespace kynedraw
 
   // Convenient types
   typedef bgm::point<double, 2, bg::cs::cartesian> point;
-  typedef bgm::segment<RTreeVisibleNodePointer> segment;
+  typedef bgm::segment<point> segment;
   // The boost::uuids::uuid stores the uuids of the segment (VisibleBond) or of the point (VisibleNode)
-  typedef bgi::rtree<std::pair<RTreeVisibleNodePointer, boost::uuids::uuid>, bgi::rstar<16>> point_rtree;
+  typedef bgi::rtree<std::pair<point, boost::uuids::uuid>, bgi::rstar<16>> point_rtree;
   typedef bgi::rtree<std::pair<segment, boost::uuids::uuid>, bgi::rstar<16>> segment_rtree;
 
-// TODO: finish
+  class Molecule;
+  class VisibleMolecule;
+
+  class Molecule {
+    //
+  };
 
   class Graph
   {
@@ -274,25 +80,24 @@ namespace kynedraw
     }
     kynedraw::VisibleNode& create_visible_node(boost::uuids::uuid uuid, std::string name, double pageX, double pageY)
     {
-      kynedraw::VisibleNode node(uuid, "C", pageX, pageY);
+      kynedraw::VisibleNode node(uuid, "C", pageX, pageY, points);
       kynedraw::VisibleNode& insertedNode = this->visibleNodes.try_emplace(uuid, node).first->second;
-      kynedraw::RTreeVisibleNodePointer p(insertedNode);
-      points.insert(std::make_pair(p, uuid));
+      points.insert(std::make_pair(point(pageX, pageY), uuid));
       return insertedNode;
     }
     kynedraw::Bond& create_bond_between(boost::uuids::uuid uuid, int numBonds, kynedraw::Node& node1, kynedraw::Node& node2)
     {
-      kynedraw::Bond& insertedBond = this->bonds.try_emplace(uuid, kynedraw::Bond(numBonds, node1, node2)).first->second;
-      node1.add_bond(insertedBond);
-      node2.add_bond(insertedBond);
+      kynedraw::Bond& insertedBond = this->bonds.try_emplace(uuid, kynedraw::Bond(uuid, numBonds, node1, node2)).first->second;
+      node1.add_bond_info(insertedBond, 0);
+      node2.add_bond_info(insertedBond, 1);
       return insertedBond;
     }
     kynedraw::VisibleBond& create_visible_bond_between(boost::uuids::uuid uuid, int numBonds, kynedraw::VisibleNode& node1, kynedraw::VisibleNode& node2)
     {
-      VisibleBond& insertedBond = this->visibleBonds.try_emplace(uuid, kynedraw::VisibleBond(numBonds, node1, node2)).first->second;
-      node1.add_bond(insertedBond);
-      node2.add_bond(insertedBond);
-      segments.insert(std::make_pair(segment(kynedraw::RTreeVisibleNodePointer(*(insertedBond.get_linked_nodes()[0])), kynedraw::RTreeVisibleNodePointer(*(insertedBond.get_linked_nodes()[1]))), uuid));
+      VisibleBond& insertedBond = this->visibleBonds.try_emplace(uuid, kynedraw::VisibleBond(uuid, numBonds, node1, node2, segments)).first->second;
+      node1.add_bond_info(insertedBond, 0);
+      node2.add_bond_info(insertedBond, 1);
+      segments.insert(std::make_pair(segment(point(node1.get_x(), node1.get_y()), point(node2.get_x(), node2.get_y())), uuid));
       return insertedBond;
     }
     void merge(Graph& graph)
@@ -323,7 +128,7 @@ namespace kynedraw
     {
       // NOTE: if ans.size() is 0 (that is, there are no visible nodes to be closest to), this will throw an error
       // Check for ans.size through get_visible_nodes().size() whenever you call this function
-      std::vector<std::pair<RTreeVisibleNodePointer, boost::uuids::uuid>> ans;
+      std::vector<std::pair<point, boost::uuids::uuid>> ans;
       points.query(bgi::nearest(point(x, y), 1), std::back_inserter(ans));
       return visibleNodes.at(ans[0].second);
     }
@@ -633,7 +438,7 @@ void MouseMove(double pageX, double pageY, bool mouseIsPressed, double mouseDown
   static double previousPageX, previousPageY;
   if (mouseIsPressed && std::abs(mouseDownPageX - pageX) < DEADZONE_WIDTH && std::abs(mouseDownPageY - pageY) < DEADZONE_HEIGHT)
   {
-    //
+    // TODO
   } else {
     preview.change_x_y(pageX - previousPageX, pageY - previousPageY);
   }

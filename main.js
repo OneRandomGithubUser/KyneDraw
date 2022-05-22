@@ -334,10 +334,10 @@ var POINTER_SIZE = 4;
 
 function getNativeTypeSize(type) {
   switch (type) {
-    case 'i1': case 'i8': return 1;
-    case 'i16': return 2;
-    case 'i32': return 4;
-    case 'i64': return 8;
+    case 'i1': case 'i8': case 'u8': return 1;
+    case 'i16': case 'u16': return 2;
+    case 'i32': case 'u32': return 4;
+    case 'i64': case 'u64': return 8;
     case 'float': return 4;
     case 'double': return 8;
     default: {
@@ -611,43 +611,44 @@ if (typeof WebAssembly != 'object') {
 // include: runtime_safe_heap.js
 
 
-// In MINIMAL_RUNTIME, setValue() and getValue() are only available when building with safe heap enabled, for heap safety checking.
-// In traditional runtime, setValue() and getValue() are always available (although their use is highly discouraged due to perf penalties)
+// In MINIMAL_RUNTIME, setValue() and getValue() are only available when
+// building with safe heap enabled, for heap safety checking.
+// In traditional runtime, setValue() and getValue() are always available
+// (although their use is highly discouraged due to perf penalties)
 
 /** @param {number} ptr
     @param {number} value
     @param {string} type
     @param {number|boolean=} noSafe */
 function setValue(ptr, value, type = 'i8', noSafe) {
-  if (type.charAt(type.length-1) === '*') type = 'i32';
-    switch (type) {
-      case 'i1': HEAP8[((ptr)>>0)] = value; break;
-      case 'i8': HEAP8[((ptr)>>0)] = value; break;
-      case 'i16': HEAP16[((ptr)>>1)] = value; break;
-      case 'i32': HEAP32[((ptr)>>2)] = value; break;
-      case 'i64': (tempI64 = [value>>>0,(tempDouble=value,(+(Math.abs(tempDouble))) >= 1.0 ? (tempDouble > 0.0 ? ((Math.min((+(Math.floor((tempDouble)/4294967296.0))), 4294967295.0))|0)>>>0 : (~~((+(Math.ceil((tempDouble - +(((~~(tempDouble)))>>>0))/4294967296.0)))))>>>0) : 0)],HEAP32[((ptr)>>2)] = tempI64[0],HEAP32[(((ptr)+(4))>>2)] = tempI64[1]); break;
-      case 'float': HEAPF32[((ptr)>>2)] = value; break;
-      case 'double': HEAPF64[((ptr)>>3)] = value; break;
-      default: abort('invalid type for setValue: ' + type);
-    }
+  if (type.endsWith('*')) type = 'i32';
+  switch (type) {
+    case 'i1': HEAP8[((ptr)>>0)] = value; break;
+    case 'i8': HEAP8[((ptr)>>0)] = value; break;
+    case 'i16': HEAP16[((ptr)>>1)] = value; break;
+    case 'i32': HEAP32[((ptr)>>2)] = value; break;
+    case 'i64': (tempI64 = [value>>>0,(tempDouble=value,(+(Math.abs(tempDouble))) >= 1.0 ? (tempDouble > 0.0 ? ((Math.min((+(Math.floor((tempDouble)/4294967296.0))), 4294967295.0))|0)>>>0 : (~~((+(Math.ceil((tempDouble - +(((~~(tempDouble)))>>>0))/4294967296.0)))))>>>0) : 0)],HEAP32[((ptr)>>2)] = tempI64[0],HEAP32[(((ptr)+(4))>>2)] = tempI64[1]); break;
+    case 'float': HEAPF32[((ptr)>>2)] = value; break;
+    case 'double': HEAPF64[((ptr)>>3)] = value; break;
+    default: abort('invalid type for setValue: ' + type);
+  }
 }
 
 /** @param {number} ptr
     @param {string} type
     @param {number|boolean=} noSafe */
 function getValue(ptr, type = 'i8', noSafe) {
-  if (type.charAt(type.length-1) === '*') type = 'i32';
-    switch (type) {
-      case 'i1': return HEAP8[((ptr)>>0)];
-      case 'i8': return HEAP8[((ptr)>>0)];
-      case 'i16': return HEAP16[((ptr)>>1)];
-      case 'i32': return HEAP32[((ptr)>>2)];
-      case 'i64': return HEAP32[((ptr)>>2)];
-      case 'float': return HEAPF32[((ptr)>>2)];
-      case 'double': return Number(HEAPF64[((ptr)>>3)]);
-      default: abort('invalid type for getValue: ' + type);
-    }
-  return null;
+  if (type.endsWith('*')) type = 'i32';
+  switch (type) {
+    case 'i1': return HEAP8[((ptr)>>0)];
+    case 'i8': return HEAP8[((ptr)>>0)];
+    case 'i16': return HEAP16[((ptr)>>1)];
+    case 'i32': return HEAP32[((ptr)>>2)];
+    case 'i64': return HEAP32[((ptr)>>2)];
+    case 'float': return HEAPF32[((ptr)>>2)];
+    case 'double': return Number(HEAPF64[((ptr)>>3)]);
+    default: abort('invalid type for getValue: ' + type);
+  }
 }
 
 // end include: runtime_safe_heap.js
@@ -1238,7 +1239,7 @@ function writeStackCookie() {
   HEAP32[((max)>>2)] = 0x2135467;
   HEAP32[(((max)+(4))>>2)] = 0x89BACDFE;
   // Also test the global address 0 for integrity.
-  HEAP32[0] = 0x63736d65; /* 'emsc' */
+  HEAPU32[0] = 0x63736d65; /* 'emsc' */
 }
 
 function checkStackCookie() {
@@ -1250,7 +1251,7 @@ function checkStackCookie() {
     abort('Stack overflow! Stack cookie has been overwritten, expected hex dwords 0x89BACDFE and 0x2135467, but received 0x' + cookie2.toString(16) + ' 0x' + cookie1.toString(16));
   }
   // Also test the global address 0 for integrity.
-  if (HEAP32[0] !== 0x63736d65 /* 'emsc' */) abort('Runtime error: The application has corrupted its heap memory area (address zero)!');
+  if (HEAPU32[0] !== 0x63736d65 /* 'emsc' */) abort('Runtime error: The application has corrupted its heap memory area (address zero)!');
 }
 
 // end include: runtime_stack_check.js
@@ -1836,19 +1837,19 @@ var ASM_CONSTS = {
       this.ptr = excPtr - 24;
   
       this.set_type = function(type) {
-        HEAP32[(((this.ptr)+(4))>>2)] = type;
+        HEAPU32[(((this.ptr)+(4))>>2)] = type;
       };
   
       this.get_type = function() {
-        return HEAP32[(((this.ptr)+(4))>>2)];
+        return HEAPU32[(((this.ptr)+(4))>>2)];
       };
   
       this.set_destructor = function(destructor) {
-        HEAP32[(((this.ptr)+(8))>>2)] = destructor;
+        HEAPU32[(((this.ptr)+(8))>>2)] = destructor;
       };
   
       this.get_destructor = function() {
-        return HEAP32[(((this.ptr)+(8))>>2)];
+        return HEAPU32[(((this.ptr)+(8))>>2)];
       };
   
       this.set_refcount = function(refcount) {
@@ -1897,11 +1898,11 @@ var ASM_CONSTS = {
       };
   
       this.set_adjusted_ptr = function(adjustedPtr) {
-        HEAP32[(((this.ptr)+(16))>>2)] = adjustedPtr;
+        HEAPU32[(((this.ptr)+(16))>>2)] = adjustedPtr;
       };
   
       this.get_adjusted_ptr = function() {
-        return HEAP32[(((this.ptr)+(16))>>2)];
+        return HEAPU32[(((this.ptr)+(16))>>2)];
       };
   
       // Get pointer which is expected to be received by catch clause in C++ code. It may be adjusted
@@ -1913,7 +1914,7 @@ var ASM_CONSTS = {
         // exceptions support.
         var isPointer = ___cxa_is_pointer_type(this.get_type());
         if (isPointer) {
-          return HEAP32[((this.excPtr)>>2)];
+          return HEAPU32[((this.excPtr)>>2)];
         }
         var adjusted = this.get_adjusted_ptr();
         if (adjusted !== 0) return adjusted;
@@ -1959,14 +1960,16 @@ var ASM_CONSTS = {
       var thrown = exceptionLast;
       if (!thrown) {
         // just pass through the null ptr
-        setTempRet0(0); return ((0)|0);
+        setTempRet0(0);
+        return 0;
       }
       var info = new ExceptionInfo(thrown);
       info.set_adjusted_ptr(thrown);
       var thrownType = info.get_type();
       if (!thrownType) {
         // just pass through the thrown ptr
-        setTempRet0(0); return ((thrown)|0);
+        setTempRet0(0);
+        return thrown;
       }
       var typeArray = Array.prototype.slice.call(arguments);
   
@@ -1983,24 +1986,28 @@ var ASM_CONSTS = {
         }
         var adjusted_ptr_addr = info.ptr + 16;
         if (___cxa_can_catch(caughtType, thrownType, adjusted_ptr_addr)) {
-          setTempRet0(caughtType); return ((thrown)|0);
+          setTempRet0(caughtType);
+          return thrown;
         }
       }
-      setTempRet0(thrownType); return ((thrown)|0);
+      setTempRet0(thrownType);
+      return thrown;
     }
 
   function ___cxa_find_matching_catch_3() {
       var thrown = exceptionLast;
       if (!thrown) {
         // just pass through the null ptr
-        setTempRet0(0); return ((0)|0);
+        setTempRet0(0);
+        return 0;
       }
       var info = new ExceptionInfo(thrown);
       info.set_adjusted_ptr(thrown);
       var thrownType = info.get_type();
       if (!thrownType) {
         // just pass through the thrown ptr
-        setTempRet0(0); return ((thrown)|0);
+        setTempRet0(0);
+        return thrown;
       }
       var typeArray = Array.prototype.slice.call(arguments);
   
@@ -2017,10 +2024,12 @@ var ASM_CONSTS = {
         }
         var adjusted_ptr_addr = info.ptr + 16;
         if (___cxa_can_catch(caughtType, thrownType, adjusted_ptr_addr)) {
-          setTempRet0(caughtType); return ((thrown)|0);
+          setTempRet0(caughtType);
+          return thrown;
         }
       }
-      setTempRet0(thrownType); return ((thrown)|0);
+      setTempRet0(thrownType);
+      return thrown;
     }
 
 
@@ -3380,7 +3389,7 @@ var ASM_CONSTS = {
         node.node_ops.setattr(node, {
           timestamp: Math.max(atime, mtime)
         });
-      },open:(path, flags, mode, fd_start, fd_end) => {
+      },open:(path, flags, mode) => {
         if (path === "") {
           throw new FS.ErrnoError(44);
         }
@@ -3440,7 +3449,7 @@ var ASM_CONSTS = {
           }
         }
         // do truncation if necessary
-        if ((flags & 512)) {
+        if ((flags & 512) && !created) {
           FS.truncate(node, 0);
         }
         // we've already handled these, don't pass down to the underlying vfs
@@ -3457,7 +3466,7 @@ var ASM_CONSTS = {
           // used by the file family libc calls (fopen, fwrite, ferror, etc.)
           ungotten: [],
           error: false
-        }, fd_start, fd_end);
+        });
         // call the new stream's open function
         if (stream.stream_ops.open) {
           stream.stream_ops.open(stream);
@@ -4271,72 +4280,6 @@ var ASM_CONSTS = {
       },doMsync:function(addr, stream, len, flags, offset) {
         var buffer = HEAPU8.slice(addr, addr + len);
         FS.msync(stream, buffer, offset, len, flags);
-      },doMknod:function(path, mode, dev) {
-        // we don't want this in the JS API as it uses mknod to create all nodes.
-        switch (mode & 61440) {
-          case 32768:
-          case 8192:
-          case 24576:
-          case 4096:
-          case 49152:
-            break;
-          default: return -28;
-        }
-        FS.mknod(path, mode, dev);
-        return 0;
-      },doReadlink:function(path, buf, bufsize) {
-        if (bufsize <= 0) return -28;
-        var ret = FS.readlink(path);
-  
-        var len = Math.min(bufsize, lengthBytesUTF8(ret));
-        var endChar = HEAP8[buf+len];
-        stringToUTF8(ret, buf, bufsize+1);
-        // readlink is one of the rare functions that write out a C string, but does never append a null to the output buffer(!)
-        // stringToUTF8() always appends a null byte, so restore the character under the null byte after the write.
-        HEAP8[buf+len] = endChar;
-  
-        return len;
-      },doAccess:function(path, amode) {
-        if (amode & ~7) {
-          // need a valid mode
-          return -28;
-        }
-        var lookup = FS.lookupPath(path, { follow: true });
-        var node = lookup.node;
-        if (!node) {
-          return -44;
-        }
-        var perms = '';
-        if (amode & 4) perms += 'r';
-        if (amode & 2) perms += 'w';
-        if (amode & 1) perms += 'x';
-        if (perms /* otherwise, they've just passed F_OK */ && FS.nodePermissions(node, perms)) {
-          return -2;
-        }
-        return 0;
-      },doReadv:function(stream, iov, iovcnt, offset) {
-        var ret = 0;
-        for (var i = 0; i < iovcnt; i++) {
-          var ptr = HEAP32[((iov)>>2)];
-          var len = HEAP32[(((iov)+(4))>>2)];
-          iov += 8;
-          var curr = FS.read(stream, HEAP8,ptr, len, offset);
-          if (curr < 0) return -1;
-          ret += curr;
-          if (curr < len) break; // nothing more to read
-        }
-        return ret;
-      },doWritev:function(stream, iov, iovcnt, offset) {
-        var ret = 0;
-        for (var i = 0; i < iovcnt; i++) {
-          var ptr = HEAP32[((iov)>>2)];
-          var len = HEAP32[(((iov)+(4))>>2)];
-          iov += 8;
-          var curr = FS.write(stream, HEAP8,ptr, len, offset);
-          if (curr < 0) return -1;
-          ret += curr;
-        }
-        return ret;
       },varargs:undefined,get:function() {
         assert(SYSCALLS.varargs != undefined);
         SYSCALLS.varargs += 4;
@@ -5451,11 +5394,25 @@ var ASM_CONSTS = {
   }
   }
 
+  /** @param {number=} offset */
+  function doReadv(stream, iov, iovcnt, offset) {
+      var ret = 0;
+      for (var i = 0; i < iovcnt; i++) {
+        var ptr = HEAPU32[((iov)>>2)];
+        var len = HEAPU32[(((iov)+(4))>>2)];
+        iov += 8;
+        var curr = FS.read(stream, HEAP8,ptr, len, offset);
+        if (curr < 0) return -1;
+        ret += curr;
+        if (curr < len) break; // nothing more to read
+      }
+      return ret;
+    }
   function _fd_read(fd, iov, iovcnt, pnum) {
   try {
   
       var stream = SYSCALLS.getStreamFromFD(fd);
-      var num = SYSCALLS.doReadv(stream, iov, iovcnt);
+      var num = doReadv(stream, iov, iovcnt);
       HEAP32[((pnum)>>2)] = num;
       return 0;
     } catch (e) {
@@ -5728,6 +5685,7 @@ var asmLibraryArg = {
   "invoke_iii": invoke_iii,
   "invoke_iiii": invoke_iiii,
   "invoke_iiiidd": invoke_iiiidd,
+  "invoke_iiiiddi": invoke_iiiiddi,
   "invoke_iiiii": invoke_iiiii,
   "invoke_iiiiii": invoke_iiiiii,
   "invoke_iiiiiii": invoke_iiiiiii,
@@ -5816,10 +5774,10 @@ var dynCall_iiji = Module["dynCall_iiji"] = createExportWrapper("dynCall_iiji");
 var dynCall_ji = Module["dynCall_ji"] = createExportWrapper("dynCall_ji");
 
 
-function invoke_iiii(index,a1,a2,a3) {
+function invoke_iii(index,a1,a2) {
   var sp = stackSave();
   try {
-    return getWasmTableEntry(index)(a1,a2,a3);
+    return getWasmTableEntry(index)(a1,a2);
   } catch(e) {
     stackRestore(sp);
     if (e !== e+0) throw e;
@@ -5827,10 +5785,10 @@ function invoke_iiii(index,a1,a2,a3) {
   }
 }
 
-function invoke_iii(index,a1,a2) {
+function invoke_iiii(index,a1,a2,a3) {
   var sp = stackSave();
   try {
-    return getWasmTableEntry(index)(a1,a2);
+    return getWasmTableEntry(index)(a1,a2,a3);
   } catch(e) {
     stackRestore(sp);
     if (e !== e+0) throw e;
@@ -5849,21 +5807,10 @@ function invoke_viii(index,a1,a2,a3) {
   }
 }
 
-function invoke_vi(index,a1) {
+function invoke_vii(index,a1,a2) {
   var sp = stackSave();
   try {
-    getWasmTableEntry(index)(a1);
-  } catch(e) {
-    stackRestore(sp);
-    if (e !== e+0) throw e;
-    _setThrew(1, 0);
-  }
-}
-
-function invoke_iiiii(index,a1,a2,a3,a4) {
-  var sp = stackSave();
-  try {
-    return getWasmTableEntry(index)(a1,a2,a3,a4);
+    getWasmTableEntry(index)(a1,a2);
   } catch(e) {
     stackRestore(sp);
     if (e !== e+0) throw e;
@@ -5882,10 +5829,21 @@ function invoke_viiii(index,a1,a2,a3,a4) {
   }
 }
 
-function invoke_viiiiii(index,a1,a2,a3,a4,a5,a6) {
+function invoke_vi(index,a1) {
   var sp = stackSave();
   try {
-    getWasmTableEntry(index)(a1,a2,a3,a4,a5,a6);
+    getWasmTableEntry(index)(a1);
+  } catch(e) {
+    stackRestore(sp);
+    if (e !== e+0) throw e;
+    _setThrew(1, 0);
+  }
+}
+
+function invoke_v(index) {
+  var sp = stackSave();
+  try {
+    getWasmTableEntry(index)();
   } catch(e) {
     stackRestore(sp);
     if (e !== e+0) throw e;
@@ -5904,10 +5862,21 @@ function invoke_ii(index,a1) {
   }
 }
 
-function invoke_vii(index,a1,a2) {
+function invoke_diii(index,a1,a2,a3) {
   var sp = stackSave();
   try {
-    getWasmTableEntry(index)(a1,a2);
+    return getWasmTableEntry(index)(a1,a2,a3);
+  } catch(e) {
+    stackRestore(sp);
+    if (e !== e+0) throw e;
+    _setThrew(1, 0);
+  }
+}
+
+function invoke_viiiiii(index,a1,a2,a3,a4,a5,a6) {
+  var sp = stackSave();
+  try {
+    getWasmTableEntry(index)(a1,a2,a3,a4,a5,a6);
   } catch(e) {
     stackRestore(sp);
     if (e !== e+0) throw e;
@@ -5926,10 +5895,76 @@ function invoke_viiiiiii(index,a1,a2,a3,a4,a5,a6,a7) {
   }
 }
 
+function invoke_viiiiiiiii(index,a1,a2,a3,a4,a5,a6,a7,a8,a9) {
+  var sp = stackSave();
+  try {
+    getWasmTableEntry(index)(a1,a2,a3,a4,a5,a6,a7,a8,a9);
+  } catch(e) {
+    stackRestore(sp);
+    if (e !== e+0) throw e;
+    _setThrew(1, 0);
+  }
+}
+
+function invoke_viiiii(index,a1,a2,a3,a4,a5) {
+  var sp = stackSave();
+  try {
+    getWasmTableEntry(index)(a1,a2,a3,a4,a5);
+  } catch(e) {
+    stackRestore(sp);
+    if (e !== e+0) throw e;
+    _setThrew(1, 0);
+  }
+}
+
+function invoke_iiiiiii(index,a1,a2,a3,a4,a5,a6) {
+  var sp = stackSave();
+  try {
+    return getWasmTableEntry(index)(a1,a2,a3,a4,a5,a6);
+  } catch(e) {
+    stackRestore(sp);
+    if (e !== e+0) throw e;
+    _setThrew(1, 0);
+  }
+}
+
+function invoke_iiiii(index,a1,a2,a3,a4) {
+  var sp = stackSave();
+  try {
+    return getWasmTableEntry(index)(a1,a2,a3,a4);
+  } catch(e) {
+    stackRestore(sp);
+    if (e !== e+0) throw e;
+    _setThrew(1, 0);
+  }
+}
+
+function invoke_di(index,a1) {
+  var sp = stackSave();
+  try {
+    return getWasmTableEntry(index)(a1);
+  } catch(e) {
+    stackRestore(sp);
+    if (e !== e+0) throw e;
+    _setThrew(1, 0);
+  }
+}
+
 function invoke_iiiidd(index,a1,a2,a3,a4,a5) {
   var sp = stackSave();
   try {
     return getWasmTableEntry(index)(a1,a2,a3,a4,a5);
+  } catch(e) {
+    stackRestore(sp);
+    if (e !== e+0) throw e;
+    _setThrew(1, 0);
+  }
+}
+
+function invoke_iiiiddi(index,a1,a2,a3,a4,a5,a6) {
+  var sp = stackSave();
+  try {
+    return getWasmTableEntry(index)(a1,a2,a3,a4,a5,a6);
   } catch(e) {
     stackRestore(sp);
     if (e !== e+0) throw e;
@@ -5970,17 +6005,6 @@ function invoke_vidd(index,a1,a2,a3) {
   }
 }
 
-function invoke_di(index,a1) {
-  var sp = stackSave();
-  try {
-    return getWasmTableEntry(index)(a1);
-  } catch(e) {
-    stackRestore(sp);
-    if (e !== e+0) throw e;
-    _setThrew(1, 0);
-  }
-}
-
 function invoke_dd(index,a1) {
   var sp = stackSave();
   try {
@@ -6014,61 +6038,6 @@ function invoke_iidd(index,a1,a2,a3) {
   }
 }
 
-function invoke_viiiii(index,a1,a2,a3,a4,a5) {
-  var sp = stackSave();
-  try {
-    getWasmTableEntry(index)(a1,a2,a3,a4,a5);
-  } catch(e) {
-    stackRestore(sp);
-    if (e !== e+0) throw e;
-    _setThrew(1, 0);
-  }
-}
-
-function invoke_diii(index,a1,a2,a3) {
-  var sp = stackSave();
-  try {
-    return getWasmTableEntry(index)(a1,a2,a3);
-  } catch(e) {
-    stackRestore(sp);
-    if (e !== e+0) throw e;
-    _setThrew(1, 0);
-  }
-}
-
-function invoke_v(index) {
-  var sp = stackSave();
-  try {
-    getWasmTableEntry(index)();
-  } catch(e) {
-    stackRestore(sp);
-    if (e !== e+0) throw e;
-    _setThrew(1, 0);
-  }
-}
-
-function invoke_viiiiiiiii(index,a1,a2,a3,a4,a5,a6,a7,a8,a9) {
-  var sp = stackSave();
-  try {
-    getWasmTableEntry(index)(a1,a2,a3,a4,a5,a6,a7,a8,a9);
-  } catch(e) {
-    stackRestore(sp);
-    if (e !== e+0) throw e;
-    _setThrew(1, 0);
-  }
-}
-
-function invoke_iiiiiii(index,a1,a2,a3,a4,a5,a6) {
-  var sp = stackSave();
-  try {
-    return getWasmTableEntry(index)(a1,a2,a3,a4,a5,a6);
-  } catch(e) {
-    stackRestore(sp);
-    if (e !== e+0) throw e;
-    _setThrew(1, 0);
-  }
-}
-
 function invoke_iiji(index,a1,a2,a3,a4) {
   var sp = stackSave();
   try {
@@ -6085,8 +6054,6 @@ function invoke_iiji(index,a1,a2,a3,a4) {
 
 // === Auto-generated postamble setup entry stuff ===
 
-unexportedRuntimeFunction('intArrayFromString', false);
-unexportedRuntimeFunction('intArrayToString', false);
 unexportedRuntimeFunction('ccall', false);
 unexportedRuntimeFunction('cwrap', false);
 unexportedRuntimeFunction('setValue', false);
@@ -6097,15 +6064,11 @@ unexportedRuntimeFunction('UTF8ToString', false);
 unexportedRuntimeFunction('stringToUTF8Array', false);
 unexportedRuntimeFunction('stringToUTF8', false);
 unexportedRuntimeFunction('lengthBytesUTF8', false);
-unexportedRuntimeFunction('stackTrace', false);
 unexportedRuntimeFunction('addOnPreRun', false);
 unexportedRuntimeFunction('addOnInit', false);
 unexportedRuntimeFunction('addOnPreMain', false);
 unexportedRuntimeFunction('addOnExit', false);
 unexportedRuntimeFunction('addOnPostRun', false);
-unexportedRuntimeFunction('writeStringToMemory', false);
-unexportedRuntimeFunction('writeArrayToMemory', false);
-unexportedRuntimeFunction('writeAsciiToMemory', false);
 unexportedRuntimeFunction('addRunDependency', true);
 unexportedRuntimeFunction('removeRunDependency', true);
 unexportedRuntimeFunction('FS_createFolder', false);
@@ -6123,7 +6086,6 @@ unexportedRuntimeFunction('registerFunctions', false);
 unexportedRuntimeFunction('addFunction', false);
 unexportedRuntimeFunction('removeFunction', false);
 unexportedRuntimeFunction('prettyPrint', false);
-unexportedRuntimeFunction('dynCall', false);
 unexportedRuntimeFunction('getCompilerSetting', false);
 unexportedRuntimeFunction('print', false);
 unexportedRuntimeFunction('printErr', false);
@@ -6132,6 +6094,29 @@ unexportedRuntimeFunction('setTempRet0', false);
 unexportedRuntimeFunction('callMain', false);
 unexportedRuntimeFunction('abort', false);
 unexportedRuntimeFunction('keepRuntimeAlive', false);
+unexportedRuntimeFunction('wasmMemory', false);
+unexportedRuntimeFunction('warnOnce', false);
+unexportedRuntimeFunction('stackSave', false);
+unexportedRuntimeFunction('stackRestore', false);
+unexportedRuntimeFunction('stackAlloc', false);
+unexportedRuntimeFunction('AsciiToString', false);
+unexportedRuntimeFunction('stringToAscii', false);
+unexportedRuntimeFunction('UTF16ToString', false);
+unexportedRuntimeFunction('stringToUTF16', false);
+unexportedRuntimeFunction('lengthBytesUTF16', false);
+unexportedRuntimeFunction('UTF32ToString', false);
+unexportedRuntimeFunction('stringToUTF32', false);
+unexportedRuntimeFunction('lengthBytesUTF32', false);
+unexportedRuntimeFunction('allocateUTF8', false);
+unexportedRuntimeFunction('allocateUTF8OnStack', false);
+unexportedRuntimeFunction('ExitStatus', false);
+unexportedRuntimeFunction('intArrayFromString', false);
+unexportedRuntimeFunction('intArrayToString', false);
+unexportedRuntimeFunction('writeStringToMemory', false);
+unexportedRuntimeFunction('writeArrayToMemory', false);
+unexportedRuntimeFunction('writeAsciiToMemory', false);
+Module["writeStackCookie"] = writeStackCookie;
+Module["checkStackCookie"] = checkStackCookie;
 unexportedRuntimeFunction('ptrToString', false);
 unexportedRuntimeFunction('zeroMemory', false);
 unexportedRuntimeFunction('stringToNewUTF8', false);
@@ -6235,6 +6220,8 @@ unexportedRuntimeFunction('jsStackTrace', false);
 unexportedRuntimeFunction('stackTrace', false);
 unexportedRuntimeFunction('getEnvStrings', false);
 unexportedRuntimeFunction('checkWasiClock', false);
+unexportedRuntimeFunction('doReadv', false);
+unexportedRuntimeFunction('doWritev', false);
 unexportedRuntimeFunction('writeI53ToI64', false);
 unexportedRuntimeFunction('writeI53ToI64Clamped', false);
 unexportedRuntimeFunction('writeI53ToI64Signaling', false);
@@ -6383,22 +6370,6 @@ unexportedRuntimeFunction('craftEmvalAllocator', false);
 unexportedRuntimeFunction('emval_get_global', false);
 unexportedRuntimeFunction('emval_methodCallers', false);
 unexportedRuntimeFunction('emval_registeredMethods', false);
-unexportedRuntimeFunction('warnOnce', false);
-unexportedRuntimeFunction('stackSave', false);
-unexportedRuntimeFunction('stackRestore', false);
-unexportedRuntimeFunction('stackAlloc', false);
-unexportedRuntimeFunction('AsciiToString', false);
-unexportedRuntimeFunction('stringToAscii', false);
-unexportedRuntimeFunction('UTF16ToString', false);
-unexportedRuntimeFunction('stringToUTF16', false);
-unexportedRuntimeFunction('lengthBytesUTF16', false);
-unexportedRuntimeFunction('UTF32ToString', false);
-unexportedRuntimeFunction('stringToUTF32', false);
-unexportedRuntimeFunction('lengthBytesUTF32', false);
-unexportedRuntimeFunction('allocateUTF8', false);
-unexportedRuntimeFunction('allocateUTF8OnStack', false);
-Module["writeStackCookie"] = writeStackCookie;
-Module["checkStackCookie"] = checkStackCookie;
 unexportedRuntimeSymbol('ALLOC_NORMAL', false);
 unexportedRuntimeSymbol('ALLOC_STACK', false);
 

@@ -1,0 +1,8 @@
+module kynedraw {
+  module Bond {
+    header "Bond.h"
+  }
+  module Node {
+    header "Node.h"
+  }
+}
