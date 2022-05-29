@@ -1,8 +1,9 @@
 #ifndef BOND_H_
 #define BOND_H_
 
+#include <unordered_map>
 #include <boost/uuid/uuid.hpp>
-#include <boost/uuid/uuid_generators.hpp>
+#include <boost/functional/hash.hpp>
 #include <boost/geometry.hpp>
 #include <boost/geometry/geometries/point.hpp>
 #include <boost/geometry/geometries/segment.hpp>
@@ -23,39 +24,13 @@ namespace kynedraw {
   typedef bgi::rtree<std::pair<point, boost::uuids::uuid>, bgi::rstar<16>> point_rtree;
   typedef bgi::rtree<std::pair<segment, boost::uuids::uuid>, bgi::rstar<16>> segment_rtree;
 
+  class Graph;
   class Molecule;
   class Node;
   class VisibleNode;
   class Bond;
   class VisibleBond;
 
-  class GenericBond
-  {
-   protected:
-    boost::uuids::uuid uuid;
-    int numBonds;
-   public:
-    GenericBond(boost::uuids::uuid uuid, int numBonds);
-    boost::uuids::uuid get_uuid() const;;
-  };
-  class Bond : public GenericBond
-  {
-   protected:
-    std::vector<kynedraw::Node*> linkedNodes;
-   public:
-    Bond(boost::uuids::uuid uuid, int numBonds, kynedraw::Node &node1, kynedraw::Node &node2);
-    const std::vector<kynedraw::Node*>& get_linked_nodes() const;
-  };
-  class VisibleBond : public GenericBond
-  {
-   protected:
-    std::vector<kynedraw::VisibleNode*> linkedNodes;
-    segment_rtree* rtree;
-   public:
-    VisibleBond(boost::uuids::uuid uuid, int numBonds, kynedraw::VisibleNode &node1, kynedraw::VisibleNode &node2, segment_rtree& rtree);
-    const std::vector<kynedraw::VisibleNode*>& get_linked_nodes() const;
-    void set_rtree_coordinates(int bondIndex, double initialX, double initialY, double finalX, double finalY);
-  };
 }
 
-#endif //GITHUB__BOND_H_
+#endif //BOND_H_

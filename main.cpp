@@ -2,7 +2,7 @@
 #include <emscripten/bind.h>
 #include <emscripten/emscripten.h>
 #include <string>
-#include <math.h>
+#include <cmath>
 #include <numbers>
 #include <iostream>
 #include <fstream>
@@ -24,19 +24,6 @@ import kynedraw;
 
 namespace kynedraw
 {
-  // RTree boilerplate taken from https://stackoverflow.com/a/25083918
-
-  // Convenient namespaces
-  namespace bg = boost::geometry;
-  namespace bgm = boost::geometry::model;
-  namespace bgi = boost::geometry::index;
-
-  // Convenient types
-  typedef bgm::point<double, 2, bg::cs::cartesian> point;
-  typedef bgm::segment<point> segment;
-  // The boost::uuids::uuid stores the uuids of the segment (VisibleBond) or of the point (VisibleNode)
-  typedef bgi::rtree<std::pair<point, boost::uuids::uuid>, bgi::rstar<16>> point_rtree;
-  typedef bgi::rtree<std::pair<segment, boost::uuids::uuid>, bgi::rstar<16>> segment_rtree;
 
   class Molecule;
   class VisibleMolecule;
@@ -45,107 +32,16 @@ namespace kynedraw
     //
   };
 
-  class Graph
-  {
-   protected:
-    std::unordered_map<boost::uuids::uuid, kynedraw::VisibleNode, boost::hash<boost::uuids::uuid>> visibleNodes;
-    std::unordered_map<boost::uuids::uuid, kynedraw::Node, boost::hash<boost::uuids::uuid>> nodes;
-    std::unordered_map<boost::uuids::uuid, kynedraw::VisibleBond, boost::hash<boost::uuids::uuid>> visibleBonds;
-    std::unordered_map<boost::uuids::uuid, kynedraw::Bond, boost::hash<boost::uuids::uuid>> bonds;
 
-    // The container for pairs of segments and IDs
-    segment_rtree segments;
-    point_rtree points;
-  public:
-    const std::unordered_map<boost::uuids::uuid, kynedraw::VisibleNode, boost::hash<boost::uuids::uuid>>& get_visible_nodes() const
-    {
-      return visibleNodes;
-    }
-    const std::unordered_map<boost::uuids::uuid, kynedraw::Node, boost::hash<boost::uuids::uuid>>& get_nodes() const
-    {
-      return nodes;
-    }
-    const std::unordered_map<boost::uuids::uuid, kynedraw::VisibleBond, boost::hash<boost::uuids::uuid>>& get_visible_bonds() const
-    {
-      return visibleBonds;
-    }
-    const std::unordered_map<boost::uuids::uuid, kynedraw::Bond, boost::hash<boost::uuids::uuid>>& get_bonds() const
-    {
-      return bonds;
-    }
-    kynedraw::Node& create_node(boost::uuids::uuid uuid, std::string name)
-    {
-      auto insertion = this->nodes.try_emplace(uuid, kynedraw::Node(uuid, name));
-      return insertion.first->second;
-    }
-    kynedraw::VisibleNode& create_visible_node(boost::uuids::uuid uuid, std::string name, double pageX, double pageY)
-    {
-      kynedraw::VisibleNode node(uuid, "C", pageX, pageY, points);
-      kynedraw::VisibleNode& insertedNode = this->visibleNodes.try_emplace(uuid, node).first->second;
-      points.insert(std::make_pair(point(pageX, pageY), uuid));
-      return insertedNode;
-    }
-    kynedraw::Bond& create_bond_between(boost::uuids::uuid uuid, int numBonds, kynedraw::Node& node1, kynedraw::Node& node2)
-    {
-      kynedraw::Bond& insertedBond = this->bonds.try_emplace(uuid, kynedraw::Bond(uuid, numBonds, node1, node2)).first->second;
-      node1.add_bond_info(insertedBond, 0);
-      node2.add_bond_info(insertedBond, 1);
-      return insertedBond;
-    }
-    kynedraw::VisibleBond& create_visible_bond_between(boost::uuids::uuid uuid, int numBonds, kynedraw::VisibleNode& node1, kynedraw::VisibleNode& node2)
-    {
-      VisibleBond& insertedBond = this->visibleBonds.try_emplace(uuid, kynedraw::VisibleBond(uuid, numBonds, node1, node2, segments)).first->second;
-      node1.add_bond_info(insertedBond, 0);
-      node2.add_bond_info(insertedBond, 1);
-      segments.insert(std::make_pair(segment(point(node1.get_x(), node1.get_y()), point(node2.get_x(), node2.get_y())), uuid));
-      return insertedBond;
-    }
-    void merge(Graph& graph)
-    {
-      // TODO: handle what happens when two nodes/bonds have the same UUID (i.e. are the same atom/bond) and handle VisibleNodes
-      this->nodes.merge(graph.nodes);
-      this->visibleNodes.merge(graph.visibleNodes);
-      this->bonds.merge(graph.bonds);
-      this->visibleBonds.merge(graph.visibleBonds);
-      this->segments.insert(graph.segments.begin(), graph.segments.end());
-      this->points.insert(graph.points.begin(), graph.points.end());
-    }
-    void clear()
-    {
-      this->nodes.clear();
-      this->visibleNodes.clear();
-      this->bonds.clear();
-      this->visibleBonds.clear();
-    }
-    void change_x_y(double changeX, double changeY)
-    {
-      for (auto&[uuid, currentVisibleNode]: visibleNodes) {
-        currentVisibleNode.change_x(changeX);
-        currentVisibleNode.change_y(changeY);
-      }
-    }
-    kynedraw::VisibleNode& find_closest_visible_node_to(double x, double y)
-    {
-      // NOTE: if ans.size() is 0 (that is, there are no visible nodes to be closest to), this will throw an error
-      // Check for ans.size through get_visible_nodes().size() whenever you call this function
-      std::vector<std::pair<point, boost::uuids::uuid>> ans;
-      points.query(bgi::nearest(point(x, y), 1), std::back_inserter(ans));
-      return visibleNodes.at(ans[0].second);
-    }
-    kynedraw::VisibleBond& find_closest_visible_bond_to(double x, double y)
-    {
-      // NOTE: if ans.size() is 0 (that is, there are no visible bonds to be closest to), this will throw an error
-      // Check for ans.size through get_visible_bonds().size() whenever you call this function
-      std::vector<std::pair<segment, boost::uuids::uuid>> ans;
-      segments.query(bgi::nearest(point(x, y), 1), std::back_inserter(ans));
-      return visibleBonds.at(ans[0].second);
-    }
-  };
-  class Preview : public Graph
+  namespace settings
   {
-  protected:
-    kynedraw::VisibleNode* mouseNode;
-  };
+    int FRAME_COUNT = 0;
+    double DEADZONE_RADIUS = 5;
+    double BOND_LENGTH = 50;
+    double MOUSE_SNAP_RADIUS = 15;
+    double AUTO_SNAP_RADIUS = 5;
+    bool SHOW_CARBONS = false;
+  }
 }
 
 /*{
@@ -279,12 +175,6 @@ const std::unordered_map<std::string, int> buttonIDs = {
     {"hydroxyl-unprotection", 142}
 };
 const double pi = std::numbers::pi;
-int FRAME_COUNT = 0;
-double DEADZONE_WIDTH = 5;
-double DEADZONE_HEIGHT = 5;
-double BOND_LENGTH = 50;
-double MOUSE_SNAP_RADIUS = 15;
-double BOND_SNAP_RADIUS = 5;
 boost::uuids::random_generator uuidGenerator;
 emscripten::val window = emscripten::val::global("window");
 emscripten::val document = emscripten::val::global("document");
@@ -303,14 +193,16 @@ void RenderBackground(double DOMHighResTimeStamp)
   for (const auto& [uuid, currentVisibleNode] : network.get_visible_nodes())
   {
     ctx.call<void>("beginPath");
-    ctx.call<void>("arc", currentVisibleNode.get_x(), currentVisibleNode.get_y(), MOUSE_SNAP_RADIUS, 0, 2 * pi);
+    ctx.call<void>("arc", currentVisibleNode.get_x(), currentVisibleNode.get_y(), kynedraw::settings::MOUSE_SNAP_RADIUS, 0, 2 * pi);
     ctx.call<void>("stroke");
   }
   ctx.call<void>("beginPath");
   for (const auto& [uuid, currentVisibleBond] : network.get_visible_bonds())
   {
-    ctx.call<void>("moveTo", currentVisibleBond.get_linked_nodes()[0]->get_x(), currentVisibleBond.get_linked_nodes()[0]->get_y());
-    ctx.call<void>("lineTo", currentVisibleBond.get_linked_nodes()[1]->get_x(), currentVisibleBond.get_linked_nodes()[1]->get_y());
+    kynedraw::VisibleNode& firstNode = currentVisibleBond.get_first_node();
+    kynedraw::VisibleNode& secondNode = currentVisibleBond.get_second_node();
+    ctx.call<void>("moveTo", firstNode.get_x(), firstNode.get_y());
+    ctx.call<void>("lineTo", secondNode.get_x(), secondNode.get_y());
   }
   ctx.call<void>("stroke");
 }
@@ -325,18 +217,20 @@ void RenderForeground(double DOMHighResTimeStamp)
   for (const auto& [uuid, currentVisibleNode] : preview.get_visible_nodes())
   {
     ctx.call<void>("beginPath");
-    ctx.call<void>("arc", currentVisibleNode.get_x(), currentVisibleNode.get_y(), BOND_SNAP_RADIUS, 0, 2 * pi);
+    ctx.call<void>("arc", currentVisibleNode.get_x(), currentVisibleNode.get_y(), kynedraw::settings::AUTO_SNAP_RADIUS, 0, 2 * pi);
     ctx.call<void>("stroke");
   }
   ctx.call<void>("beginPath");
   for (const auto& [uuid, currentVisiblePreviewBond] : preview.get_visible_bonds())
   {
-    ctx.call<void>("moveTo", currentVisiblePreviewBond.get_linked_nodes()[0]->get_x(), currentVisiblePreviewBond.get_linked_nodes()[0]->get_y());
-    ctx.call<void>("lineTo", currentVisiblePreviewBond.get_linked_nodes()[1]->get_x(), currentVisiblePreviewBond.get_linked_nodes()[1]->get_y());
+    kynedraw::VisibleNode& firstNode = currentVisiblePreviewBond.get_first_node();
+    kynedraw::VisibleNode& secondNode = currentVisiblePreviewBond.get_second_node();
+    ctx.call<void>("moveTo", firstNode.get_x(), firstNode.get_y());
+    ctx.call<void>("lineTo", secondNode.get_x(), secondNode.get_y());
   }
   ctx.call<void>("stroke");
 
-  FRAME_COUNT++;
+  kynedraw::settings::FRAME_COUNT++;
 }
 
 void AddButtonEventListeners(emscripten::val element, emscripten::val index, emscripten::val array)
@@ -376,12 +270,13 @@ void ResetPreview(std::string tool, double pageX, double pageY)
       uuid = uuidGenerator();
       kynedraw::Node& node1 = preview.create_node(uuid, "C");
       kynedraw::VisibleNode& visibleNode1 = preview.create_visible_node(uuid, "C", pageX, pageY);
+      preview.set_mouse_node(visibleNode1);
       uuid = uuidGenerator();
       kynedraw::Node& node2 = preview.create_node(uuid, "C");
       kynedraw::VisibleNode& visibleNode2 = preview.create_visible_node(uuid,
                                                                         "C",
-                                                                        pageX + BOND_LENGTH * std::cos(pi * 11 / 6),
-                                                                        pageY + BOND_LENGTH * std::sin(pi * 11 / 6));
+                                                                        pageX + kynedraw::settings::BOND_LENGTH * std::cos(pi * 11 / 6),
+                                                                        pageY + kynedraw::settings::BOND_LENGTH * std::sin(pi * 11 / 6));
       uuid = uuidGenerator();
       preview.create_bond_between(uuid, 1, node1, node2);
       preview.create_visible_bond_between(uuid, 1, visibleNode1, visibleNode2);
@@ -421,7 +316,7 @@ void InitializeAllSettings()
   selectedTool = RetrieveAndTickSetting("selectedTool", "single");
   bondSnapSetting = RetrieveAndTickSetting("bondSnapSetting", "freeform");
 
-  // initialize the selectedTool at (0,0) because that is what static double previousPageX, previousPageY in MouseMove is initialized to
+  // initialize the selectedTool to (0,0) because that is what static double previousPageX, previousPageY in MouseMove is initialized to
   ResetPreview(selectedTool, 0, 0);
 }
 
@@ -435,12 +330,50 @@ void ClickButton(emscripten::val event)
 
 void MouseMove(double pageX, double pageY, bool mouseIsPressed, double mouseDownPageX, double mouseDownPageY)
 {
-  static double previousPageX, previousPageY;
-  if (mouseIsPressed && std::abs(mouseDownPageX - pageX) < DEADZONE_WIDTH && std::abs(mouseDownPageY - pageY) < DEADZONE_HEIGHT)
+  static double previousPageX, previousPageY = 0.0;
+  static bool snappedToNode = false;
+
+  if (mouseIsPressed)
   {
-    // TODO
-  } else {
+    if (sqrt(pow(mouseDownPageX-pageX, 2) + pow(mouseDownPageY-pageY, 2)) < kynedraw::settings::DEADZONE_RADIUS)
+    {
+      // TODO: rotate the preview when the mouse is dragged outside of the deadzone
+    }
+  } else if (!snappedToNode) {
     preview.change_x_y(pageX - previousPageX, pageY - previousPageY);
+  }
+
+  // NOTE: this assumes that previewMouseNode exists. If for some reason, preview is allowed to be empty, the next line will probably throw errors
+  kynedraw::VisibleNode& previewMouseNode = preview.get_mouse_node();
+  if (network.get_visible_nodes().size() != 0)
+  {
+    // a node to snap to exists
+    kynedraw::VisibleNode& closestVisibleNode = network.find_closest_visible_node_to(pageX, pageY);
+    if (sqrt(pow(closestVisibleNode.get_x()-pageX,2) + pow(closestVisibleNode.get_y()-pageY,2)) < kynedraw::settings::MOUSE_SNAP_RADIUS)
+    {
+      // the mouse node is withing snapping distance of a visible node
+      if (previewMouseNode.get_uuid() != closestVisibleNode.get_uuid()) {
+        // The preview mouse node does not have the same UUID as the closestVisibleNode, so snap the mouse node to the closestVisibleNode
+        snappedToNode = true;
+        preview.change_visible_node_uuid(previewMouseNode, closestVisibleNode.get_uuid());
+        preview.change_x_y(closestVisibleNode.get_x() - previewMouseNode.get_x(),
+                           closestVisibleNode.get_y() - previewMouseNode.get_y());
+      }
+    } else {
+      // the mouse node is not within snapping distance of any visible node
+      if (snappedToNode)
+      {
+        snappedToNode = false;
+        // the mouse node still has the same uuid as the node it was snapped to in the previous frame, so change its position and its uuid
+        // no need to check this if network size is 0 since there's no way to exit a node if there aren't any nodes in the first place
+        preview.change_visible_node_uuid(previewMouseNode, uuidGenerator());
+        preview.change_x_y(pageX-previewMouseNode.get_x(), pageY-previewMouseNode.get_y());
+      }
+    }
+  }
+  if (network.get_visible_bonds().size() != 0)
+  {
+    kynedraw::VisibleBond& closestVisibleBond = network.find_closest_visible_bond_to(pageX, pageY);
   }
   previousPageX = pageX;
   previousPageY = pageY;
@@ -448,8 +381,8 @@ void MouseMove(double pageX, double pageY, bool mouseIsPressed, double mouseDown
 
 void InteractWithCanvas(emscripten::val event)
 {
-  static double mouseDownPageX, mouseDownPageY;
-  static bool mouseIsPressed;
+  static double mouseDownPageX, mouseDownPageY = 0.0;
+  static bool mouseIsPressed = false;
 
   std::string eventName = event["type"].as<std::string>();
   double pageX = event["pageX"].as<double>();
@@ -474,14 +407,6 @@ void InteractWithCanvas(emscripten::val event)
     window.call<void>("requestAnimationFrame", emscripten::val::module_property("RenderBackground"));
   }
   window.call<void>("requestAnimationFrame", emscripten::val::module_property("RenderForeground"));
-  if (network.get_visible_nodes().size() != 0)
-  {
-    kynedraw::VisibleNode& closestVisibleNode = network.find_closest_visible_node_to(pageX, pageY);
-  }
-  if (network.get_visible_bonds().size() != 0)
-  {
-    kynedraw::VisibleBond& closestVisibleBond = network.find_closest_visible_bond_to(pageX, pageY);
-  }
   // TODO: use the closest visible nodes and bonds to customize the preview
 }
 
