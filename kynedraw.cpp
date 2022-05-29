@@ -7,6 +7,8 @@
 #include <boost/geometry/geometries/segment.hpp>
 #include <boost/geometry/index/rtree.hpp>
 
+// once CMake adds full support for importing C++20 headers, the below #include can be deleted
+#include "kynedraw.h"
 import kynedraw;
 
 // RTree boilerplate taken from https://stackoverflow.com/a/25083918

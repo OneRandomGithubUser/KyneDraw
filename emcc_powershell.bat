@@ -1,6 +1,6 @@
-powershell -NoExit cd path\to\emcc; Add-Content -path (Get-PSReadlineOption).HistorySavePath 'cls\; emcc path\to\cpp\file -o path\of\output\js\file -s USE_BOOST_HEADERS=1 -std=c++20 -lembind -g -sNO_DISABLE_EXCEPTION_CATCHING'
+powershell -NoExit Add-Content -path (Get-PSReadlineOption).HistorySavePath 'cls; emcc main.cpp -o main.js kynedraw.cpp -s USE_BOOST_HEADERS=1 -std=c++20 -lembind -g -sNO_DISABLE_EXCEPTION_CATCHING -fmodule-map-file=''kynedraw.modulemap'' -fmodules'
 :: powershell -NoExit opens powershell without exiting after the command is complete
-:: cd path\to\emcc opens the path to the emcc, not necessary if emsdk is activated latest is run with the --permanent flag (emsdk activate latest --permanent)
-:: ; strings multiple powershell commands together
-:: cls\; to clear the output of the previous compile, with the semicolon escaped with a backslash
-:: Add-Content -path (Get-PSReadlineOption).HistorySavePath 'emcc path\to\cpp\file -o path\of\output\js\file -s USE_BOOST_HEADERS=1 -std=c++20 -lembind -g' adds the command to be run to the console history so that it can be run more easily
+:: NOTE: emsdk must be activated permanently by running .\emsdk activate latest --permanent
+:: Add-Content -path (Get-PSReadlineOption).HistorySavePath adds the command to be run to the console history so that it can be run more easily
+:: cls; to clear the output of the previous compile
+:: 'emcc path\to\cpp\file -o path\of\output\js\file -s USE_BOOST_HEADERS=1 -std=c++20 -lembind -g -sNO_DISABLE_EXCEPTION_CATCHING -fmodule-map-file=''kynedraw.modulemap'' -fmodules' compiles the file with debug commands
