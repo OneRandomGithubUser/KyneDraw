@@ -4,34 +4,34 @@
 #include <string>
 #include <cmath>
 #include <numbers>
-#include <iostream>
-#include <fstream>
 #include <unordered_map>
-#include <map>
-#include <vector>
-#include <ranges>
 #include <boost/uuid/uuid.hpp>            // uuid class
 #include <boost/uuid/uuid_generators.hpp> // uuid generators
-#include <boost/uuid/uuid_io.hpp>         // uuid streaming operators
+/*
 #include <boost/functional/hash.hpp>
 #include <boost/geometry.hpp>
 #include <boost/geometry/geometries/point.hpp>
 #include <boost/geometry/geometries/segment.hpp>
-#include <boost/geometry/index/rtree.hpp>
+#include <boost/geometry/index/rtree.hpp>*/
+// #include <fstream>
 // #include <boost/json.hpp>                    // parse JSON
 
-import kynedraw;
+// debug imports
+#include <iostream>
+#include <boost/uuid/uuid_io.hpp>         // uuid streaming operators
+
+// once CMake adds full support for importing C++20 headers, the below #include can be deleted
+#include "kynedraw.h"
+//import kynedraw;
 
 namespace kynedraw
 {
-
   class Molecule;
   class VisibleMolecule;
 
   class Molecule {
     //
   };
-
 
   namespace settings
   {
@@ -176,9 +176,6 @@ const std::unordered_map<std::string, int> buttonIDs = {
 };
 const double pi = std::numbers::pi;
 boost::uuids::random_generator uuidGenerator;
-emscripten::val window = emscripten::val::global("window");
-emscripten::val document = emscripten::val::global("document");
-emscripten::val localStorage = emscripten::val::global("localStorage");
 std::string selectedTool;
 std::string bondSnapSetting;
 
@@ -187,6 +184,7 @@ kynedraw::Preview preview;
 
 void RenderBackground(double DOMHighResTimeStamp)
 {
+  emscripten::val document = emscripten::val::global("document");
   emscripten::val canvas = document.call<emscripten::val>("getElementById", emscripten::val("canvas-background"));
   emscripten::val ctx = canvas.call<emscripten::val>("getContext", emscripten::val("2d"));
   ctx.call<void>("clearRect", 0, 0, canvas["width"], canvas["height"]);
@@ -209,7 +207,7 @@ void RenderBackground(double DOMHighResTimeStamp)
 
 void RenderForeground(double DOMHighResTimeStamp)
 {
-  // NOTE: if this is not defined in the function, embind throws an error at runtime
+  emscripten::val document = emscripten::val::global("document");
   emscripten::val canvas = document.call<emscripten::val>("getElementById", emscripten::val("canvas-foreground"));
   emscripten::val ctx = canvas.call<emscripten::val>("getContext", emscripten::val("2d"));
 
@@ -246,6 +244,7 @@ void AddToolButtonEventListener(emscripten::val element, emscripten::val index, 
 
 void StoreSelectedTool(emscripten::val event)
 {
+  emscripten::val localStorage = emscripten::val::global("localStorage");
   localStorage.call<void>("setItem", emscripten::val("selectedTool"), event["target"]["id"]);
 }
 
@@ -256,6 +255,7 @@ void AddBondSnapButtonEventListener(emscripten::val element, emscripten::val ind
 
 void StoreBondSnapSetting(emscripten::val event)
 {
+  emscripten::val localStorage = emscripten::val::global("localStorage");
   localStorage.call<void>("setItem", emscripten::val("bondSnapSetting"), event["target"]["id"]);
 }
 
@@ -295,6 +295,8 @@ void ResetPreview(std::string tool, double pageX, double pageY)
 
 std::string RetrieveAndTickSetting(std::string settingType, std::string defaultName)
 {
+  emscripten::val document = emscripten::val::global("document");
+  emscripten::val localStorage = emscripten::val::global("localStorage");
   emscripten::val storedValue = localStorage.call<emscripten::val>("getItem", emscripten::val(settingType));
   std::string value;
   // checks if there is such a stored value: typeOf will be "object" when the emscripten::val is null
@@ -322,6 +324,7 @@ void InitializeAllSettings()
 
 void ClickButton(emscripten::val event)
 {
+  emscripten::val window = emscripten::val::global("window");
   selectedTool = event["target"]["id"].as<std::string>();
   ResetPreview(selectedTool, event["pageX"].as<double>(), event["pageY"].as<double>());
   window.call<void>("requestAnimationFrame", emscripten::val::module_property("RenderForeground"));
@@ -355,7 +358,7 @@ void MouseMove(double pageX, double pageY, bool mouseIsPressed, double mouseDown
       if (previewMouseNode.get_uuid() != closestVisibleNode.get_uuid()) {
         // The preview mouse node does not have the same UUID as the closestVisibleNode, so snap the mouse node to the closestVisibleNode
         snappedToNode = true;
-        preview.change_visible_node_uuid(previewMouseNode, closestVisibleNode.get_uuid());
+        previewMouseNode.set_uuid(closestVisibleNode.get_uuid());
         preview.change_x_y(closestVisibleNode.get_x() - previewMouseNode.get_x(),
                            closestVisibleNode.get_y() - previewMouseNode.get_y());
       }
@@ -366,7 +369,7 @@ void MouseMove(double pageX, double pageY, bool mouseIsPressed, double mouseDown
         snappedToNode = false;
         // the mouse node still has the same uuid as the node it was snapped to in the previous frame, so change its position and its uuid
         // no need to check this if network size is 0 since there's no way to exit a node if there aren't any nodes in the first place
-        preview.change_visible_node_uuid(previewMouseNode, uuidGenerator());
+        previewMouseNode.set_uuid(uuidGenerator());
         preview.change_x_y(pageX-previewMouseNode.get_x(), pageY-previewMouseNode.get_y());
       }
     }
@@ -383,7 +386,9 @@ void InteractWithCanvas(emscripten::val event)
 {
   static double mouseDownPageX, mouseDownPageY = 0.0;
   static bool mouseIsPressed = false;
+  static boost::uuids::uuid closestNodeUuid;
 
+  emscripten::val window = emscripten::val::global("window");
   std::string eventName = event["type"].as<std::string>();
   double pageX = event["pageX"].as<double>();
   double pageY = event["pageY"].as<double>();
@@ -412,12 +417,14 @@ void InteractWithCanvas(emscripten::val event)
 
 void ResizeCanvas(emscripten::val canvas, emscripten::val index, emscripten::val array)
 {
+  emscripten::val window = emscripten::val::global("window");
   canvas.set("width", window["innerWidth"]);
   canvas.set("height", window["innerHeight"]);
 }
 
 void ResizeCanvases(emscripten::val event)
 {
+  emscripten::val document = emscripten::val::global("document");
   document.call<emscripten::val>("querySelectorAll", emscripten::val(".canvas")).call<void>("forEach", emscripten::val::module_property("ResizeCanvas"));
 }
 
@@ -428,6 +435,8 @@ void RunMainLoop()
 
 int main()
 {
+  emscripten::val window = emscripten::val::global("window");
+  emscripten::val document = emscripten::val::global("document");
   window.call<void>("addEventListener", emscripten::val("resize"), emscripten::val::module_property("ResizeCanvases"));
   document.call<void>("addEventListener", emscripten::val("mousedown"), emscripten::val::module_property("InteractWithCanvas"));
   document.call<void>("addEventListener", emscripten::val("mouseup"), emscripten::val::module_property("InteractWithCanvas"));

@@ -2,14 +2,18 @@
 #include <unordered_map>
 #include <boost/uuid/uuid.hpp>
 #include <boost/functional/hash.hpp>
-#include <boost/geometry.hpp>
+//#include <boost/geometry.hpp>
 #include <boost/geometry/geometries/point.hpp>
 #include <boost/geometry/geometries/segment.hpp>
 #include <boost/geometry/index/rtree.hpp>
 
+// debug headers
+#include <boost/uuid/uuid_io.hpp>
+#include <iostream>
+
 // once CMake adds full support for importing C++20 headers, the below #include can be deleted
 #include "kynedraw.h"
-import kynedraw;
+// import kynedraw;
 
 // RTree boilerplate taken from https://stackoverflow.com/a/25083918
 
@@ -29,6 +33,9 @@ typedef bgi::rtree<std::pair<segment, boost::uuids::uuid>, bgi::rstar<16>> segme
  * Node
 ***********************************************************************************************************************/
 
+void kynedraw::GenericNode::set_uuid(boost::uuids::uuid uuid) {
+  this->uuid = uuid;
+}
 kynedraw::GenericNode::GenericNode(boost::uuids::uuid uuid, std::string name, kynedraw::Graph& linkedGraph) {
   this->uuid = uuid;
   this->name = name;
@@ -52,10 +59,6 @@ int kynedraw::GenericNode::get_valence() const {
 }
 boost::uuids::uuid kynedraw::GenericNode::get_uuid() const {
   return uuid;
-}
-void kynedraw::GenericNode::set_uuid(boost::uuids::uuid uuid) {
-  // TODO: increase interconnectedness and make setting uuid of one object change its uuids in the unordered_map of its linked objects
-  this->uuid = uuid;
 }
 std::string kynedraw::GenericNode::get_name() const {
   return name;
@@ -115,6 +118,14 @@ kynedraw::Node::Node(boost::uuids::uuid uuid, std::string name, kynedraw::Graph&
 {
   //
 }
+void kynedraw::Node::set_uuid(boost::uuids::uuid newUuid) {
+  for (auto& [bondUuid, bondPointer] : linkedBonds)
+  {
+    bondPointer->set_node_uuid(*this, newUuid);
+  }
+  linkedGraph->set_node_uuid(*this, newUuid);
+  kynedraw::GenericNode::set_uuid(newUuid);
+}
 const std::unordered_map<boost::uuids::uuid, kynedraw::Bond*, boost::hash<boost::uuids::uuid>>& kynedraw::Node::get_linked_bonds() const {
   return linkedBonds;
 }
@@ -130,14 +141,22 @@ void kynedraw::Node::remove_bond_info(kynedraw::Bond& bond) {
 void kynedraw::Node::merge(kynedraw::Node& node)
 {
   this->kynedraw::GenericNode::merge(node);
-  node.remove_links();
+  for (auto& [uuid, bondPointer] : node.linkedBonds)
+  {
+    bondPointer->set_linked_node(node.get_uuid(), *this);
+  }
+  node.linkedBonds.clear();
+  node.clear();
+  // tODO: delete node
 }
-void kynedraw::Node::remove_links()
+void kynedraw::Node::clear()
 {
+  // TODO: split into delete and clear
   // look at each of the linked bonds and delete them
   for (auto& [uuid, bondPointer] : linkedBonds)
   {
-    bondPointer->remove_links();
+    bondPointer->clear();
+    // TODO: delete bond
   }
 }
 kynedraw::VisibleNode::VisibleNode(boost::uuids::uuid uuid,
@@ -150,6 +169,16 @@ kynedraw::VisibleNode::VisibleNode(boost::uuids::uuid uuid,
   this->x = x;
   this->y = y;
   this->rtree = &rtree;
+}
+void kynedraw::VisibleNode::set_uuid(boost::uuids::uuid newUuid) {
+  rtree->remove(std::make_pair(point(x, y), uuid));
+  rtree->insert(std::make_pair(point(x, y), newUuid));
+  for (auto& [bondUuid, bondPointer] : linkedBonds)
+  {
+    bondPointer->set_node_uuid(*this, newUuid);
+  }
+  linkedGraph->set_visible_node_uuid(*this, newUuid);
+  kynedraw::GenericNode::set_uuid(newUuid);
 }
 const std::unordered_map<boost::uuids::uuid, kynedraw::VisibleBond*, boost::hash<boost::uuids::uuid>> &kynedraw::VisibleNode::get_linked_bonds() const {
   return linkedBonds;
@@ -200,7 +229,7 @@ void kynedraw::VisibleNode::set_x_y(double x, double y) {
   this->y = y;
 }
 void kynedraw::VisibleNode::add_bond_info(kynedraw::VisibleBond &bond) {
-  this->linkedBonds.try_emplace(bond.get_uuid(), &bond);
+  linkedBonds.try_emplace(bond.get_uuid(), &bond);
 }
 void kynedraw::VisibleNode::remove_bond_info(kynedraw::VisibleBond& bond) {
   linkedBonds.erase(bond.get_uuid());
@@ -215,7 +244,13 @@ void kynedraw::VisibleNode::merge(kynedraw::VisibleNode& node)
     throw std::invalid_argument("tried to merge visibleNodes with different positions");
   }
   this->kynedraw::GenericNode::merge(node);
-  node.remove_links();
+  for (auto& [uuid, bondPointer] : node.linkedBonds)
+  {
+    bondPointer->set_linked_node(node.get_uuid(), *this);
+  }
+  node.linkedBonds.clear();
+  node.clear();
+  // TODO: delete node
 }
 void kynedraw::VisibleNode::change_linked_bond_uuid(kynedraw::VisibleBond &bond, boost::uuids::uuid newUuid) {
   // changes the key of the linked bond to sync it with the bond's uuid
@@ -224,12 +259,12 @@ void kynedraw::VisibleNode::change_linked_bond_uuid(kynedraw::VisibleBond &bond,
   mapNode.key() = newUuid;
   linkedBonds.insert(std::move(mapNode));
 }
-void kynedraw::VisibleNode::remove_links()
+void kynedraw::VisibleNode::clear()
 {
   // look at each of the linked bonds and delete them
   for (auto& [uuid, bondPointer] : linkedBonds)
   {
-    bondPointer->remove_links();
+    bondPointer->clear();
   }
   rtree->remove(std::make_pair(point(x, y), uuid));
 }
@@ -255,6 +290,23 @@ const std::unordered_map<boost::uuids::uuid, kynedraw::Node*, boost::hash<boost:
   // NOTE: linkedNodes should ALWAYS only have two elements
   return linkedNodes;
 }
+void kynedraw::Bond::change_linked_node(boost::uuids::uuid oldUuid, boost::uuids::uuid newUuid)
+{
+  auto mapNode = linkedNodes.extract(oldUuid);
+  mapNode.key() = newUuid;
+  linkedNodes.insert(std::move(mapNode));
+}
+void kynedraw::Bond::set_linked_node(boost::uuids::uuid oldUuid, kynedraw::Node& newNode)
+{
+  linkedNodes.erase(oldUuid);
+  linkedNodes.try_emplace(newNode.get_uuid(), &newNode);
+}
+void kynedraw::Bond::set_node_uuid(kynedraw::Node &node, boost::uuids::uuid newUuid) {
+  // TODO: this is not supposed to be called by itself, don't expose this to the public interface
+  auto mapNode = linkedNodes.extract(node.get_uuid());
+  mapNode.key() = newUuid;
+  linkedNodes.insert(std::move(mapNode));
+}
 kynedraw::Node& kynedraw::Bond::get_first_node() const
 {
   return *(linkedNodes.begin()->second);
@@ -263,12 +315,19 @@ kynedraw::Node& kynedraw::Bond::get_second_node() const
 {
   return *(std::next(linkedNodes.begin())->second);
 }
-void kynedraw::Bond::remove_links() {
+void kynedraw::Bond::clear() {
   // NOTE: removing bond info while removing bond from a node might cause problems
   for (auto& [uuid, nodePointer] : linkedNodes)
   {
+    std::cout << "nodePointer " << nodePointer->get_uuid() << "\n";
+    for (auto& [uuid, bondPointer] : nodePointer->get_linked_bonds())
+    {
+      std::cout << bondPointer->get_uuid() << "\n";
+    }
+    std::cout << "bond uuid " << this->uuid << "\n";
     nodePointer->remove_bond_info(*this);
   }
+  std::cout << "1\n";
 }
 kynedraw::VisibleBond::VisibleBond(boost::uuids::uuid uuid,
                                    int numBonds,
@@ -285,6 +344,17 @@ const std::unordered_map<boost::uuids::uuid, kynedraw::VisibleNode*, boost::hash
   // NOTE: linkedNodes should ALWAYS only have two elements
   return linkedNodes;
 }
+void kynedraw::VisibleBond::change_linked_node(boost::uuids::uuid oldUuid, boost::uuids::uuid newUuid)
+{
+  auto mapNode = linkedNodes.extract(oldUuid);
+  mapNode.key() = newUuid;
+  linkedNodes.insert(std::move(mapNode));
+}
+void kynedraw::VisibleBond::set_linked_node(boost::uuids::uuid oldUuid, kynedraw::VisibleNode& newNode)
+{
+  linkedNodes.erase(oldUuid);
+  linkedNodes.try_emplace(newNode.get_uuid(), &newNode);
+}
 kynedraw::VisibleNode& kynedraw::VisibleBond::get_first_node() const
 {
   return *(linkedNodes.begin()->second);
@@ -293,33 +363,57 @@ kynedraw::VisibleNode& kynedraw::VisibleBond::get_second_node() const
 {
   return *(std::next(linkedNodes.begin())->second);
 }
-void kynedraw::VisibleBond::set_rtree_coordinates(kynedraw::VisibleNode &endpointNode, double initialX, double initialY, double finalX, double finalY) {
-  for (auto& [uuid, nodePointer] : linkedNodes)
-  {
-    if (*nodePointer != endpointNode)
-    {
-      // preserve the coordinates of nodePointer
-      // TODO: figure out the best way to save the order of the points in the segment, or if the order even matters
-      rtree->remove(std::make_pair(segment(point(initialX, initialY),
-                                          point(nodePointer->get_x(), nodePointer->get_y())), uuid));
-      rtree->remove(std::make_pair(segment(point(nodePointer->get_x(), nodePointer->get_y()),
-                                   point(initialX, initialY)), uuid));
-      rtree->insert(std::make_pair(segment(point(finalX, finalY), point(nodePointer->get_x(), nodePointer->get_y())),
-                                   uuid));
-    }
-    break;
-  }
-  // it may seem wasteful to refresh BOTH nodes, but boost rtrees are currently not mutable so we're going to have to delete and insert the entire segment anyways0
+void kynedraw::VisibleBond::set_node_uuid(kynedraw::VisibleNode &visibleNode, boost::uuids::uuid newUuid) {
+  // TODO: this is not supposed to be called by itself, don't expose this to the public interface
+  auto mapNode = linkedNodes.extract(visibleNode.get_uuid());
+  mapNode.key() = newUuid;
+  linkedNodes.insert(std::move(mapNode));
 }
-void kynedraw::VisibleBond::remove_links()
+void kynedraw::VisibleBond::set_rtree_coordinates(kynedraw::VisibleNode &changingNode, double initialX, double initialY, double finalX, double finalY) {
+  for (auto& [nodeUuid, nodePointer] : linkedNodes)
+  {
+    if (*nodePointer != changingNode)
+    {
+      // nodePointer is the other node, preserve its coordinates
+      // TODO: figure out the best way to save the order of the points in the segment, or if the order even matters
+      int status = rtree->remove(std::make_pair(segment(point(initialX, initialY),
+                                          point(nodePointer->get_x(), nodePointer->get_y())), uuid));
+      if (status == 1)
+      {
+        // status == 1 means success, so insert the point; otherwise, switch the order
+        rtree->insert(std::make_pair(segment(point(finalX, finalY),
+                                             point(nodePointer->get_x(), nodePointer->get_y())), uuid));
+      } else {
+        rtree->remove(std::make_pair(segment(point(nodePointer->get_x(), nodePointer->get_y()),
+                                             point(initialX, initialY)), uuid));
+        rtree->insert(std::make_pair(segment(point(nodePointer->get_x(), nodePointer->get_y()),
+                                             point(finalX, finalY)),uuid));
+      }
+      break;
+    }
+  }
+  // it may seem wasteful to set BOTH nodes, but boost rtrees are currently not mutable so we're going to have to delete and insert the entire segment anyways0
+}
+void kynedraw::VisibleBond::clear()
 {
   for (auto& [uuid, nodePointer] : linkedNodes)
   {
+    std::cout << "vis nodePointer " << nodePointer->get_uuid() << "\n";
+    auto thing = nodePointer->get_linked_bonds();
+    for (auto& [uuid, bondPointer] : thing)
+    {
+      std::cout << bondPointer->get_uuid() << "\n";
+    }
+    std::cout << "vis bond uuid " << this->uuid << "\n";
     nodePointer->remove_bond_info(*this);
   }
+  std::cout << "1\n";
   kynedraw::VisibleNode& firstNode = *(linkedNodes.begin()->second);
+  std::cout << "2\n";
   kynedraw::VisibleNode& secondNode = *(std::next(linkedNodes.begin())->second);
+  std::cout << "3\n";
   rtree->remove(std::make_pair(segment(point(firstNode.get_x(), firstNode.get_y()), point(secondNode.get_x(), secondNode.get_y())), uuid));
+  std::cout << "4\n";
 }
 
 /***********************************************************************************************************************
@@ -348,8 +442,8 @@ kynedraw::VisibleNode &kynedraw::Graph::create_visible_node(boost::uuids::uuid u
                                                             double pageX,
                                                             double pageY) {
   kynedraw::VisibleNode newNode(uuid, "C", pageX, pageY, points, *this);
-  kynedraw::VisibleNode &insertedNode = this->visibleNodes.try_emplace(uuid, newNode).first->second;
   points.insert(std::make_pair(point(pageX, pageY), uuid));
+  kynedraw::VisibleNode &insertedNode = this->visibleNodes.try_emplace(uuid, newNode).first->second;
   return insertedNode;
 }
 kynedraw::Bond &kynedraw::Graph::create_bond_between(boost::uuids::uuid uuid,
@@ -386,35 +480,46 @@ void kynedraw::Graph::remove_bond(kynedraw::Bond &bond) {
 void kynedraw::Graph::remove_visible_bond(kynedraw::VisibleBond &bond) {
   visibleBonds.erase(bond.get_uuid());
 }
-
-void kynedraw::Graph::change_visible_node_uuid(kynedraw::VisibleNode &visibleNode, boost::uuids::uuid newUuid) {
-  // NOTE: this mapNode is not related to kynedraw::Node or kynedraw::VisibleNode, just changes the key
+void kynedraw::Graph::set_node_uuid(kynedraw::Node &node, boost::uuids::uuid newUuid) {
+  // TODO: this is not supposed to be called by itself, don't expose this to the public interface
+  auto mapNode = nodes.extract(node.get_uuid());
+  mapNode.key() = newUuid;
+  nodes.insert(std::move(mapNode));
+}
+void kynedraw::Graph::set_visible_node_uuid(kynedraw::VisibleNode &visibleNode, boost::uuids::uuid newUuid) {
+  // TODO: this is not supposed to be called by itself, don't expose this to the public interface
   auto mapNode = visibleNodes.extract(visibleNode.get_uuid());
   mapNode.key() = newUuid;
   visibleNodes.insert(std::move(mapNode));
-  visibleNode.set_uuid(newUuid);
 }
 void kynedraw::Graph::merge(kynedraw::Graph &graph) {
-  // TODO: handle what happens when two nodes/bonds have the same UUID (i.e. are the same atom/bond) and handle VisibleNodes
+  // TODO: handle what happens when two bonds have the same UUID (i.e. are the same bond)
   this->nodes.merge(graph.nodes);
-  for (auto&[uuid, node] : graph.nodes) {
-    this->nodes.at(uuid).merge(node);
+  for (auto& [nodeUuid, node] : graph.nodes) {
+    this->nodes.at(nodeUuid).merge(node);
   }
   graph.nodes.clear();
   this->visibleNodes.merge(graph.visibleNodes);
+  for (auto& [uuid, node] : graph.visibleNodes) {
+    this->visibleNodes.at(uuid).merge(node);
+  }
   graph.visibleNodes.clear();
   this->bonds.merge(graph.bonds);
   graph.bonds.clear();
   this->visibleBonds.merge(graph.visibleBonds);
   graph.visibleBonds.clear();
   this->segments.insert(graph.segments.begin(), graph.segments.end());
+  graph.segments.clear();
   this->points.insert(graph.points.begin(), graph.points.end());
+  graph.points.clear();
 }
 void kynedraw::Graph::clear() {
-  this->nodes.clear();
-  this->visibleNodes.clear();
-  this->bonds.clear();
-  this->visibleBonds.clear();
+  nodes.clear();
+  visibleNodes.clear();
+  bonds.clear();
+  visibleBonds.clear();
+  segments.clear();
+  points.clear();
 }
 void kynedraw::Graph::change_x_y(double changeX, double changeY) {
   for (auto&[uuid, currentVisibleNode] : visibleNodes) {
