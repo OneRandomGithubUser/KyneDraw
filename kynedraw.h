@@ -1,5 +1,7 @@
 //
-// Created by J on 5/27/2022.
+// Throughout this file, raw pointers are used instead of smart pointers as smart pointers do not work well with STL
+// containers and also because it makes it more difficult to make methods that take smart pointers as arguments (thus
+// being able to be called from elsewhere) while also being able to be called from other methods with the this keyword
 //
 
 #ifndef KYNEDRAW_H_
@@ -82,7 +84,7 @@ namespace kynedraw
     void add_bond_info(kynedraw::Bond& bond);
     void remove_bond_info(kynedraw::Bond& bond);
     void merge(kynedraw::Node& node);
-    void clear();
+    void remove();
   };
   class VisibleNode : public GenericNode
   {
@@ -111,7 +113,7 @@ namespace kynedraw
     void remove_bond_info(kynedraw::VisibleBond& bond);
     void merge(kynedraw::VisibleNode& node);
     void change_linked_bond_uuid(kynedraw::VisibleBond &bond, boost::uuids::uuid newUuid);
-    void clear();
+    void remove();
   };
 
 /***********************************************************************************************************************
@@ -140,7 +142,7 @@ namespace kynedraw
     kynedraw::Node& get_first_node() const;
     kynedraw::Node& get_second_node() const;
     void set_node_uuid(kynedraw::Node &visibleNode, boost::uuids::uuid newUuid);
-    void clear();
+    void remove();
   };
   class VisibleBond : public GenericBond
   {
@@ -156,7 +158,7 @@ namespace kynedraw
     kynedraw::VisibleNode& get_second_node() const;
     void set_node_uuid(kynedraw::VisibleNode &visibleNode, boost::uuids::uuid newUuid);
     void set_rtree_coordinates(kynedraw::VisibleNode &endpointNode, double initialX, double initialY, double finalX, double finalY);
-    void clear();
+    void remove();
   };
 
 /***********************************************************************************************************************
@@ -164,6 +166,11 @@ namespace kynedraw
 ***********************************************************************************************************************/
 
   class Graph {
+   private:
+    void remove_node(kynedraw::Node &node);
+    void remove_visible_node(kynedraw::VisibleNode &node);
+    void remove_bond(kynedraw::Bond &bond);
+    void remove_visible_bond(kynedraw::VisibleBond &bond);
    protected:
     std::unordered_map<boost::uuids::uuid, kynedraw::VisibleNode, boost::hash<boost::uuids::uuid>> visibleNodes;
     std::unordered_map<boost::uuids::uuid, kynedraw::Node, boost::hash<boost::uuids::uuid>> nodes;
@@ -174,6 +181,11 @@ namespace kynedraw
     segment_rtree segments;
     point_rtree points;
    public:
+    // TODO: find out how to do this better than making friend functions, if even possible
+    friend void kynedraw::Node::remove();
+    friend void kynedraw::VisibleNode::remove();
+    friend void kynedraw::Bond::remove();
+    friend void kynedraw::VisibleBond::remove();
     const std::unordered_map<boost::uuids::uuid, kynedraw::VisibleNode, boost::hash<boost::uuids::uuid>>& get_visible_nodes() const;
     const std::unordered_map<boost::uuids::uuid, kynedraw::Node, boost::hash<boost::uuids::uuid>> &get_nodes() const;
     const std::unordered_map<boost::uuids::uuid, kynedraw::VisibleBond, boost::hash<boost::uuids::uuid>> &get_visible_bonds() const;
@@ -188,10 +200,6 @@ namespace kynedraw
                                                        int numBonds,
                                                        kynedraw::VisibleNode &node1,
                                                        kynedraw::VisibleNode &node2);
-    void remove_node(kynedraw::Node &node);
-    void remove_visible_node(kynedraw::VisibleNode &node);
-    void remove_bond(kynedraw::Bond &bond);
-    void remove_visible_bond(kynedraw::VisibleBond &bond);
     void set_node_uuid(kynedraw::Node &node, boost::uuids::uuid newUuid);
     void set_visible_node_uuid(kynedraw::VisibleNode &visibleNode, boost::uuids::uuid newUuid);
     void merge(Graph &graph);

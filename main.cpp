@@ -318,7 +318,7 @@ void InitializeAllSettings()
   selectedTool = RetrieveAndTickSetting("selectedTool", "single");
   bondSnapSetting = RetrieveAndTickSetting("bondSnapSetting", "freeform");
 
-  // initialize the selectedTool to (0,0) because that is what static double previousPageX, previousPageY in MouseMove is initialized to
+  // initialize the selectedTool to (0,0) because that is what static double previousPageX, previousPageY in UpdateNetworkPosition is initialized to
   ResetPreview(selectedTool, 0, 0);
 }
 
@@ -331,7 +331,7 @@ void ClickButton(emscripten::val event)
   event.call<void>("stopPropagation");
 }
 
-void MouseMove(double pageX, double pageY, bool mouseIsPressed, double mouseDownPageX, double mouseDownPageY)
+void UpdateNetworkPosition(double pageX, double pageY, bool mouseIsPressed, double mouseDownPageX, double mouseDownPageY)
 {
   static double previousPageX, previousPageY = 0.0;
   static bool snappedToNode = false;
@@ -390,12 +390,16 @@ void InteractWithCanvas(emscripten::val event)
 
   emscripten::val window = emscripten::val::global("window");
   std::string eventName = event["type"].as<std::string>();
-  double pageX = event["pageX"].as<double>();
-  double pageY = event["pageY"].as<double>();
+  /* NOTE: mousemove fires before mousedown and mouseup on an animation frame, at least in Chrome, so mouseup and
+     mouse down get the pageX and pageY of the current frame. If mousemove fires after mousedown and mouseup, it should
+     not be a problem for resetting the preview in mouseup since the mouse move event will correct the outdated
+     position */
+  static double pageX, pageY = 0.0;
 
-  // NOTE: mousemove fires before mousedown and mouseup on an animation frame, at least in Chrome
   if (eventName == "mousemove") {
-    MouseMove(pageX, pageY, mouseIsPressed, mouseDownPageX, mouseDownPageY);
+    pageX = event["pageX"].as<double>();
+    pageY = event["pageY"].as<double>();
+    UpdateNetworkPosition(pageX, pageY, mouseIsPressed, mouseDownPageX, mouseDownPageY);
   } else if (eventName == "mousedown") {
     mouseDownPageX = pageX;
     mouseDownPageY = pageY;
@@ -409,10 +413,11 @@ void InteractWithCanvas(emscripten::val event)
     network.merge(preview);
     mouseIsPressed = false;
     ResetPreview(selectedTool, pageX, pageY);
+    // move the resetted preview to the appropriate snapping location
+    UpdateNetworkPosition(pageX, pageY, mouseIsPressed, mouseDownPageX, mouseDownPageY);
     window.call<void>("requestAnimationFrame", emscripten::val::module_property("RenderBackground"));
   }
   window.call<void>("requestAnimationFrame", emscripten::val::module_property("RenderForeground"));
-  // TODO: use the closest visible nodes and bonds to customize the preview
 }
 
 void ResizeCanvas(emscripten::val canvas, emscripten::val index, emscripten::val array)
@@ -432,7 +437,6 @@ void RunMainLoop()
 {
   // emscripten_set_main_loop(RenderForeground, 0, 1);
 }
-
 int main()
 {
   emscripten::val window = emscripten::val::global("window");

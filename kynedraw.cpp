@@ -81,18 +81,19 @@ bool kynedraw::GenericNode::operator==(const kynedraw::GenericNode &rhs) const n
 bool kynedraw::GenericNode::operator!=(const kynedraw::GenericNode &rhs) const noexcept {
   return uuid != rhs.uuid;
 }
-void kynedraw::GenericNode::merge(kynedraw::GenericNode& node) {
+void kynedraw::GenericNode::merge
+(kynedraw::GenericNode& sacrificialNode) {
   // check that the nodes that are trying to be merged together can even be merged together
-  if (uuid != node.get_uuid())
+  if (uuid != sacrificialNode.get_uuid())
   {
     throw std::invalid_argument("tried to merge nodes with different uuids");
   }
-  if (name != node.get_name())
+  if (name != sacrificialNode.get_name())
   {
     throw std::invalid_argument("tried to merge nodes with different names");
   }
-  numBonds += node.get_num_bonds();
-  numH -= node.get_num_bonds();
+  numBonds += sacrificialNode.get_num_bonds();
+  numH -= sacrificialNode.get_num_bonds();
   if (numH < 0) {
     // if there aren't enough hydrogens to change into regular bonds, change the charge and number of unbonded electrons to cover the difference and maintain the octet
     charge -= numH;
@@ -104,7 +105,7 @@ void kynedraw::GenericNode::merge(kynedraw::GenericNode& node) {
       numLoneE = 0;
     }
   } else if (numH > 0 && charge > 0) {
-    // if there is a positive charge and hydrogens that can be sacrified, break the bond to the hydrogen
+    // if there is a positive charge and hydrogens that can be sacrificed, break the bond to the hydrogen
     if (numH > charge) {
       numH -= charge;
       charge = 0;
@@ -138,26 +139,22 @@ void kynedraw::Node::add_bond_info(kynedraw::Bond& bond) {
 void kynedraw::Node::remove_bond_info(kynedraw::Bond& bond) {
   linkedBonds.erase(bond.get_uuid());
 }
-void kynedraw::Node::merge(kynedraw::Node& node)
+void kynedraw::Node::merge(kynedraw::Node& sacrificialNode)
 {
-  this->kynedraw::GenericNode::merge(node);
-  for (auto& [uuid, bondPointer] : node.linkedBonds)
+  this->kynedraw::GenericNode::merge(sacrificialNode);
+  for (auto& [uuid, bondPointer] : sacrificialNode.linkedBonds)
   {
-    bondPointer->set_linked_node(node.get_uuid(), *this);
+    bondPointer->set_linked_node(sacrificialNode.get_uuid(), *this);
   }
-  node.linkedBonds.clear();
-  node.clear();
-  // tODO: delete node
+  sacrificialNode.linkedBonds.clear();
 }
-void kynedraw::Node::clear()
+void kynedraw::Node::remove()
 {
-  // TODO: split into delete and clear
-  // look at each of the linked bonds and delete them
   for (auto& [uuid, bondPointer] : linkedBonds)
   {
-    bondPointer->clear();
-    // TODO: delete bond
+    bondPointer->remove();
   }
+  linkedGraph->remove_node(*this);
 }
 kynedraw::VisibleNode::VisibleNode(boost::uuids::uuid uuid,
                                    std::string name,
@@ -234,23 +231,21 @@ void kynedraw::VisibleNode::add_bond_info(kynedraw::VisibleBond &bond) {
 void kynedraw::VisibleNode::remove_bond_info(kynedraw::VisibleBond& bond) {
   linkedBonds.erase(bond.get_uuid());
 }
-void kynedraw::VisibleNode::merge(kynedraw::VisibleNode& node)
+void kynedraw::VisibleNode::merge(kynedraw::VisibleNode& sacrificialNode)
 {
   // NOTE: this tolerance of 0.1% is to account for floating point errors and can be adjusted as necessary
   // it shouldn't be important since they should have exactly the same coordinates anyways
-  // this is why it uses a box rather than a circle to check their coordinates
-  if (abs(x-node.get_x())/(x) > 0.001 || abs(y-node.get_y())/(y) > 0.001)
+  // this is why it uses a box rather than a circle to check their coordinates as the exact shape doesn't matter
+  if (abs(x-sacrificialNode.get_x())/(x) > 0.001 || abs(y-sacrificialNode.get_y())/(y) > 0.001)
   {
     throw std::invalid_argument("tried to merge visibleNodes with different positions");
   }
-  this->kynedraw::GenericNode::merge(node);
-  for (auto& [uuid, bondPointer] : node.linkedBonds)
+  this->kynedraw::GenericNode::merge(sacrificialNode);
+  for (auto& [uuid, bondPointer] : sacrificialNode.linkedBonds)
   {
-    bondPointer->set_linked_node(node.get_uuid(), *this);
+    bondPointer->set_linked_node(sacrificialNode.get_uuid(), *this);
   }
-  node.linkedBonds.clear();
-  node.clear();
-  // TODO: delete node
+  sacrificialNode.linkedBonds.clear();
 }
 void kynedraw::VisibleNode::change_linked_bond_uuid(kynedraw::VisibleBond &bond, boost::uuids::uuid newUuid) {
   // changes the key of the linked bond to sync it with the bond's uuid
@@ -259,14 +254,14 @@ void kynedraw::VisibleNode::change_linked_bond_uuid(kynedraw::VisibleBond &bond,
   mapNode.key() = newUuid;
   linkedBonds.insert(std::move(mapNode));
 }
-void kynedraw::VisibleNode::clear()
+void kynedraw::VisibleNode::remove()
 {
-  // look at each of the linked bonds and delete them
   for (auto& [uuid, bondPointer] : linkedBonds)
   {
-    bondPointer->clear();
+    bondPointer->remove();
   }
   rtree->remove(std::make_pair(point(x, y), uuid));
+  linkedGraph->remove_visible_node(*this);
 }
 
 /***********************************************************************************************************************
@@ -302,7 +297,6 @@ void kynedraw::Bond::set_linked_node(boost::uuids::uuid oldUuid, kynedraw::Node&
   linkedNodes.try_emplace(newNode.get_uuid(), &newNode);
 }
 void kynedraw::Bond::set_node_uuid(kynedraw::Node &node, boost::uuids::uuid newUuid) {
-  // TODO: this is not supposed to be called by itself, don't expose this to the public interface
   auto mapNode = linkedNodes.extract(node.get_uuid());
   mapNode.key() = newUuid;
   linkedNodes.insert(std::move(mapNode));
@@ -315,19 +309,12 @@ kynedraw::Node& kynedraw::Bond::get_second_node() const
 {
   return *(std::next(linkedNodes.begin())->second);
 }
-void kynedraw::Bond::clear() {
-  // NOTE: removing bond info while removing bond from a node might cause problems
+void kynedraw::Bond::remove() {
   for (auto& [uuid, nodePointer] : linkedNodes)
   {
-    std::cout << "nodePointer " << nodePointer->get_uuid() << "\n";
-    for (auto& [uuid, bondPointer] : nodePointer->get_linked_bonds())
-    {
-      std::cout << bondPointer->get_uuid() << "\n";
-    }
-    std::cout << "bond uuid " << this->uuid << "\n";
     nodePointer->remove_bond_info(*this);
   }
-  std::cout << "1\n";
+  linkedGraph->remove_bond(*this);
 }
 kynedraw::VisibleBond::VisibleBond(boost::uuids::uuid uuid,
                                    int numBonds,
@@ -364,7 +351,6 @@ kynedraw::VisibleNode& kynedraw::VisibleBond::get_second_node() const
   return *(std::next(linkedNodes.begin())->second);
 }
 void kynedraw::VisibleBond::set_node_uuid(kynedraw::VisibleNode &visibleNode, boost::uuids::uuid newUuid) {
-  // TODO: this is not supposed to be called by itself, don't expose this to the public interface
   auto mapNode = linkedNodes.extract(visibleNode.get_uuid());
   mapNode.key() = newUuid;
   linkedNodes.insert(std::move(mapNode));
@@ -394,26 +380,16 @@ void kynedraw::VisibleBond::set_rtree_coordinates(kynedraw::VisibleNode &changin
   }
   // it may seem wasteful to set BOTH nodes, but boost rtrees are currently not mutable so we're going to have to delete and insert the entire segment anyways0
 }
-void kynedraw::VisibleBond::clear()
+void kynedraw::VisibleBond::remove()
 {
   for (auto& [uuid, nodePointer] : linkedNodes)
   {
-    std::cout << "vis nodePointer " << nodePointer->get_uuid() << "\n";
-    auto thing = nodePointer->get_linked_bonds();
-    for (auto& [uuid, bondPointer] : thing)
-    {
-      std::cout << bondPointer->get_uuid() << "\n";
-    }
-    std::cout << "vis bond uuid " << this->uuid << "\n";
     nodePointer->remove_bond_info(*this);
   }
-  std::cout << "1\n";
   kynedraw::VisibleNode& firstNode = *(linkedNodes.begin()->second);
-  std::cout << "2\n";
   kynedraw::VisibleNode& secondNode = *(std::next(linkedNodes.begin())->second);
-  std::cout << "3\n";
   rtree->remove(std::make_pair(segment(point(firstNode.get_x(), firstNode.get_y()), point(secondNode.get_x(), secondNode.get_y())), uuid));
-  std::cout << "4\n";
+  linkedGraph->remove_visible_bond(*this);
 }
 
 /***********************************************************************************************************************
@@ -481,37 +457,34 @@ void kynedraw::Graph::remove_visible_bond(kynedraw::VisibleBond &bond) {
   visibleBonds.erase(bond.get_uuid());
 }
 void kynedraw::Graph::set_node_uuid(kynedraw::Node &node, boost::uuids::uuid newUuid) {
-  // TODO: this is not supposed to be called by itself, don't expose this to the public interface
   auto mapNode = nodes.extract(node.get_uuid());
   mapNode.key() = newUuid;
   nodes.insert(std::move(mapNode));
 }
 void kynedraw::Graph::set_visible_node_uuid(kynedraw::VisibleNode &visibleNode, boost::uuids::uuid newUuid) {
-  // TODO: this is not supposed to be called by itself, don't expose this to the public interface
   auto mapNode = visibleNodes.extract(visibleNode.get_uuid());
   mapNode.key() = newUuid;
   visibleNodes.insert(std::move(mapNode));
 }
-void kynedraw::Graph::merge(kynedraw::Graph &graph) {
-  // TODO: handle what happens when two bonds have the same UUID (i.e. are the same bond)
-  this->nodes.merge(graph.nodes);
-  for (auto& [nodeUuid, node] : graph.nodes) {
+void kynedraw::Graph::merge(kynedraw::Graph &sacrificialGraph) {
+  this->nodes.merge(sacrificialGraph.nodes);
+  for (auto& [nodeUuid, node] : sacrificialGraph.nodes) {
     this->nodes.at(nodeUuid).merge(node);
   }
-  graph.nodes.clear();
-  this->visibleNodes.merge(graph.visibleNodes);
-  for (auto& [uuid, node] : graph.visibleNodes) {
+  sacrificialGraph.nodes.clear();
+  this->visibleNodes.merge(sacrificialGraph.visibleNodes);
+  for (auto& [uuid, node] : sacrificialGraph.visibleNodes) {
     this->visibleNodes.at(uuid).merge(node);
   }
-  graph.visibleNodes.clear();
-  this->bonds.merge(graph.bonds);
-  graph.bonds.clear();
-  this->visibleBonds.merge(graph.visibleBonds);
-  graph.visibleBonds.clear();
-  this->segments.insert(graph.segments.begin(), graph.segments.end());
-  graph.segments.clear();
-  this->points.insert(graph.points.begin(), graph.points.end());
-  graph.points.clear();
+  sacrificialGraph.visibleNodes.clear();
+  this->bonds.merge(sacrificialGraph.bonds);
+  sacrificialGraph.bonds.clear();
+  this->visibleBonds.merge(sacrificialGraph.visibleBonds);
+  sacrificialGraph.visibleBonds.clear();
+  this->segments.insert(sacrificialGraph.segments.begin(), sacrificialGraph.segments.end());
+  sacrificialGraph.segments.clear();
+  this->points.insert(sacrificialGraph.points.begin(), sacrificialGraph.points.end());
+  sacrificialGraph.points.clear();
 }
 void kynedraw::Graph::clear() {
   nodes.clear();
