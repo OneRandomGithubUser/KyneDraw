@@ -36,24 +36,59 @@ typedef bgi::rtree<std::pair<segment, boost::uuids::uuid>, bgi::rstar<16>> segme
 void kynedraw::GenericNode::set_uuid(boost::uuids::uuid uuid) {
   this->uuid = uuid;
 }
+void kynedraw::GenericNode::refresh_internal_vars()
+{
+  if (numH < 0) {
+    // if there aren't enough hydrogens to change into regular bonds, change the charge and number of unbonded electrons to cover the difference and maintain the octet
+    charge -= numH;
+    numLoneE += 2 * numH;
+    numH = 0;
+    if (numLoneE < 0) {
+      // if doing this uses too many unbonded electrons, violate the octet
+      charge += numLoneE;
+      numLoneE = 0;
+    }
+  } else if (numH > 0 && charge > 0) {
+    // if there is a positive charge and hydrogens that can be sacrificed, break the bond to the hydrogen
+    if (numH > charge) {
+      numH -= charge;
+      charge = 0;
+    } else {
+      charge -= numH;
+      numH = 0;
+    }
+  }
+}
 kynedraw::GenericNode::GenericNode(boost::uuids::uuid uuid, std::string name, kynedraw::Graph& linkedGraph) {
   this->uuid = uuid;
   this->name = name;
   this->linkedGraph = &linkedGraph;
   numBonds = 0;
   charge = 0;
-  numH = get_valence();
-  numLoneE = 0;
+  numH = get_valency();
+  numLoneE = get_full_valence_electrons() - get_valency();
 }
-int kynedraw::GenericNode::get_valence() const {
-  static std::unordered_map<std::string, int> valenceMap = {
+int kynedraw::GenericNode::get_full_valence_electrons() const {
+  const static std::unordered_map<std::string, int> valenceShellMap = {
+          {"H", 2},
+          {"He", 2}
+  };
+  if (valenceShellMap.contains(name))
+  {
+    return valenceShellMap.at(name) - get_valency();
+  } else {
+    return 8 - get_valency();
+  }
+}
+int kynedraw::GenericNode::get_valency() const {
+  const static std::unordered_map<std::string, int> valenceMap = {
       {"H", 1},
       {"C", 4},
-      {"O", 1},
-      {"N", 1},
+      {"O", 2},
+      {"N", 3},
       {"Br", 1},
       {"Cl", 1},
-      {"S", 1}
+      {"S", 2}
   };
   return valenceMap.at(name);
 }
@@ -75,6 +110,18 @@ int kynedraw::GenericNode::get_num_h() const {
 int kynedraw::GenericNode::get_num_lone_e() const {
   return numLoneE;
 }
+void kynedraw::GenericNode::smart_set_name(std::string newName) {
+  int oldValence = get_valency();
+  name = newName;
+  int changeValence = oldValence - get_valency();
+  numH -= changeValence;
+  refresh_internal_vars();
+}
+void kynedraw::GenericNode::smart_change_num_bonds(int changeNumBonds) {
+  numBonds += changeNumBonds;
+  numH -= changeNumBonds;
+  refresh_internal_vars();
+}
 bool kynedraw::GenericNode::operator==(const kynedraw::GenericNode &rhs) const noexcept {
   return uuid == rhs.uuid;
 }
@@ -88,32 +135,11 @@ void kynedraw::GenericNode::merge
   {
     throw std::invalid_argument("tried to merge nodes with different uuids");
   }
-  if (name != sacrificialNode.get_name())
+  if (name != sacrificialNode.get_name() && sacrificialNode.get_name() != "C")
   {
-    throw std::invalid_argument("tried to merge nodes with different names");
+    smart_set_name(sacrificialNode.get_name());
   }
-  numBonds += sacrificialNode.get_num_bonds();
-  numH -= sacrificialNode.get_num_bonds();
-  if (numH < 0) {
-    // if there aren't enough hydrogens to change into regular bonds, change the charge and number of unbonded electrons to cover the difference and maintain the octet
-    charge -= numH;
-    numLoneE += 2 * numH;
-    numH = 0;
-    if (numLoneE < 0) {
-      // if doing this uses too many unbonded electrons, violate the octet
-      charge += numLoneE;
-      numLoneE = 0;
-    }
-  } else if (numH > 0 && charge > 0) {
-    // if there is a positive charge and hydrogens that can be sacrificed, break the bond to the hydrogen
-    if (numH > charge) {
-      numH -= charge;
-      charge = 0;
-    } else {
-      charge -= numH;
-      numH = 0;
-    }
-  }
+  smart_change_num_bonds(sacrificialNode.get_num_bonds());
 }
 kynedraw::Node::Node(boost::uuids::uuid uuid, std::string name, kynedraw::Graph& linkedGraph) : GenericNode(uuid, name, linkedGraph)
 {
@@ -417,7 +443,7 @@ kynedraw::VisibleNode &kynedraw::Graph::create_visible_node(boost::uuids::uuid u
                                                             std::string name,
                                                             double pageX,
                                                             double pageY) {
-  kynedraw::VisibleNode newNode(uuid, "C", pageX, pageY, points, *this);
+  kynedraw::VisibleNode newNode(uuid, name, pageX, pageY, points, *this);
   points.insert(std::make_pair(point(pageX, pageY), uuid));
   kynedraw::VisibleNode &insertedNode = this->visibleNodes.try_emplace(uuid, newNode).first->second;
   return insertedNode;

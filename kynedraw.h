@@ -57,15 +57,19 @@ namespace kynedraw
     kynedraw::Molecule* molecule{};
     kynedraw::Graph* linkedGraph;
     void set_uuid(boost::uuids::uuid uuid);
+    void refresh_internal_vars();
    public:
     GenericNode(boost::uuids::uuid uuid, std::string name, kynedraw::Graph& linkedGraph);
-    int get_valence() const;
+    int get_full_valence_electrons() const;
+    int get_valency() const;
     boost::uuids::uuid get_uuid() const;
     std::string get_name() const;
     int get_num_bonds() const;
     int get_charge() const;
     int get_num_h() const;
     int get_num_lone_e() const;
+    void smart_set_name(std::string newName);
+    void smart_change_num_bonds(int changeNumBonds);
     bool operator==(const GenericNode& rhs) const noexcept;
     bool operator!=(const GenericNode& rhs) const noexcept;
     void merge(kynedraw::GenericNode& node);
@@ -166,20 +170,18 @@ namespace kynedraw
 ***********************************************************************************************************************/
 
   class Graph {
-   private:
-    void remove_node(kynedraw::Node &node);
-    void remove_visible_node(kynedraw::VisibleNode &node);
-    void remove_bond(kynedraw::Bond &bond);
-    void remove_visible_bond(kynedraw::VisibleBond &bond);
    protected:
     std::unordered_map<boost::uuids::uuid, kynedraw::VisibleNode, boost::hash<boost::uuids::uuid>> visibleNodes;
     std::unordered_map<boost::uuids::uuid, kynedraw::Node, boost::hash<boost::uuids::uuid>> nodes;
     std::unordered_map<boost::uuids::uuid, kynedraw::VisibleBond, boost::hash<boost::uuids::uuid>> visibleBonds;
     std::unordered_map<boost::uuids::uuid, kynedraw::Bond, boost::hash<boost::uuids::uuid>> bonds;
-
     // The container for pairs of segments and IDs
     segment_rtree segments;
     point_rtree points;
+    void remove_node(kynedraw::Node &node);
+    void remove_visible_node(kynedraw::VisibleNode &node);
+    void remove_bond(kynedraw::Bond &bond);
+    void remove_visible_bond(kynedraw::VisibleBond &bond);
    public:
     // TODO: find out how to do this better than making friend functions, if even possible
     friend void kynedraw::Node::remove();

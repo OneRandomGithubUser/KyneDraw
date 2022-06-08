@@ -41,6 +41,7 @@ namespace kynedraw
     double MOUSE_SNAP_RADIUS = 15;
     double AUTO_SNAP_RADIUS = 5;
     bool SHOW_CARBONS = false;
+    double NODE_LABEL_MARGIN = 5;
   }
 }
 
@@ -181,21 +182,15 @@ std::string bondSnapSetting;
 
 kynedraw::Graph network;
 kynedraw::Preview preview;
-
-void RenderBackground(double DOMHighResTimeStamp)
+void Render(kynedraw::Graph& graph, emscripten::val canvas)
 {
-  emscripten::val document = emscripten::val::global("document");
-  emscripten::val canvas = document.call<emscripten::val>("getElementById", emscripten::val("canvas-background"));
+  const static std::string subscript[10] = {"₀","₁","₂","₃","₄","₅","₆","₇","₈","₉"};
+  const static std::string superscript[10] = {"⁰","¹","²","³","⁴","⁵","⁶","⁷","⁸","⁹"};
+  // NOTE: this may cause an error if a feature specific to kynedraw::Preview is used
   emscripten::val ctx = canvas.call<emscripten::val>("getContext", emscripten::val("2d"));
   ctx.call<void>("clearRect", 0, 0, canvas["width"], canvas["height"]);
-  for (const auto& [uuid, currentVisibleNode] : network.get_visible_nodes())
-  {
-    ctx.call<void>("beginPath");
-    ctx.call<void>("arc", currentVisibleNode.get_x(), currentVisibleNode.get_y(), kynedraw::settings::MOUSE_SNAP_RADIUS, 0, 2 * pi);
-    ctx.call<void>("stroke");
-  }
   ctx.call<void>("beginPath");
-  for (const auto& [uuid, currentVisibleBond] : network.get_visible_bonds())
+  for (const auto& [uuid, currentVisibleBond] : graph.get_visible_bonds())
   {
     kynedraw::VisibleNode& firstNode = currentVisibleBond.get_first_node();
     kynedraw::VisibleNode& secondNode = currentVisibleBond.get_second_node();
@@ -203,30 +198,72 @@ void RenderBackground(double DOMHighResTimeStamp)
     ctx.call<void>("lineTo", secondNode.get_x(), secondNode.get_y());
   }
   ctx.call<void>("stroke");
+  for (const auto& [uuid, currentVisibleNode] : graph.get_visible_nodes())
+  {
+    std::string name = currentVisibleNode.get_name();
+    if (name != "C" || kynedraw::settings::SHOW_CARBONS)
+    {
+      std::string label = name;
+      int numH = currentVisibleNode.get_num_h();
+      if (numH > 0) {
+        if (numH > 1) {
+          std::string temp = "";
+          int tens = numH;
+          while (tens != 0)
+          {
+            temp = subscript[tens%10] + temp;
+            tens = floor(tens/10);
+          }
+          if (name == "O" || name == "S")
+          {
+            label = "H" + temp + label;
+          } else {
+            label += ("H" + temp);
+          }
+        } else if (name == "Br" || name == "Cl" || name == "I" || name == "F")
+        {
+          label = "H" + label;
+        } else {
+          label += "H";
+        }
+      }
+      int charge = currentVisibleNode.get_charge();
+      if (abs(charge) > 1) {
+        std::string temp = "";
+        int tens = abs(charge);
+        while (tens != 0) {
+          temp = superscript[tens%10] + temp;
+          tens = floor(tens/10);
+        }
+        label += temp;
+      }
+      if (charge > 0) {label += "⁺";}
+      if (charge < 0) {label += "⁻";}
+      double x = currentVisibleNode.get_x();
+      double y = currentVisibleNode.get_y();
+      emscripten::val TextMetrics = ctx.call<emscripten::val>("measureText", emscripten::val(label));
+      double left = TextMetrics["actualBoundingBoxLeft"].as<double>() + kynedraw::settings::NODE_LABEL_MARGIN;
+      double right = TextMetrics["actualBoundingBoxRight"].as<double>() + kynedraw::settings::NODE_LABEL_MARGIN;
+      double up = TextMetrics["actualBoundingBoxAscent"].as<double>() + kynedraw::settings::NODE_LABEL_MARGIN;
+      double down = TextMetrics["actualBoundingBoxDescent"].as<double>() + kynedraw::settings::NODE_LABEL_MARGIN;
+      ctx.call<void>("clearRect", x-left, y-up, left+right, up+down);
+      ctx.call<void>("fillText", label, x, y);
+    }
+    ctx.call<void>("beginPath");
+    ctx.call<void>("arc", currentVisibleNode.get_x(), currentVisibleNode.get_y(), kynedraw::settings::MOUSE_SNAP_RADIUS, 0, 2 * pi);
+    ctx.call<void>("stroke");
+  }
+}
+void RenderBackground(double DOMHighResTimeStamp)
+{
+  emscripten::val document = emscripten::val::global("document");
+  Render(network, document.call<emscripten::val>("getElementById", emscripten::val("canvas-background")));
 }
 
 void RenderForeground(double DOMHighResTimeStamp)
 {
   emscripten::val document = emscripten::val::global("document");
-  emscripten::val canvas = document.call<emscripten::val>("getElementById", emscripten::val("canvas-foreground"));
-  emscripten::val ctx = canvas.call<emscripten::val>("getContext", emscripten::val("2d"));
-
-  ctx.call<void>("clearRect", 0, 0, canvas["width"], canvas["height"]);
-  for (const auto& [uuid, currentVisibleNode] : preview.get_visible_nodes())
-  {
-    ctx.call<void>("beginPath");
-    ctx.call<void>("arc", currentVisibleNode.get_x(), currentVisibleNode.get_y(), kynedraw::settings::AUTO_SNAP_RADIUS, 0, 2 * pi);
-    ctx.call<void>("stroke");
-  }
-  ctx.call<void>("beginPath");
-  for (const auto& [uuid, currentVisiblePreviewBond] : preview.get_visible_bonds())
-  {
-    kynedraw::VisibleNode& firstNode = currentVisiblePreviewBond.get_first_node();
-    kynedraw::VisibleNode& secondNode = currentVisiblePreviewBond.get_second_node();
-    ctx.call<void>("moveTo", firstNode.get_x(), firstNode.get_y());
-    ctx.call<void>("lineTo", secondNode.get_x(), secondNode.get_y());
-  }
-  ctx.call<void>("stroke");
+  Render(preview, document.call<emscripten::val>("getElementById", emscripten::val("canvas-foreground")));
 
   kynedraw::settings::FRAME_COUNT++;
 }
@@ -282,12 +319,103 @@ void ResetPreview(std::string tool, double pageX, double pageY)
       preview.create_visible_bond_between(uuid, 1, visibleNode1, visibleNode2);
       break;
     }
+    case 11: {
+      // single
+      boost::uuids::uuid uuid;
+      uuid = uuidGenerator();
+      kynedraw::Node& node1 = preview.create_node(uuid, "C");
+      kynedraw::VisibleNode& visibleNode1 = preview.create_visible_node(uuid, "C", pageX, pageY);
+      preview.set_mouse_node(visibleNode1);
+      uuid = uuidGenerator();
+      kynedraw::Node& node2 = preview.create_node(uuid, "C");
+      kynedraw::VisibleNode& visibleNode2 = preview.create_visible_node(uuid,
+                                                                        "C",
+                                                                        pageX + kynedraw::settings::BOND_LENGTH * std::cos(pi * 11 / 6),
+                                                                        pageY + kynedraw::settings::BOND_LENGTH * std::sin(pi * 11 / 6));
+      uuid = uuidGenerator();
+      preview.create_bond_between(uuid, 2, node1, node2);
+      preview.create_visible_bond_between(uuid, 2, visibleNode1, visibleNode2);
+      break;
+    }
+    case 12: {
+      // single
+      boost::uuids::uuid uuid;
+      uuid = uuidGenerator();
+      kynedraw::Node& node1 = preview.create_node(uuid, "C");
+      kynedraw::VisibleNode& visibleNode1 = preview.create_visible_node(uuid, "C", pageX, pageY);
+      preview.set_mouse_node(visibleNode1);
+      uuid = uuidGenerator();
+      kynedraw::Node& node2 = preview.create_node(uuid, "C");
+      kynedraw::VisibleNode& visibleNode2 = preview.create_visible_node(uuid,
+                                                                        "C",
+                                                                        pageX + kynedraw::settings::BOND_LENGTH * std::cos(pi * 11 / 6),
+                                                                        pageY + kynedraw::settings::BOND_LENGTH * std::sin(pi * 11 / 6));
+      uuid = uuidGenerator();
+      preview.create_bond_between(uuid, 3, node1, node2);
+      preview.create_visible_bond_between(uuid, 3, visibleNode1, visibleNode2);
+      break;
+    }
+    case 20: {
+      // hydrogen
+      boost::uuids::uuid uuid;
+      uuid = uuidGenerator();
+      preview.create_node(uuid, "H");
+      kynedraw::VisibleNode& node = preview.create_visible_node(uuid, "H", pageX, pageY);
+      preview.set_mouse_node(node);
+      break;
+    }
     case 21: {
       // carbon
       boost::uuids::uuid uuid;
       uuid = uuidGenerator();
       preview.create_node(uuid, "C");
-      preview.create_visible_node(uuid, "C", pageX, pageY);
+      kynedraw::VisibleNode& node = preview.create_visible_node(uuid, "C", pageX, pageY);
+      preview.set_mouse_node(node);
+      break;
+    }
+    case 22: {
+      // oxygen
+      boost::uuids::uuid uuid;
+      uuid = uuidGenerator();
+      preview.create_node(uuid, "O");
+      kynedraw::VisibleNode& node = preview.create_visible_node(uuid, "O", pageX, pageY);
+      preview.set_mouse_node(node);
+      break;
+    }
+    case 23: {
+      // nitrogen
+      boost::uuids::uuid uuid;
+      uuid = uuidGenerator();
+      preview.create_node(uuid, "N");
+      kynedraw::VisibleNode& node = preview.create_visible_node(uuid, "N", pageX, pageY);
+      preview.set_mouse_node(node);
+      break;
+    }
+    case 24: {
+      // bromine
+      boost::uuids::uuid uuid;
+      uuid = uuidGenerator();
+      preview.create_node(uuid, "Br");
+      kynedraw::VisibleNode& node = preview.create_visible_node(uuid, "Br", pageX, pageY);
+      preview.set_mouse_node(node);
+      break;
+    }
+    case 25: {
+      // chlorine
+      boost::uuids::uuid uuid;
+      uuid = uuidGenerator();
+      preview.create_node(uuid, "Cl");
+      kynedraw::VisibleNode& node = preview.create_visible_node(uuid, "Cl", pageX, pageY);
+      preview.set_mouse_node(node);
+      break;
+    }
+    case 26: {
+      // sulfur
+      boost::uuids::uuid uuid;
+      uuid = uuidGenerator();
+      preview.create_node(uuid, "S");
+      kynedraw::VisibleNode& node = preview.create_visible_node(uuid, "S", pageX, pageY);
+      preview.set_mouse_node(node);
       break;
     }
   }
@@ -299,6 +427,8 @@ std::string RetrieveAndTickSetting(std::string settingType, std::string defaultN
   emscripten::val localStorage = emscripten::val::global("localStorage");
   emscripten::val storedValue = localStorage.call<emscripten::val>("getItem", emscripten::val(settingType));
   std::string value;
+  // TODO: there seems to be a bug where visiting the webpage for the first time may result in an error
+  std::cout << storedValue.typeOf().as<std::string>() << "\n";
   // checks if there is such a stored value: typeOf will be "object" when the emscripten::val is null
   if (storedValue.typeOf().as<std::string>() == "string")
   {
@@ -420,17 +550,23 @@ void InteractWithCanvas(emscripten::val event)
   window.call<void>("requestAnimationFrame", emscripten::val::module_property("RenderForeground"));
 }
 
-void ResizeCanvas(emscripten::val canvas, emscripten::val index, emscripten::val array)
+void InitializeCanvas(emscripten::val canvas, emscripten::val index, emscripten::val array)
 {
   emscripten::val window = emscripten::val::global("window");
   canvas.set("width", window["innerWidth"]);
   canvas.set("height", window["innerHeight"]);
+  emscripten::val ctx = canvas.call<emscripten::val>("getContext", emscripten::val("2d"));
+  ctx.set("textAlign", emscripten::val("center"));
+  ctx.set("textBaseline", emscripten::val("middle"));
+  ctx.set("font", emscripten::val("20px Arial"));
+  window.call<void>("requestAnimationFrame", emscripten::val::module_property("RenderBackground"));
+  window.call<void>("requestAnimationFrame", emscripten::val::module_property("RenderForeground"));
 }
 
-void ResizeCanvases(emscripten::val event)
+void InitializeCanvases(emscripten::val event)
 {
   emscripten::val document = emscripten::val::global("document");
-  document.call<emscripten::val>("querySelectorAll", emscripten::val(".canvas")).call<void>("forEach", emscripten::val::module_property("ResizeCanvas"));
+  document.call<emscripten::val>("querySelectorAll", emscripten::val(".canvas")).call<void>("forEach", emscripten::val::module_property("InitializeCanvas"));
 }
 
 void RunMainLoop()
@@ -441,7 +577,7 @@ int main()
 {
   emscripten::val window = emscripten::val::global("window");
   emscripten::val document = emscripten::val::global("document");
-  window.call<void>("addEventListener", emscripten::val("resize"), emscripten::val::module_property("ResizeCanvases"));
+  window.call<void>("addEventListener", emscripten::val("resize"), emscripten::val::module_property("InitializeCanvases"));
   document.call<void>("addEventListener", emscripten::val("mousedown"), emscripten::val::module_property("InteractWithCanvas"));
   document.call<void>("addEventListener", emscripten::val("mouseup"), emscripten::val::module_property("InteractWithCanvas"));
   document.call<void>("addEventListener", emscripten::val("mousemove"), emscripten::val::module_property("InteractWithCanvas"));
@@ -453,7 +589,7 @@ int main()
   document.call<emscripten::val>("querySelectorAll", emscripten::val("button, [name=tool-selection-button] + label, [name=bond-snap-selection-button] + label")).call<void>("forEach", emscripten::val::module_property("AddButtonEventListeners"));
 
   // initialize width and height of the canvas
-  document.call<emscripten::val>("querySelectorAll", emscripten::val(".canvas")).call<void>("forEach", emscripten::val::module_property("ResizeCanvas"));
+  document.call<emscripten::val>("querySelectorAll", emscripten::val(".canvas")).call<void>("forEach", emscripten::val::module_property("InitializeCanvas"));
 
   // retrieve all settings from localStorage and set the appropriate boxes to "checked" and put the appropriate data into preview
   InitializeAllSettings();
@@ -465,8 +601,8 @@ int main()
 EMSCRIPTEN_BINDINGS(bindings)\
 {\
   emscripten::function("InteractWithCanvas", InteractWithCanvas);\
-  emscripten::function("ResizeCanvases", ResizeCanvases);\
-  emscripten::function("ResizeCanvas", ResizeCanvas);\
+  emscripten::function("InitializeCanvases", InitializeCanvases);\
+  emscripten::function("InitializeCanvas", InitializeCanvas);\
   emscripten::function("RenderBackground", RenderBackground);\
   emscripten::function("RenderForeground", RenderForeground);\
   emscripten::function("ClickButton", ClickButton);\
