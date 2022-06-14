@@ -114,13 +114,16 @@ void kynedraw::GenericNode::smart_set_name(std::string newName) {
   int oldValence = get_valency();
   name = newName;
   int changeValence = oldValence - get_valency();
+  std::cout << changeValence << "\n";
   numH -= changeValence;
   refresh_internal_vars();
 }
 void kynedraw::GenericNode::smart_change_num_bonds(int changeNumBonds) {
+  std::cout << "before" << numBonds << "after ";
   numBonds += changeNumBonds;
   numH -= changeNumBonds;
   refresh_internal_vars();
+  std::cout << numBonds << "\n";
 }
 bool kynedraw::GenericNode::operator==(const kynedraw::GenericNode &rhs) const noexcept {
   return uuid == rhs.uuid;
@@ -139,6 +142,7 @@ void kynedraw::GenericNode::merge
   {
     smart_set_name(sacrificialNode.get_name());
   }
+  std::cout << sacrificialNode.get_num_bonds() << "\n";
   smart_change_num_bonds(sacrificialNode.get_num_bonds());
 }
 kynedraw::Node::Node(boost::uuids::uuid uuid, std::string name, kynedraw::Graph& linkedGraph) : GenericNode(uuid, name, linkedGraph)
@@ -161,9 +165,11 @@ const std::vector<kynedraw::VisibleNode *>& kynedraw::Node::get_linked_nodes() c
 }
 void kynedraw::Node::add_bond_info(kynedraw::Bond& bond) {
   linkedBonds.try_emplace(bond.get_uuid(), &bond);
+  smart_change_num_bonds(bond.get_num_bonds());
 }
 void kynedraw::Node::remove_bond_info(kynedraw::Bond& bond) {
   linkedBonds.erase(bond.get_uuid());
+  smart_change_num_bonds(-bond.get_num_bonds());
 }
 void kynedraw::Node::merge(kynedraw::Node& sacrificialNode)
 {
@@ -253,9 +259,11 @@ void kynedraw::VisibleNode::set_x_y(double x, double y) {
 }
 void kynedraw::VisibleNode::add_bond_info(kynedraw::VisibleBond &bond) {
   linkedBonds.try_emplace(bond.get_uuid(), &bond);
+  smart_change_num_bonds(bond.get_num_bonds());
 }
 void kynedraw::VisibleNode::remove_bond_info(kynedraw::VisibleBond& bond) {
   linkedBonds.erase(bond.get_uuid());
+  smart_change_num_bonds(-bond.get_num_bonds());
 }
 void kynedraw::VisibleNode::merge(kynedraw::VisibleNode& sacrificialNode)
 {
@@ -301,6 +309,9 @@ kynedraw::GenericBond::GenericBond(boost::uuids::uuid uuid, int numBonds, kynedr
 }
 boost::uuids::uuid kynedraw::GenericBond::get_uuid() const {
   return uuid;
+}
+int kynedraw::GenericBond::get_num_bonds() const {
+  return numBonds;
 }
 kynedraw::Bond::Bond(boost::uuids::uuid uuid, int numBonds, kynedraw::Node &node1, kynedraw::Node &node2, kynedraw::Graph& linkedGraph) : GenericBond(uuid, numBonds, linkedGraph)
 {
@@ -436,7 +447,7 @@ const std::unordered_map<boost::uuids::uuid, kynedraw::Bond, boost::hash<boost::
 }
 kynedraw::Node &kynedraw::Graph::create_node(boost::uuids::uuid uuid, std::string name) {
   kynedraw::Node newNode(uuid, name, *this);
-  kynedraw::Node &insertedNode = this->nodes.try_emplace(uuid, newNode).first->second;
+  kynedraw::Node &insertedNode = nodes.try_emplace(uuid, newNode).first->second;
   return insertedNode;
 }
 kynedraw::VisibleNode &kynedraw::Graph::create_visible_node(boost::uuids::uuid uuid,
@@ -445,7 +456,7 @@ kynedraw::VisibleNode &kynedraw::Graph::create_visible_node(boost::uuids::uuid u
                                                             double pageY) {
   kynedraw::VisibleNode newNode(uuid, name, pageX, pageY, points, *this);
   points.insert(std::make_pair(point(pageX, pageY), uuid));
-  kynedraw::VisibleNode &insertedNode = this->visibleNodes.try_emplace(uuid, newNode).first->second;
+  kynedraw::VisibleNode &insertedNode = visibleNodes.try_emplace(uuid, newNode).first->second;
   return insertedNode;
 }
 kynedraw::Bond &kynedraw::Graph::create_bond_between(boost::uuids::uuid uuid,
@@ -453,7 +464,7 @@ kynedraw::Bond &kynedraw::Graph::create_bond_between(boost::uuids::uuid uuid,
                                                      kynedraw::Node &node1,
                                                      kynedraw::Node &node2) {
   kynedraw::Bond newBond(uuid, numBonds, node1, node2, *this);
-  kynedraw::Bond &insertedBond = this->bonds.try_emplace(uuid, newBond).first->second;
+  kynedraw::Bond &insertedBond = bonds.try_emplace(uuid, newBond).first->second;
   node1.add_bond_info(insertedBond);
   node2.add_bond_info(insertedBond);
   return insertedBond;
@@ -463,7 +474,7 @@ kynedraw::VisibleBond &kynedraw::Graph::create_visible_bond_between(boost::uuids
                                                                     kynedraw::VisibleNode &node1,
                                                                     kynedraw::VisibleNode &node2) {
   kynedraw::VisibleBond newBond(uuid, numBonds, node1, node2, segments, *this);
-  VisibleBond &insertedBond = this->visibleBonds.try_emplace(uuid, newBond).first->second;
+  VisibleBond &insertedBond = visibleBonds.try_emplace(uuid, newBond).first->second;
   node1.add_bond_info(insertedBond);
   node2.add_bond_info(insertedBond);
   segments.insert(std::make_pair(segment(point(node1.get_x(), node1.get_y()), point(node2.get_x(), node2.get_y())),

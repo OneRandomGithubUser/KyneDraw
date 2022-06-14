@@ -13,12 +13,12 @@
 #include <boost/geometry/geometries/point.hpp>
 #include <boost/geometry/geometries/segment.hpp>
 #include <boost/geometry/index/rtree.hpp>*/
+#include <iostream>
+#include <boost/uuid/uuid_io.hpp>         // uuid streaming operators
 // #include <fstream>
 // #include <boost/json.hpp>                    // parse JSON
 
 // debug imports
-#include <iostream>
-#include <boost/uuid/uuid_io.hpp>         // uuid streaming operators
 
 // once CMake adds full support for importing C++20 headers, the below #include can be deleted
 #include "kynedraw.h"
@@ -41,7 +41,7 @@ namespace kynedraw
     double MOUSE_SNAP_RADIUS = 15;
     double AUTO_SNAP_RADIUS = 5;
     bool SHOW_CARBONS = false;
-    double NODE_LABEL_MARGIN = 5;
+    double NODE_LABEL_MARGIN = 2;
   }
 }
 

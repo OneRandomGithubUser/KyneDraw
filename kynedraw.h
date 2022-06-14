@@ -133,6 +133,7 @@ namespace kynedraw
    public:
     GenericBond(boost::uuids::uuid uuid, int numBonds, kynedraw::Graph& linkedGraph);
     boost::uuids::uuid get_uuid() const;
+    int get_num_bonds() const;
   };
   class Bond : public GenericBond
   {
