@@ -781,11 +781,11 @@ class Molecule {
     if (this.containedAtomList.length === 0) {
       throw new Error("tried to recalculate x1 of empty molecule")
     }
-    let x1 = containedAtomList[0].x;
-    let y1 = containedAtomList[0].y;
-    let x2 = containedAtomList[0].x;
-    let y2 = containedAtomList[0].y;
-    for (let currentAtom of containedAtomList) {
+    let x1 = this.containedAtomList[0].x;
+    let y1 = this.containedAtomList[0].y;
+    let x2 = this.containedAtomList[0].x;
+    let y2 = this.containedAtomList[0].y;
+    for (let currentAtom of this.containedAtomList) {
       if (currentAtom.x < x1) {
         x1 = currentAtom.x;
       }
@@ -1300,7 +1300,7 @@ function draw() {
             // selectedTool is moleculeDrag
             if (selectedMolecule.length !== 0){
               selectedMolecule.moveBounds(diffX, diffY);
-              for (let currentAtom of containedAtomList) {
+              for (let currentAtom of selectedMolecule.containedAtomList) {
                 currentAtom.x += diffX;
                 currentAtom.y += diffY;
               }
@@ -1446,7 +1446,7 @@ function draw() {
           foreground.stroke(255,0,0);
           foreground.fill(255,0,0);
         }
-        for (let currentAtom of containedAtomList) {
+        for (let currentAtom of selectedMolecule.containedAtomList) {
           // don't even consider deleted atoms
           if (currentAtom.deleted) {
             continue;
