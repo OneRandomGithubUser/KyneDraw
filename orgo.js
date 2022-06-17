@@ -733,7 +733,7 @@ class Molecule {
   }
 
   delete() {
-    for (let currentAtom of containedAtomList) {
+    for (let currentAtom of this.containedAtomList) {
       currentAtom.deleted = true;
       currentAtom.clearData();
     }
