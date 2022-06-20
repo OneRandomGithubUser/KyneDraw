@@ -201,7 +201,7 @@ void Render(kynedraw::Graph& graph, emscripten::val canvas)
   for (const auto& [uuid, currentVisibleNode] : graph.get_visible_nodes())
   {
     std::string name = currentVisibleNode.get_name();
-    if (name != "C" || kynedraw::settings::SHOW_CARBONS)
+    if (name != "C" || kynedraw::settings::SHOW_CARBONS || currentVisibleNode.get_num_bonds() == 0)
     {
       std::string label = name;
       int numH = currentVisibleNode.get_num_h();
