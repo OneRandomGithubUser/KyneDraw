@@ -298,11 +298,10 @@ void StoreBondSnapSetting(emscripten::val event)
 
 void ResetPreview(std::string tool, double pageX, double pageY)
 {
-  int toolID = buttonIDs.at(tool);
-  preview.clear();
   switch (buttonIDs.at(tool)) {
     case 10: {
       // single
+      preview.clear();
       boost::uuids::uuid uuid;
       uuid = uuidGenerator();
       kynedraw::Node& node1 = preview.create_node(uuid, "C");
@@ -320,7 +319,8 @@ void ResetPreview(std::string tool, double pageX, double pageY)
       break;
     }
     case 11: {
-      // single
+      // double
+      preview.clear();
       boost::uuids::uuid uuid;
       uuid = uuidGenerator();
       kynedraw::Node& node1 = preview.create_node(uuid, "C");
@@ -338,7 +338,8 @@ void ResetPreview(std::string tool, double pageX, double pageY)
       break;
     }
     case 12: {
-      // single
+      // triple
+      preview.clear();
       boost::uuids::uuid uuid;
       uuid = uuidGenerator();
       kynedraw::Node& node1 = preview.create_node(uuid, "C");
@@ -357,6 +358,7 @@ void ResetPreview(std::string tool, double pageX, double pageY)
     }
     case 20: {
       // hydrogen
+      preview.clear();
       boost::uuids::uuid uuid;
       uuid = uuidGenerator();
       preview.create_node(uuid, "H");
@@ -366,6 +368,7 @@ void ResetPreview(std::string tool, double pageX, double pageY)
     }
     case 21: {
       // carbon
+      preview.clear();
       boost::uuids::uuid uuid;
       uuid = uuidGenerator();
       preview.create_node(uuid, "C");
@@ -375,6 +378,7 @@ void ResetPreview(std::string tool, double pageX, double pageY)
     }
     case 22: {
       // oxygen
+      preview.clear();
       boost::uuids::uuid uuid;
       uuid = uuidGenerator();
       preview.create_node(uuid, "O");
@@ -384,6 +388,7 @@ void ResetPreview(std::string tool, double pageX, double pageY)
     }
     case 23: {
       // nitrogen
+      preview.clear();
       boost::uuids::uuid uuid;
       uuid = uuidGenerator();
       preview.create_node(uuid, "N");
@@ -393,6 +398,7 @@ void ResetPreview(std::string tool, double pageX, double pageY)
     }
     case 24: {
       // bromine
+      preview.clear();
       boost::uuids::uuid uuid;
       uuid = uuidGenerator();
       preview.create_node(uuid, "Br");
@@ -402,6 +408,7 @@ void ResetPreview(std::string tool, double pageX, double pageY)
     }
     case 25: {
       // chlorine
+      preview.clear();
       boost::uuids::uuid uuid;
       uuid = uuidGenerator();
       preview.create_node(uuid, "Cl");
@@ -411,6 +418,7 @@ void ResetPreview(std::string tool, double pageX, double pageY)
     }
     case 26: {
       // sulfur
+      preview.clear();
       boost::uuids::uuid uuid;
       uuid = uuidGenerator();
       preview.create_node(uuid, "S");
