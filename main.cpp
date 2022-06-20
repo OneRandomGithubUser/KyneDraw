@@ -427,11 +427,12 @@ std::string RetrieveAndTickSetting(std::string settingType, std::string defaultN
   emscripten::val localStorage = emscripten::val::global("localStorage");
   emscripten::val storedValue = localStorage.call<emscripten::val>("getItem", emscripten::val(settingType));
   std::string value;
-  // TODO: there seems to be a bug where visiting the webpage for the first time may result in an error
-  std::cout << storedValue.typeOf().as<std::string>() << "\n";
-  // checks if there is such a stored value: typeOf will be "object" when the emscripten::val is null
-  if (storedValue.typeOf().as<std::string>() == "string")
+  // TODO: there seems to be a bug where visiting the webpage for the first time after a long time may result in an error
+  std::cout << settingType << " exists: " << storedValue.as<bool>() << "\n";
+  // checks if there is such a stored value: .as<bool>() will be false when the emscripten::val is null
+  if (storedValue.as<bool>())
   {
+    std::cout << storedValue.as<std::string>() << "\n";
     value = storedValue.as<std::string>();
   }
   else
@@ -439,7 +440,13 @@ std::string RetrieveAndTickSetting(std::string settingType, std::string defaultN
     value = defaultName;
   }
   // appends "-button" to the end of settingType, then gets the button with that id, then ticks it
-  document.call<emscripten::val>("getElementById", emscripten::val(value + "-button")).call<void>("setAttribute", emscripten::val("checked"), emscripten::val("checked"));
+  emscripten::val button = document.call<emscripten::val>("getElementById", emscripten::val(value + "-button"));
+  if (!button.as<bool>())
+  {
+    button = document.call<emscripten::val>("getElementById", emscripten::val(defaultName + "-button"));
+    std::cout << "failsafe mechanism called\n";
+  }
+  button.call<void>("setAttribute", emscripten::val("checked"), emscripten::val("checked"));
   return value;
 }
 

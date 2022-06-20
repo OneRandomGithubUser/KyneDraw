@@ -5359,11 +5359,6 @@ var ASM_CONSTS = {
       return Emval.toHandle(v);
     }
 
-  function __emval_typeof(handle) {
-      handle = Emval.toValue(handle);
-      return Emval.toHandle(typeof handle);
-    }
-
   function _abort() {
       abort('native code called abort()');
     }
@@ -6110,7 +6105,6 @@ var asmLibraryArg = {
   "_emval_run_destructors": __emval_run_destructors,
   "_emval_set_property": __emval_set_property,
   "_emval_take_value": __emval_take_value,
-  "_emval_typeof": __emval_typeof,
   "abort": _abort,
   "emscripten_memcpy_big": _emscripten_memcpy_big,
   "emscripten_resize_heap": _emscripten_resize_heap,
@@ -6126,6 +6120,7 @@ var asmLibraryArg = {
   "invoke_diii": invoke_diii,
   "invoke_fiii": invoke_fiii,
   "invoke_i": invoke_i,
+  "invoke_id": invoke_id,
   "invoke_ii": invoke_ii,
   "invoke_iii": invoke_iii,
   "invoke_iiii": invoke_iiii,
@@ -6403,6 +6398,17 @@ function invoke_iiiidd(index,a1,a2,a3,a4,a5) {
   var sp = stackSave();
   try {
     return getWasmTableEntry(index)(a1,a2,a3,a4,a5);
+  } catch(e) {
+    stackRestore(sp);
+    if (e !== e+0) throw e;
+    _setThrew(1, 0);
+  }
+}
+
+function invoke_id(index,a1) {
+  var sp = stackSave();
+  try {
+    return getWasmTableEntry(index)(a1);
   } catch(e) {
     stackRestore(sp);
     if (e !== e+0) throw e;
