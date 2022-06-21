@@ -9,6 +9,7 @@
 
 #include <cmath>
 #include <unordered_map>
+#include <array>
 #include <boost/uuid/uuid.hpp>
 #include <boost/functional/hash.hpp>
 #include <boost/geometry.hpp>
@@ -48,7 +49,7 @@ namespace kynedraw
   class GenericNode
   {
    protected:
-    boost::uuids::uuid uuid{};
+    boost::uuids::uuid uuid;
     std::string name;
     int numBonds;
     int charge;
@@ -78,14 +79,14 @@ namespace kynedraw
   class Node : public GenericNode
   {
    protected:
-    std::unordered_map<boost::uuids::uuid, kynedraw::Bond*, boost::hash<boost::uuids::uuid>> linkedBonds;
+    std::vector<std::pair<int, kynedraw::Bond*>> linkedBonds;
     std::vector<kynedraw::VisibleNode*> linkedNodes;
    public:
     Node(boost::uuids::uuid uuid, std::string name, kynedraw::Graph& linkedGraph);
     void set_uuid(boost::uuids::uuid newUuid);
-    const std::unordered_map<boost::uuids::uuid, kynedraw::Bond*, boost::hash<boost::uuids::uuid>>& get_linked_bonds() const;
+    const std::vector<std::pair<int, kynedraw::Bond*>>& get_linked_bonds() const;
     const std::vector<kynedraw::VisibleNode*>& get_linked_nodes() const;
-    void add_bond_info(kynedraw::Bond& bond);
+    void add_bond_info(int index, kynedraw::Bond& bond);
     void remove_bond_info(kynedraw::Bond& bond);
     void merge(kynedraw::Node& node);
     void remove();
@@ -95,14 +96,14 @@ namespace kynedraw
    protected:
     double x;
     double y;
-    double predictedNextBondAngleList[3];
-    std::unordered_map<boost::uuids::uuid, kynedraw::VisibleBond*, boost::hash<boost::uuids::uuid>> linkedBonds;
+    std::array<double, 3> predictedNextBondAngleList;
+    std::vector<std::pair<int, kynedraw::VisibleBond*>> linkedBonds;
     std::vector<kynedraw::Node*> linkedNodes;
     point_rtree* rtree;
    public:
     VisibleNode(boost::uuids::uuid uuid, std::string name, double x, double y, point_rtree& rtree, kynedraw::Graph& linkedGraph);
     void set_uuid(boost::uuids::uuid newUuid);
-    const std::unordered_map<boost::uuids::uuid, kynedraw::VisibleBond*, boost::hash<boost::uuids::uuid>>& get_linked_bonds() const;
+    const std::vector<std::pair<int, kynedraw::VisibleBond*>>& get_linked_bonds() const;
     const std::vector<kynedraw::Node*>& get_linked_nodes() const;
     void set_rtree_coordinates(double initialX, double initialY, double finalX, double finalY);
     double get_x() const;
@@ -113,10 +114,9 @@ namespace kynedraw
     void set_y(double y);
     void change_x_y(double change_x, double change_y);
     void set_x_y(double x, double y);
-    void add_bond_info(kynedraw::VisibleBond& bond);
+    void add_bond_info(int index, kynedraw::VisibleBond& bond);
     void remove_bond_info(kynedraw::VisibleBond& bond);
     void merge(kynedraw::VisibleNode& node);
-    void change_linked_bond_uuid(kynedraw::VisibleBond &bond, boost::uuids::uuid newUuid);
     void remove();
   };
 
@@ -138,30 +138,33 @@ namespace kynedraw
   class Bond : public GenericBond
   {
    protected:
-    std::unordered_map<boost::uuids::uuid, kynedraw::Node*, boost::hash<boost::uuids::uuid>> linkedNodes;
+    std::array<kynedraw::Node*, 2> linkedNodes;
    public:
-    Bond(boost::uuids::uuid uuid, int numBonds, kynedraw::Node &node1, kynedraw::Node &node2, kynedraw::Graph& linkedGraph);
-    const std::unordered_map<boost::uuids::uuid, kynedraw::Node*, boost::hash<boost::uuids::uuid>>& get_linked_nodes() const;
-    void change_linked_node(boost::uuids::uuid oldUuid, boost::uuids::uuid newUuid);
-    void set_linked_node(boost::uuids::uuid oldUuid, kynedraw::Node& newNode);
+    Bond(boost::uuids::uuid uuid, int numBonds, kynedraw::Node &node0, kynedraw::Node &node1, kynedraw::Graph& linkedGraph);
+    const std::array<kynedraw::Node*, 2>& get_linked_nodes() const;
+    void set_linked_node(int index, kynedraw::Node& newNode);
     kynedraw::Node& get_first_node() const;
+    kynedraw::Node& get_first_node();
     kynedraw::Node& get_second_node() const;
-    void set_node_uuid(kynedraw::Node &visibleNode, boost::uuids::uuid newUuid);
+    kynedraw::Node& get_second_node();
     void remove();
   };
   class VisibleBond : public GenericBond
   {
    protected:
-    std::unordered_map<boost::uuids::uuid, kynedraw::VisibleNode*, boost::hash<boost::uuids::uuid>> linkedNodes;
+    double bondAngle;
+    std::array<kynedraw::VisibleNode*, 2> linkedNodes;
     segment_rtree* rtree;
    public:
-    VisibleBond(boost::uuids::uuid uuid, int numBonds, kynedraw::VisibleNode &node1, kynedraw::VisibleNode &node2, segment_rtree& rtree, kynedraw::Graph& linkedGraph);
-    const std::unordered_map<boost::uuids::uuid, kynedraw::VisibleNode*, boost::hash<boost::uuids::uuid>>& get_linked_nodes() const;
-    void change_linked_node(boost::uuids::uuid oldUuid, boost::uuids::uuid newUuid);
-    void set_linked_node(boost::uuids::uuid oldUuid, kynedraw::VisibleNode& newNode);
+    VisibleBond(boost::uuids::uuid uuid, int numBonds, kynedraw::VisibleNode &node0, kynedraw::VisibleNode &node1, segment_rtree& rtree, kynedraw::Graph& linkedGraph);
+    double get_bond_angle() const;
+    void refresh_bond_angle();
+    const std::array<kynedraw::VisibleNode*, 2>& get_linked_nodes() const;
+    void set_linked_node(int index, kynedraw::VisibleNode& newNode);
     kynedraw::VisibleNode& get_first_node() const;
+    kynedraw::VisibleNode& get_first_node();
     kynedraw::VisibleNode& get_second_node() const;
-    void set_node_uuid(kynedraw::VisibleNode &visibleNode, boost::uuids::uuid newUuid);
+    kynedraw::VisibleNode& get_second_node();
     void set_rtree_coordinates(kynedraw::VisibleNode &endpointNode, double initialX, double initialY, double finalX, double finalY);
     void remove();
   };
@@ -201,8 +204,8 @@ namespace kynedraw
                                         kynedraw::Node &node2);
     kynedraw::VisibleBond &create_visible_bond_between(boost::uuids::uuid uuid,
                                                        int numBonds,
-                                                       kynedraw::VisibleNode &node1,
-                                                       kynedraw::VisibleNode &node2);
+                                                       kynedraw::VisibleNode &node0,
+                                                       kynedraw::VisibleNode &node1);
     void set_node_uuid(kynedraw::Node &node, boost::uuids::uuid newUuid);
     void set_visible_node_uuid(kynedraw::VisibleNode &visibleNode, boost::uuids::uuid newUuid);
     void merge(Graph &graph);
