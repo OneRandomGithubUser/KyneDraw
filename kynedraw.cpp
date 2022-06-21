@@ -1,5 +1,6 @@
 #include <cmath>
 #include <unordered_map>
+#include <numbers>
 #include <boost/uuid/uuid.hpp>
 #include <boost/functional/hash.hpp>
 //#include <boost/geometry.hpp>
@@ -221,34 +222,67 @@ void kynedraw::VisibleNode::set_rtree_coordinates(double initialX, double initia
 double kynedraw::VisibleNode::get_x() const {
   return x;
 }
-void kynedraw::VisibleNode::change_x(double change_x) {
-  this->set_rtree_coordinates(x, y, x + change_x, y);
+void kynedraw::VisibleNode::change_x(double change_x, bool updateBondAngle) {
+  set_rtree_coordinates(x, y, x + change_x, y);
   x += change_x;
+  if (updateBondAngle)
+  {
+    for (auto &currentPair: linkedBonds)
+    {
+      currentPair.second->refresh_bond_angle();
+    }
+  }
 }
 void kynedraw::VisibleNode::set_x(double x) {
   this->set_rtree_coordinates(this->x, y, x, y);
   this->x = x;
+  for (auto& currentPair : linkedBonds)
+  {
+    currentPair.second->refresh_bond_angle();
+  }
 }
 double kynedraw::VisibleNode::get_y() const {
   return y;
 }
-void kynedraw::VisibleNode::change_y(double change_y) {
+void kynedraw::VisibleNode::change_y(double change_y, bool updateBondAngle) {
   this->set_rtree_coordinates(x, y, x, y + change_y);
   this->y += change_y;
+  if (updateBondAngle)
+  {
+    for (auto &currentPair: linkedBonds)
+    {
+      currentPair.second->refresh_bond_angle();
+    }
+  }
 }
 void kynedraw::VisibleNode::set_y(double y) {
   this->set_rtree_coordinates(x, this->y, x, y);
   this->y = y;
+  for (auto& currentPair : linkedBonds)
+  {
+    currentPair.second->refresh_bond_angle();
+  }
 }
-void kynedraw::VisibleNode::change_x_y(double change_x, double change_y) {
+void kynedraw::VisibleNode::change_x_y(double change_x, double change_y, bool updateBondAngle) {
   this->set_rtree_coordinates(x, y, x + change_x, y + change_y);
   x += change_x;
   y += change_y;
+  if (updateBondAngle)
+  {
+    for (auto &currentPair: linkedBonds)
+    {
+      currentPair.second->refresh_bond_angle();
+    }
+  }
 }
 void kynedraw::VisibleNode::set_x_y(double x, double y) {
   this->set_rtree_coordinates(this->x, this->y, x, y);
   this->x = x;
   this->y = y;
+  for (auto& currentPair : linkedBonds)
+  {
+    currentPair.second->refresh_bond_angle();
+  }
 }
 void kynedraw::VisibleNode::add_bond_info(int index, kynedraw::VisibleBond& bond) {
   linkedBonds.emplace_back(index, &bond);
@@ -350,14 +384,31 @@ kynedraw::VisibleBond::VisibleBond(boost::uuids::uuid uuid,
   this->linkedNodes.at(0) = &node0;
   this->linkedNodes.at(1) = &node1;
   this->rtree = &rtree;
+  refresh_bond_angle();
 }
-double kynedraw::VisibleBond::get_bond_angle() const
+double kynedraw::VisibleBond::get_bond_angle(int index) const
 {
-  return bondAngle;
+  if (index == 0)
+  {
+    return bondAngle;
+  } else if (index == 1) {
+    if (bondAngle < 180)
+    {
+      return bondAngle + 180;
+    } else {
+      return bondAngle - 180;
+    }
+  } else {
+    throw std::invalid_argument("index out of bounds");
+  }
 }
 void kynedraw::VisibleBond::refresh_bond_angle()
 {
-  bondAngle = atan2(get_first_node().get_y(), get_first_node().get_x());
+  bondAngle = atan2(get_first_node().get_y() - get_second_node().get_y(), get_second_node().get_x() - get_first_node().get_x()) * std::numbers::inv_pi*180;
+  if (bondAngle < 0)
+  {
+    bondAngle = 360+bondAngle;
+  }
 }
 const std::array<kynedraw::VisibleNode*, 2>& kynedraw::VisibleBond::get_linked_nodes() const {
   // NOTE: linkedNodes should ALWAYS only have two elements
@@ -524,7 +575,7 @@ void kynedraw::Graph::clear() {
 }
 void kynedraw::Graph::change_x_y(double changeX, double changeY) {
   for (auto&[uuid, currentVisibleNode] : visibleNodes) {
-    currentVisibleNode.change_x_y(changeX, changeY);
+    currentVisibleNode.change_x_y(changeX, changeY, false);
   }
 }
 kynedraw::VisibleNode &kynedraw::Graph::find_closest_visible_node_to(double x, double y) {

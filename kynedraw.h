@@ -107,12 +107,12 @@ namespace kynedraw
     const std::vector<kynedraw::Node*>& get_linked_nodes() const;
     void set_rtree_coordinates(double initialX, double initialY, double finalX, double finalY);
     double get_x() const;
-    void change_x(double change_x);
+    void change_x(double change_x, bool updateBondAngle);
     void set_x(double x);
     double get_y() const;
-    void change_y(double change_y);
+    void change_y(double change_y, bool updateBondAngle);
     void set_y(double y);
-    void change_x_y(double change_x, double change_y);
+    void change_x_y(double change_x, double change_y, bool updateBondAngle);
     void set_x_y(double x, double y);
     void add_bond_info(int index, kynedraw::VisibleBond& bond);
     void remove_bond_info(kynedraw::VisibleBond& bond);
@@ -157,7 +157,7 @@ namespace kynedraw
     segment_rtree* rtree;
    public:
     VisibleBond(boost::uuids::uuid uuid, int numBonds, kynedraw::VisibleNode &node0, kynedraw::VisibleNode &node1, segment_rtree& rtree, kynedraw::Graph& linkedGraph);
-    double get_bond_angle() const;
+    double get_bond_angle(int index) const;
     void refresh_bond_angle();
     const std::array<kynedraw::VisibleNode*, 2>& get_linked_nodes() const;
     void set_linked_node(int index, kynedraw::VisibleNode& newNode);
