@@ -10,6 +10,7 @@
 #include <cmath>
 #include <unordered_map>
 #include <array>
+#include <optional>
 #include <boost/uuid/uuid.hpp>
 #include <boost/functional/hash.hpp>
 #include <boost/geometry.hpp>
@@ -19,6 +20,14 @@
 
 namespace kynedraw
 {
+  namespace settings
+  {
+    namespace
+    {
+      std::string projection = "sawhorse";
+    }
+    void set_projection(std::string setProjection);
+  }
   class Graph;
   class Preview;
   class Molecule;
@@ -100,12 +109,12 @@ namespace kynedraw
     std::vector<std::pair<int, kynedraw::VisibleBond*>> linkedBonds;
     std::vector<kynedraw::Node*> linkedNodes;
     point_rtree* rtree;
+    void set_rtree_coordinates(double initialX, double initialY, double finalX, double finalY);
    public:
     VisibleNode(boost::uuids::uuid uuid, std::string name, double x, double y, point_rtree& rtree, kynedraw::Graph& linkedGraph);
     void set_uuid(boost::uuids::uuid newUuid);
     const std::vector<std::pair<int, kynedraw::VisibleBond*>>& get_linked_bonds() const;
     const std::vector<kynedraw::Node*>& get_linked_nodes() const;
-    void set_rtree_coordinates(double initialX, double initialY, double finalX, double finalY);
     double get_x() const;
     void change_x(double change_x, bool updateBondAngle);
     void set_x(double x);
@@ -114,6 +123,8 @@ namespace kynedraw
     void set_y(double y);
     void change_x_y(double change_x, double change_y, bool updateBondAngle);
     void set_x_y(double x, double y);
+    void refresh_predicted_next_bond_angle_list();
+    double get_predicted_next_bond_angle(int newNumBonds);
     void add_bond_info(int index, kynedraw::VisibleBond& bond);
     void remove_bond_info(kynedraw::VisibleBond& bond);
     void merge(kynedraw::VisibleNode& node);
@@ -216,10 +227,14 @@ namespace kynedraw
   };
   class Preview : public Graph {
    protected:
-    kynedraw::VisibleNode *mouseNode;
+    kynedraw::VisibleNode* mouseNode;
+    std::optional<kynedraw::VisibleBond*> mouseBond;
    public:
-    kynedraw::VisibleNode &get_mouse_node() const;
-    void set_mouse_node(kynedraw::VisibleNode &mouseNode);
+    kynedraw::VisibleNode& get_mouse_node() const;
+    void set_mouse_node(kynedraw::VisibleNode& mouseNode);
+    const std::optional<kynedraw::VisibleBond*>& get_mouse_bond() const;
+    void set_mouse_bond(kynedraw::VisibleBond& mouseBond);
+    void clear();
   };
 }
 

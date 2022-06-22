@@ -311,11 +311,12 @@ void ResetPreview(std::string tool, double pageX, double pageY)
       kynedraw::Node& node2 = preview.create_node(uuid, "C");
       kynedraw::VisibleNode& visibleNode2 = preview.create_visible_node(uuid,
                                                                         "C",
-                                                                        pageX + kynedraw::settings::BOND_LENGTH * std::cos(pi * 11 / 6),
-                                                                        pageY + kynedraw::settings::BOND_LENGTH * std::sin(pi * 11 / 6));
+                                                                        pageX + kynedraw::settings::BOND_LENGTH * std::cos(pi * kynedraw::settings::FRAME_COUNT / 6),
+                                                                        pageY + kynedraw::settings::BOND_LENGTH * std::sin(pi * kynedraw::settings::FRAME_COUNT / 6));
       uuid = uuidGenerator();
       preview.create_bond_between(uuid, 1, node1, node2);
-      preview.create_visible_bond_between(uuid, 1, visibleNode1, visibleNode2);
+      auto& visibleBond = preview.create_visible_bond_between(uuid, 1, visibleNode1, visibleNode2);
+      preview.set_mouse_bond(visibleBond);
       break;
     }
     case 11: {
@@ -334,7 +335,8 @@ void ResetPreview(std::string tool, double pageX, double pageY)
                                                                         pageY + kynedraw::settings::BOND_LENGTH * std::sin(pi * 11 / 6));
       uuid = uuidGenerator();
       preview.create_bond_between(uuid, 2, node1, node2);
-      preview.create_visible_bond_between(uuid, 2, visibleNode1, visibleNode2);
+      auto& visibleBond = preview.create_visible_bond_between(uuid, 2, visibleNode1, visibleNode2);
+      preview.set_mouse_bond(visibleBond);
       break;
     }
     case 12: {
@@ -353,7 +355,8 @@ void ResetPreview(std::string tool, double pageX, double pageY)
                                                                         pageY + kynedraw::settings::BOND_LENGTH * std::sin(pi * 11 / 6));
       uuid = uuidGenerator();
       preview.create_bond_between(uuid, 3, node1, node2);
-      preview.create_visible_bond_between(uuid, 3, visibleNode1, visibleNode2);
+      auto& visibleBond = preview.create_visible_bond_between(uuid, 3, visibleNode1, visibleNode2);
+      preview.set_mouse_bond(visibleBond);
       break;
     }
     case 20: {
@@ -435,8 +438,6 @@ std::string RetrieveAndTickSetting(std::string settingType, std::string defaultN
   emscripten::val localStorage = emscripten::val::global("localStorage");
   emscripten::val storedValue = localStorage.call<emscripten::val>("getItem", emscripten::val(settingType));
   std::string value;
-  // TODO: there seems to be a bug where visiting the webpage for the first time after a long time may result in an error
-  std::cout << settingType << " exists: " << storedValue.as<bool>() << "\n";
   // checks if there is such a stored value: .as<bool>() will be false when the emscripten::val is null
   if (storedValue.as<bool>())
   {
@@ -452,7 +453,7 @@ std::string RetrieveAndTickSetting(std::string settingType, std::string defaultN
   if (!button.as<bool>())
   {
     button = document.call<emscripten::val>("getElementById", emscripten::val(defaultName + "-button"));
-    std::cout << "failsafe mechanism called\n";
+    value = defaultName;
   }
   button.call<void>("setAttribute", emscripten::val("checked"), emscripten::val("checked"));
   return value;
@@ -506,6 +507,10 @@ void UpdateNetworkPosition(double pageX, double pageY, bool mouseIsPressed, doub
         previewMouseNode.set_uuid(closestVisibleNode.get_uuid());
         preview.change_x_y(closestVisibleNode.get_x() - previewMouseNode.get_x(),
                            closestVisibleNode.get_y() - previewMouseNode.get_y());
+        if (preview.get_mouse_bond().has_value())
+        {
+          std::cout << closestVisibleNode.get_predicted_next_bond_angle(preview.get_mouse_bond().value()->get_num_bonds()) << "\n";
+        }
       }
     } else {
       // the mouse node is not within snapping distance of any visible node
