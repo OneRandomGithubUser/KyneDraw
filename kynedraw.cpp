@@ -294,18 +294,18 @@ void kynedraw::VisibleNode::set_x_y(double x, double y) {
 }
 void kynedraw::VisibleNode::refresh_predicted_next_bond_angle_list() {
   static std::vector<std::vector<int>> defaultSectorOrdering = {
-          {0, 8, 4, 7},
-          {1, 6, 10, 2},
-          {2, 10, 6, 1},
+          {11, 7, 3, 8},
+          {10, 2, 6, 3},
+          {9, 1, 5, 2},
+          {8, 3, 11, 7},
+          {7, 11, 3, 8},
+          {6, 10, 2, 11},
+          {5, 1, 9, 2},
+          {4, 8, 0, 9},
           {3, 7, 11, 8},
-          {4, 6, 0, 7},
-          {5, 1, 4, 0},
-          {6, 2, 10, 1},
-          {7, 0, 4, 8},
-          {8, 4, 0, 7},
-          {9, 5, 1, 4},
-          {10, 2, 6, 1},
-          {11, 7, 3, 6}
+          {2, 9, 5, 1},
+          {1, 5, 9, 2},
+          {0, 8, 4, 7}
   };
   std::vector<double> bondAngles;
   double averageBondAngleFromSector;
@@ -313,19 +313,11 @@ void kynedraw::VisibleNode::refresh_predicted_next_bond_angle_list() {
   for (auto& [index, bondPointer] : linkedBonds)
   {
     double bondAngle = bondPointer->get_bond_angle(index);
-    std::cout << bondAngle << " ";
     bondAngles.emplace_back(bondAngle);
-    int closestSector;
-    if (bondAngle < 15)
-    {
-      closestSector = std::round((bondAngle+345)/30);
-    } else {
-      closestSector = std::round((bondAngle-15)/30);
-    }
+    int closestSector =((int) std::round(bondAngle/30)) % 12;
     bondSectors.emplace_back(closestSector);
     averageBondAngleFromSector += (bondAngle - closestSector*30);
   }
-  std::cout << "\n";
   averageBondAngleFromSector /= (bondSectors.size());
   if (kynedraw::settings::projection == "sawhorse")
   {
@@ -354,7 +346,7 @@ void kynedraw::VisibleNode::refresh_predicted_next_bond_angle_list() {
       if (predefinedSectorOrdering != defaultSectorOrdering.end())
       {
         // the bondSectors are in a pattern that defaultSectorOrdering defines the next addition to
-        double predictedNextAngle = predefinedSectorOrdering->at(bondSectors.size() + 1) + averageBondAngleFromSector;
+        double predictedNextAngle = predefinedSectorOrdering->at(bondSectors.size()) * 30 + averageBondAngleFromSector;
         predictedNextBondAngleList = {predictedNextAngle, predictedNextAngle, predictedNextAngle};
         found = true;
       }
@@ -380,11 +372,11 @@ void kynedraw::VisibleNode::refresh_predicted_next_bond_angle_list() {
     if (bondSectors.size() == 1)
     {
       // linear alkynes
-      predictedNextBondAngleList.at(2) = bondAngles.at(0) + 180;
+      predictedNextBondAngleList.at(2) = std::fmod(bondAngles.at(0) + 180, 360);
       if (numBonds == 2)
       {
         // linear allenes
-        predictedNextBondAngleList.at(1) = bondAngles.at(0) + 180;
+        predictedNextBondAngleList.at(1) = std::fmod(bondAngles.at(0) + 180, 360);
       }
     }
   }
@@ -526,7 +518,8 @@ void kynedraw::VisibleBond::refresh_bond_angle()
   bondAngle = atan2(get_first_node().get_y() - get_second_node().get_y(), get_second_node().get_x() - get_first_node().get_x()) * std::numbers::inv_pi*180;
   if (bondAngle < 0)
   {
-    bondAngle = 360+bondAngle;
+    // bond angle will be in the range [-180, 180] so this will change the range to [0, 360)
+    bondAngle += 360;
   }
 }
 const std::array<kynedraw::VisibleNode*, 2>& kynedraw::VisibleBond::get_linked_nodes() const {

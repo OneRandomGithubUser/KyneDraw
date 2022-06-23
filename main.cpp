@@ -509,7 +509,7 @@ void UpdateNetworkPosition(double pageX, double pageY, bool mouseIsPressed, doub
                            closestVisibleNode.get_y() - previewMouseNode.get_y());
         if (preview.get_mouse_bond().has_value())
         {
-          std::cout << closestVisibleNode.get_predicted_next_bond_angle(preview.get_mouse_bond().value()->get_num_bonds()) << "\n";
+          std::cout << closestVisibleNode.get_predicted_next_bond_angle(preview.get_mouse_bond().value()->get_num_bonds()-1) << "\n";
         }
       }
     } else {
