@@ -93,8 +93,8 @@ namespace kynedraw
    public:
     Node(boost::uuids::uuid uuid, std::string name, kynedraw::Graph& linkedGraph);
     void set_uuid(boost::uuids::uuid newUuid);
-    const std::vector<std::pair<int, kynedraw::Bond*>>& get_linked_bonds() const;
-    const std::vector<kynedraw::VisibleNode*>& get_linked_nodes() const;
+    const std::vector<std::pair<int, kynedraw::Bond*>>& get_linked_bonds();
+    const std::vector<kynedraw::VisibleNode*>& get_linked_nodes();
     void add_bond_info(int index, kynedraw::Bond& bond);
     void remove_bond_info(kynedraw::Bond& bond);
     void merge(kynedraw::Node& node);
@@ -113,8 +113,9 @@ namespace kynedraw
    public:
     VisibleNode(boost::uuids::uuid uuid, std::string name, double x, double y, point_rtree& rtree, kynedraw::Graph& linkedGraph);
     void set_uuid(boost::uuids::uuid newUuid);
-    const std::vector<std::pair<int, kynedraw::VisibleBond*>>& get_linked_bonds() const;
-    const std::vector<kynedraw::Node*>& get_linked_nodes() const;
+    const std::vector<std::pair<int, kynedraw::VisibleBond*>>& get_linked_bonds();
+    std::vector<kynedraw::VisibleNode*> get_branch_including(kynedraw::VisibleBond& bond);
+    const std::vector<kynedraw::Node*>& get_linked_nodes();
     double get_x() const;
     void change_x(double change_x, bool updateBondAngle);
     void set_x(double x);
@@ -152,12 +153,10 @@ namespace kynedraw
     std::array<kynedraw::Node*, 2> linkedNodes;
    public:
     Bond(boost::uuids::uuid uuid, int numBonds, kynedraw::Node &node0, kynedraw::Node &node1, kynedraw::Graph& linkedGraph);
-    const std::array<kynedraw::Node*, 2>& get_linked_nodes() const;
+    const std::array<kynedraw::Node*, 2>& get_linked_nodes();
     void set_linked_node(int index, kynedraw::Node& newNode);
-    kynedraw::Node& get_first_node() const;
-    kynedraw::Node& get_first_node();
-    kynedraw::Node& get_second_node() const;
-    kynedraw::Node& get_second_node();
+    kynedraw::Node& get_node(int index) const;
+    kynedraw::Node& get_node(int index);
     void remove();
   };
   class VisibleBond : public GenericBond
@@ -166,16 +165,15 @@ namespace kynedraw
     double bondAngle;
     std::array<kynedraw::VisibleNode*, 2> linkedNodes;
     segment_rtree* rtree;
+    void get_branch_starting_at_helper(std::vector<kynedraw::VisibleNode*>& ans, kynedraw::VisibleNode* startingNodePointer);
    public:
     VisibleBond(boost::uuids::uuid uuid, int numBonds, kynedraw::VisibleNode &node0, kynedraw::VisibleNode &node1, segment_rtree& rtree, kynedraw::Graph& linkedGraph);
     double get_bond_angle(int index) const;
     void refresh_bond_angle();
-    const std::array<kynedraw::VisibleNode*, 2>& get_linked_nodes() const;
+    const std::array<kynedraw::VisibleNode*, 2>& get_linked_nodes();
     void set_linked_node(int index, kynedraw::VisibleNode& newNode);
-    kynedraw::VisibleNode& get_first_node() const;
-    kynedraw::VisibleNode& get_first_node();
-    kynedraw::VisibleNode& get_second_node() const;
-    kynedraw::VisibleNode& get_second_node();
+    kynedraw::VisibleNode& get_node(int index) const;
+    kynedraw::VisibleNode& get_node(int index);
     void set_rtree_coordinates(kynedraw::VisibleNode &endpointNode, double initialX, double initialY, double finalX, double finalY);
     void remove();
   };

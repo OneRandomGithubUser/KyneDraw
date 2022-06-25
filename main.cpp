@@ -192,8 +192,8 @@ void Render(kynedraw::Graph& graph, emscripten::val canvas)
   ctx.call<void>("beginPath");
   for (const auto& [uuid, currentVisibleBond] : graph.get_visible_bonds())
   {
-    kynedraw::VisibleNode& firstNode = currentVisibleBond.get_first_node();
-    kynedraw::VisibleNode& secondNode = currentVisibleBond.get_second_node();
+    kynedraw::VisibleNode& firstNode = currentVisibleBond.get_node(0);
+    kynedraw::VisibleNode& secondNode = currentVisibleBond.get_node(1);
     ctx.call<void>("moveTo", firstNode.get_x(), firstNode.get_y());
     ctx.call<void>("lineTo", secondNode.get_x(), secondNode.get_y());
   }
