@@ -479,7 +479,7 @@ void ClickButton(emscripten::val event)
 
 void UpdateNetworkPosition(double pageX, double pageY, bool mouseIsPressed, double mouseDownPageX, double mouseDownPageY)
 {
-  static double previousPageX, previousPageY = 0.0;
+  static double previousPageX, previousPageY, previousRotate = 0.0;
   static bool snappedToNode = false;
 
   if (mouseIsPressed)
@@ -510,8 +510,13 @@ void UpdateNetworkPosition(double pageX, double pageY, bool mouseIsPressed, doub
         if (preview.get_mouse_bond().has_value())
         {
           kynedraw::VisibleBond& previewMouseBond = *(preview.get_mouse_bond().value());
-          std::cout << closestVisibleNode.get_predicted_next_bond_angle(preview.get_mouse_bond().value()->get_num_bonds()-1) << "\n";
-          previewMouseBond.rotate_branch_about(previewMouseNode, 30);
+          auto linkedNodes = previewMouseBond.get_linked_nodes();
+          auto nodePair = std::find_if(linkedNodes.begin(), linkedNodes.end(),
+                                       [&previewMouseNode](auto& currentNodePair) {return currentNodePair.second == &previewMouseNode;});
+          double currentRotation = previewMouseBond.get_bond_angle(nodePair->first);
+          double newRotation = closestVisibleNode.get_predicted_next_bond_angle(preview.get_mouse_bond().value()->get_num_bonds()-1);
+          previousRotate = newRotation - currentRotation;
+          previewMouseBond.rotate_branch_about(previewMouseNode, previousRotate);
         }
       }
     } else {
@@ -523,6 +528,11 @@ void UpdateNetworkPosition(double pageX, double pageY, bool mouseIsPressed, doub
         // no need to check this if network size is 0 since there's no way to exit a node if there aren't any nodes in the first place
         previewMouseNode.set_uuid(uuidGenerator());
         preview.change_x_y(pageX-previewMouseNode.get_x(), pageY-previewMouseNode.get_y());
+        if (preview.get_mouse_bond().has_value())
+        {
+          kynedraw::VisibleBond& previewMouseBond = *(preview.get_mouse_bond().value());
+          previewMouseBond.rotate_branch_about(previewMouseNode, -previousRotate);
+        }
       }
     }
   }

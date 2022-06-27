@@ -190,12 +190,13 @@ void kynedraw::VisibleNode::get_branch_helper(std::vector<kynedraw::VisibleNode*
     if (otherNodePointer == loopDetectNode)
     {
       // a loop has been found
-      if (this == loopIgnoreNode)
+      if (this != loopIgnoreNode)
       {
-        return;
-      } else {
         ans.clear();
         loopDetected = true;
+        return;
+      } else {
+        continue;
       }
     }
     if (std::find_if(ans.begin(), ans.end(),
@@ -334,6 +335,17 @@ void kynedraw::VisibleNode::set_x_y(double x, double y) {
     currentPair.second->refresh_bond_angle();
   }
 }
+void kynedraw::VisibleNode::change_predicted_next_bond_angle_list(double changeDegrees)
+{
+  for (auto& angle : predictedNextBondAngleList)
+  {
+    angle = std::fmod((angle + changeDegrees), 360);
+    if (angle < 0)
+    {
+      angle += 360;
+    }
+  }
+}
 void kynedraw::VisibleNode::refresh_predicted_next_bond_angle_list() {
   static std::vector<std::vector<int>> defaultSectorOrdering = {
           {11, 7, 3, 8},
@@ -350,13 +362,13 @@ void kynedraw::VisibleNode::refresh_predicted_next_bond_angle_list() {
           {0, 8, 4, 7}
   };
   std::vector<double> bondAngles;
-  double averageBondAngleFromSector;
+  double averageBondAngleFromSector = 0.0;
   std::vector<int> bondSectors;
   for (auto& [index, bondPointer] : linkedBonds)
   {
     double bondAngle = bondPointer->get_bond_angle(index);
     bondAngles.emplace_back(bondAngle);
-    int closestSector =((int) std::round(bondAngle/30)) % 12;
+    int closestSector = ((int) std::round(bondAngle/30)) % 12;
     bondSectors.emplace_back(closestSector);
     averageBondAngleFromSector += (bondAngle - closestSector*30);
   }
@@ -398,6 +410,7 @@ void kynedraw::VisibleNode::refresh_predicted_next_bond_angle_list() {
       std::sort(bondAngles.begin(), bondAngles.end());
       double biggestGap = 360 - bondAngles.back() + bondAngles.front();
       std::pair<int, int> biggestGapIndex = std::make_pair(0, bondAngles.size() - 1);
+      bool found = false;
       for (int i = 0; i < bondAngles.size() - 1; ++i)
       {
         double gap = bondAngles.at(i+1) - bondAngles.at(i);
@@ -405,9 +418,16 @@ void kynedraw::VisibleNode::refresh_predicted_next_bond_angle_list() {
         {
           biggestGap = gap;
           biggestGapIndex = std::make_pair(i, i+1);
+          found = true;
         }
       }
-      double predictedNextAngle = bondAngles.at(biggestGapIndex.first) + biggestGap/2;
+      double predictedNextAngle;
+      if (found)
+      {
+        predictedNextAngle = bondAngles.at(biggestGapIndex.first) + biggestGap/2;
+      } else {
+        predictedNextAngle = bondAngles.at(biggestGapIndex.second) + biggestGap/2;
+      }
       predictedNextBondAngleList = {predictedNextAngle, predictedNextAngle, predictedNextAngle};
       // TODO: use biggestGapIndex to determine render ordering and determine what to do when some angles are the same
     }
@@ -444,7 +464,7 @@ void kynedraw::VisibleNode::merge(kynedraw::VisibleNode& sacrificialNode)
 {
   // NOTE: this tolerance of 0.1% is to account for floating point errors and can be adjusted as necessary
   // it shouldn't be important since they should have exactly the same coordinates anyways
-  // this is why it uses a box rather than a circle to check their coordinates as the exact shape doesn't matter
+  // this is why it uses a quick axial box rather than a slower circle to check their coordinates as the exact shape doesn't matter
   if (abs(x-sacrificialNode.get_x())/(x) > 0.001 || abs(y-sacrificialNode.get_y())/(y) > 0.001)
   {
     throw std::invalid_argument("tried to merge visibleNodes with different positions");
@@ -456,6 +476,7 @@ void kynedraw::VisibleNode::merge(kynedraw::VisibleNode& sacrificialNode)
     bondPointer->set_linked_node(nodeIndexInBond, linkedBonds.size() - 1, *this);
   }
   sacrificialNode.linkedBonds.clear();
+  // NOTE: this next for loop is technically not necessary because they should be in the same location anyways
   for (auto& currentPair : linkedBonds)
   {
     currentPair.second->refresh_bond_angle();
@@ -574,6 +595,7 @@ void kynedraw::VisibleBond::set_linked_node(int nodeIndexInBond, int bondIndexIn
     throw std::invalid_argument("nodeIndexInBond out of bounds");
   }
   linkedNodes.at(nodeIndexInBond) = std::make_pair(bondIndexInNode, &newNode);
+  refresh_bond_angle();
 }
 kynedraw::VisibleNode& kynedraw::VisibleBond::get_node(int index) const
 {
@@ -593,7 +615,7 @@ kynedraw::VisibleNode& kynedraw::VisibleBond::get_node(int index)
     throw std::invalid_argument("index of get_node of bond out of bounds");
   }
 }
-void kynedraw::VisibleBond::rotate_branch_about(kynedraw::VisibleNode& node, int degrees)
+void kynedraw::VisibleBond::rotate_branch_about(kynedraw::VisibleNode& node, double degrees)
 {
   auto nodePair = std::find_if(linkedNodes.begin(), linkedNodes.end(),
                               [&node](auto& currentNodePair) {return currentNodePair.second == &node;});
@@ -602,7 +624,6 @@ void kynedraw::VisibleBond::rotate_branch_about(kynedraw::VisibleNode& node, int
     throw std::invalid_argument("node not in bond");
   } else {
     auto branch = node.get_branch_including(nodePair->first, *this);
-    std::cout << "size " << branch.size() << "\n";
     for (auto &nodePointer: branch)
     {
       double x = nodePointer->get_x() - node.get_x();
@@ -610,7 +631,9 @@ void kynedraw::VisibleBond::rotate_branch_about(kynedraw::VisibleNode& node, int
       double s = std::sin(degrees * std::numbers::pi / 180);
       double c = std::cos(degrees * std::numbers::pi / 180);
       nodePointer->set_x_y(node.get_x() + x * c + y * s, node.get_y() + y * c - x * s);
+      nodePointer->refresh_predicted_next_bond_angle_list();
     }
+    node.refresh_predicted_next_bond_angle_list();
   }
 }
 void kynedraw::VisibleBond::set_rtree_coordinates(kynedraw::VisibleNode &changingNode, double initialX, double initialY, double finalX, double finalY) {
@@ -679,6 +702,7 @@ kynedraw::VisibleNode &kynedraw::Graph::create_visible_node(boost::uuids::uuid u
   kynedraw::VisibleNode newNode(uuid, name, pageX, pageY, points, *this);
   points.insert(std::make_pair(point(pageX, pageY), uuid));
   kynedraw::VisibleNode &insertedNode = visibleNodes.try_emplace(uuid, newNode).first->second;
+  insertedNode.refresh_predicted_next_bond_angle_list();
   return insertedNode;
 }
 kynedraw::Bond &kynedraw::Graph::create_bond_between(boost::uuids::uuid uuid,
@@ -701,10 +725,10 @@ kynedraw::VisibleBond &kynedraw::Graph::create_visible_bond_between(boost::uuids
   VisibleBond &insertedBond = visibleBonds.try_emplace(uuid, newBond).first->second;
   int bondIndexInNode0 = node0.add_bond_info(0, insertedBond);
   int bondIndexInNode1 = node1.add_bond_info(1, insertedBond);
-  node0.refresh_predicted_next_bond_angle_list();
-  node1.refresh_predicted_next_bond_angle_list();
   insertedBond.set_linked_node(0, bondIndexInNode0, node0);
   insertedBond.set_linked_node(1, bondIndexInNode1, node1);
+  node0.refresh_predicted_next_bond_angle_list();
+  node1.refresh_predicted_next_bond_angle_list();
                        segments.insert(std::make_pair(segment(point(node0.get_x(), node0.get_y()), point(node1.get_x(), node1.get_y())),
                                  uuid));
   return insertedBond;

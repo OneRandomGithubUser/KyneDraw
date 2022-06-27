@@ -125,6 +125,7 @@ namespace kynedraw
     void set_y(double y);
     void change_x_y(double change_x, double change_y, bool updateBondAngle);
     void set_x_y(double x, double y);
+    void change_predicted_next_bond_angle_list(double changeDegrees);
     void refresh_predicted_next_bond_angle_list();
     double get_predicted_next_bond_angle(int newNumBonds);
     int add_bond_info(int bondIndexInNode, kynedraw::VisibleBond& bond);
@@ -174,7 +175,7 @@ namespace kynedraw
     void set_linked_node(int nodeIndexInBond, int bondIndexInNode, kynedraw::VisibleNode& newNode);
     kynedraw::VisibleNode& get_node(int index) const;
     kynedraw::VisibleNode& get_node(int index);
-    void rotate_branch_about(kynedraw::VisibleNode& node, int degrees);
+    void rotate_branch_about(kynedraw::VisibleNode& node, double degrees);
     void set_rtree_coordinates(kynedraw::VisibleNode &endpointNode, double initialX, double initialY, double finalX, double finalY);
     void remove();
   };
