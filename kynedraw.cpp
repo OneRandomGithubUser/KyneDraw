@@ -122,16 +122,13 @@ void kynedraw::GenericNode::smart_set_name(std::string newName) {
   int oldValence = get_valency();
   name = newName;
   int changeValence = oldValence - get_valency();
-  std::cout << changeValence << "\n";
   numH -= changeValence;
   refresh_internal_vars();
 }
 void kynedraw::GenericNode::smart_change_num_bonds(int changeNumBonds) {
-  std::cout << "before" << numBonds << "after ";
   numBonds += changeNumBonds;
   numH -= changeNumBonds;
   refresh_internal_vars();
-  std::cout << numBonds << "\n";
 }
 bool kynedraw::GenericNode::operator==(const kynedraw::GenericNode &rhs) const noexcept {
   return uuid == rhs.uuid;
@@ -150,7 +147,6 @@ void kynedraw::GenericNode::merge
   {
     smart_set_name(sacrificialNode.get_name());
   }
-  std::cout << sacrificialNode.get_num_bonds() << "\n";
   smart_change_num_bonds(sacrificialNode.get_num_bonds());
 }
 kynedraw::Node::Node(boost::uuids::uuid uuid, std::string name, kynedraw::Graph& linkedGraph) : GenericNode(uuid, name, linkedGraph)
@@ -164,42 +160,71 @@ void kynedraw::Node::set_uuid(boost::uuids::uuid newUuid) {
 const std::vector<std::pair<int, kynedraw::Bond*>>& kynedraw::Node::get_linked_bonds() {
   return linkedBonds;
 }
-std::vector<kynedraw::VisibleNode*> kynedraw::VisibleBond::get_branch_including(kynedraw::VisibleBond& bond)
+std::vector<kynedraw::VisibleNode*> kynedraw::VisibleNode::get_branch_including(int nodeIndexInBond, kynedraw::VisibleBond& bond)
 {
-  auto bondPair = std::find_if(linkedNodes.begin(), linkedNodes.end(),
-                                    [&linkedBonds](auto& currentNodePointer) {return currentNodePointer == nodePointer;});
-  if (otherNode == linkedNodes.end())
+  auto bondLinkedNodes = bond.get_linked_nodes();
+  if (bondLinkedNodes.at(nodeIndexInBond).second != this)
   {
-    throw std::invalid_argument("node not in bond");
+    throw std::invalid_argument("node not in bond at specified position");
   } else {
-    std::vector<kynedraw::VisibleNode*> ans = {*otherNode};
-    get_branch_starting_at_helper(ans, nodePointer);
+    auto otherNodePointer = bondLinkedNodes.at((nodeIndexInBond + 1) % 2).second;
+    std::vector<kynedraw::VisibleNode*> ans;
+    bool loopDetected = false;
+    kynedraw::VisibleNode* loopDetectNode = this;
+    otherNodePointer->get_branch_helper(ans, loopDetected, loopDetectNode, otherNodePointer);
+    return ans;
   }
 }
-void kynedraw::VisibleBond::get_branch_including_helper(std::vector<kynedraw::VisibleNode*>& ans, kynedraw::VisibleNode* startingNodePointer)
+// TODO: change get_nodes() of bond to only return nodes
+void kynedraw::VisibleNode::get_branch_helper(std::vector<kynedraw::VisibleNode*>& ans, bool& loopDetected, kynedraw::VisibleNode*& loopDetectNode, kynedraw::VisibleNode*& loopIgnoreNode)
 {
-  auto linkedBonds = (*otherNode)->get_linked_bonds();
+  if (loopDetected)
+  {
+    return;
+  } else {
+    ans.emplace_back(this);
+  }
+  for (auto& [nodeIndexInBond, bondPointer] : linkedBonds)
+  {
+    auto otherNodePointer = bondPointer->get_linked_nodes().at((nodeIndexInBond + 1) % 2).second;
+    if (otherNodePointer == loopDetectNode)
+    {
+      // a loop has been found
+      if (this == loopIgnoreNode)
+      {
+        return;
+      } else {
+        ans.clear();
+        loopDetected = true;
+      }
+    }
+    if (std::find_if(ans.begin(), ans.end(),
+                     [&otherNodePointer](auto& currentNodePointer) {return currentNodePointer == otherNodePointer;})
+                     == ans.end())
+    {
+      otherNodePointer->get_branch_helper(ans, loopDetected, loopDetectNode, loopIgnoreNode);
+    }
+  }
 }
 const std::vector<kynedraw::VisibleNode *>& kynedraw::Node::get_linked_nodes() {
   return linkedNodes;
 }
-void kynedraw::Node::add_bond_info(int index, kynedraw::Bond& bond) {
-  linkedBonds.emplace_back(index, &bond);
+int kynedraw::Node::add_bond_info(int bondIndexInNode, kynedraw::Bond& bond) {
+  linkedBonds.emplace_back(bondIndexInNode, &bond);
   smart_change_num_bonds(bond.get_num_bonds());
+  return linkedBonds.size() - 1;
 }
-// TODO: use this std::find_if in a separate function to return the pair of a bond in linkedBonds, if it exists
-void kynedraw::Node::remove_bond_info(kynedraw::Bond& bond) {
-  linkedBonds.erase(std::find_if(linkedBonds.begin(), linkedBonds.end(),
-                                 [&bond](auto& currentPair) {return currentPair.second == &bond;}));
+void kynedraw::Node::remove_bond_info(int nodeIndexInBond, kynedraw::Bond& bond) {
+  linkedBonds.erase(linkedBonds.begin() + nodeIndexInBond);
   smart_change_num_bonds(-bond.get_num_bonds());
 }
 void kynedraw::Node::merge(kynedraw::Node& sacrificialNode)
 {
   this->kynedraw::GenericNode::merge(sacrificialNode);
-  for (auto& [index, bondPointer] : sacrificialNode.linkedBonds)
+  for (auto& [nodeIndexInBond, bondPointer] : sacrificialNode.linkedBonds)
   {
-    bondPointer->set_linked_node(index, *this);
-    linkedBonds.emplace_back(index, bondPointer);
+    linkedBonds.emplace_back(nodeIndexInBond, bondPointer);
+    bondPointer->set_linked_node(nodeIndexInBond, linkedBonds.size() - 1, *this);
   }
   sacrificialNode.linkedBonds.clear();
 }
@@ -406,13 +431,13 @@ double kynedraw::VisibleNode::get_predicted_next_bond_angle(int newNumBonds)
   }
   return predictedNextBondAngleList.at(newNumBonds);
 }
-void kynedraw::VisibleNode::add_bond_info(int index, kynedraw::VisibleBond& bond) {
-  linkedBonds.emplace_back(index, &bond);
+int kynedraw::VisibleNode::add_bond_info(int bondIndexInNode, kynedraw::VisibleBond& bond) {
+  linkedBonds.emplace_back(bondIndexInNode, &bond);
   smart_change_num_bonds(bond.get_num_bonds());
+  return linkedBonds.size() - 1;
 }
-void kynedraw::VisibleNode::remove_bond_info(kynedraw::VisibleBond& bond) {
-  linkedBonds.erase(std::find_if(linkedBonds.begin(), linkedBonds.end(),
-                              [&bond](auto& currentPair) {return currentPair.second == &bond;}));
+void kynedraw::VisibleNode::remove_bond_info(int nodeIndexInBond, kynedraw::VisibleBond& bond) {
+  linkedBonds.erase(linkedBonds.begin() + nodeIndexInBond);
   smart_change_num_bonds(-bond.get_num_bonds());
 }
 void kynedraw::VisibleNode::merge(kynedraw::VisibleNode& sacrificialNode)
@@ -425,10 +450,10 @@ void kynedraw::VisibleNode::merge(kynedraw::VisibleNode& sacrificialNode)
     throw std::invalid_argument("tried to merge visibleNodes with different positions");
   }
   this->kynedraw::GenericNode::merge(sacrificialNode);
-  for (auto& [index, bondPointer] : sacrificialNode.linkedBonds)
+  for (auto& [nodeIndexInBond, bondPointer] : sacrificialNode.linkedBonds)
   {
-    bondPointer->set_linked_node(index, *this);
-    linkedBonds.emplace_back(index, bondPointer);
+    linkedBonds.emplace_back(nodeIndexInBond, bondPointer);
+    bondPointer->set_linked_node(nodeIndexInBond, linkedBonds.size() - 1, *this);
   }
   sacrificialNode.linkedBonds.clear();
   for (auto& currentPair : linkedBonds)
@@ -464,26 +489,27 @@ int kynedraw::GenericBond::get_num_bonds() const {
 }
 kynedraw::Bond::Bond(boost::uuids::uuid uuid,
                                    int numBonds,
-                                   kynedraw::Node &node0,
-                                   kynedraw::Node &node1,
                                    kynedraw::Graph& linkedGraph) : GenericBond(uuid, numBonds, linkedGraph)
 {
-  this->linkedNodes.at(0) = &node0;
-  this->linkedNodes.at(1) = &node1;
+  //
 }
-const std::array<kynedraw::Node*, 2>& kynedraw::Bond::get_linked_nodes() {
+const std::array<std::pair<int, kynedraw::Node*>, 2>& kynedraw::Bond::get_linked_nodes() {
   // NOTE: linkedNodes should ALWAYS only have two elements
   return linkedNodes;
 }
-void kynedraw::Bond::set_linked_node(int index, kynedraw::Node& newNode)
+void kynedraw::Bond::set_linked_node(int nodeIndexInBond, int bondIndexInNode, kynedraw::Node& newNode)
 {
-  linkedNodes.at(index) = &newNode;
+  if (nodeIndexInBond != 0 && nodeIndexInBond != 1)
+  {
+    throw std::invalid_argument("nodeIndexInBond out of bounds");
+  }
+  linkedNodes.at(nodeIndexInBond) = std::make_pair(bondIndexInNode, &newNode);
 }
 kynedraw::Node& kynedraw::Bond::get_node(int index) const
 {
   if (index == 0 || index == 1)
   {
-    return *(linkedNodes.at(index));
+    return *(linkedNodes.at(index).second);
   } else {
     throw std::invalid_argument("index of get_node of bond out of bounds");
   }
@@ -492,27 +518,23 @@ kynedraw::Node& kynedraw::Bond::get_node(int index)
 {
   if (index == 0 || index == 1)
   {
-    return *(linkedNodes.at(index));
+    return *(linkedNodes.at(index).second);
   } else {
     throw std::invalid_argument("index of get_node of bond out of bounds");
   }
 }
 void kynedraw::Bond::remove() {
-  for (auto& nodePointer : linkedNodes)
+  for (auto& [bondIndexInNode, nodePointer] : linkedNodes)
   {
-    nodePointer->remove_bond_info(*this);
+    nodePointer->remove_bond_info(bondIndexInNode, *this);
   }
   linkedGraph->remove_bond(*this);
 }
 kynedraw::VisibleBond::VisibleBond(boost::uuids::uuid uuid,
                                    int numBonds,
-                                   kynedraw::VisibleNode &node0,
-                                   kynedraw::VisibleNode &node1,
                                    segment_rtree &rtree,
                                    kynedraw::Graph& linkedGraph) : GenericBond(uuid, numBonds, linkedGraph)
 {
-  this->linkedNodes.at(0) = &node0;
-  this->linkedNodes.at(1) = &node1;
   this->rtree = &rtree;
   refresh_bond_angle();
 }
@@ -541,19 +563,23 @@ void kynedraw::VisibleBond::refresh_bond_angle()
     bondAngle += 360;
   }
 }
-const std::array<kynedraw::VisibleNode*, 2>& kynedraw::VisibleBond::get_linked_nodes() {
+const std::array<std::pair<int, kynedraw::VisibleNode*>, 2>& kynedraw::VisibleBond::get_linked_nodes() {
   // NOTE: linkedNodes should ALWAYS only have two elements
   return linkedNodes;
 }
-void kynedraw::VisibleBond::set_linked_node(int index, kynedraw::VisibleNode& newNode)
+void kynedraw::VisibleBond::set_linked_node(int nodeIndexInBond, int bondIndexInNode, kynedraw::VisibleNode& newNode)
 {
-  linkedNodes.at(index) = &newNode;
+  if (nodeIndexInBond != 0 && nodeIndexInBond != 1)
+  {
+    throw std::invalid_argument("nodeIndexInBond out of bounds");
+  }
+  linkedNodes.at(nodeIndexInBond) = std::make_pair(bondIndexInNode, &newNode);
 }
 kynedraw::VisibleNode& kynedraw::VisibleBond::get_node(int index) const
 {
   if (index == 0 || index == 1)
   {
-    return *(linkedNodes.at(index));
+    return *(linkedNodes.at(index).second);
   } else {
     throw std::invalid_argument("index of get_node of bond out of bounds");
   }
@@ -562,17 +588,35 @@ kynedraw::VisibleNode& kynedraw::VisibleBond::get_node(int index)
 {
   if (index == 0 || index == 1)
   {
-    return *(linkedNodes.at(index));
+    return *(linkedNodes.at(index).second);
   } else {
     throw std::invalid_argument("index of get_node of bond out of bounds");
   }
 }
-void kynedraw::VisibleBond::rotate_about(kynedraw::VisibleNode& node)
+void kynedraw::VisibleBond::rotate_branch_about(kynedraw::VisibleNode& node, int degrees)
 {
+  auto nodePair = std::find_if(linkedNodes.begin(), linkedNodes.end(),
+                              [&node](auto& currentNodePair) {return currentNodePair.second == &node;});
+  if (nodePair == linkedNodes.end())
+  {
+    throw std::invalid_argument("node not in bond");
+  } else {
+    auto branch = node.get_branch_including(nodePair->first, *this);
+    std::cout << "size " << branch.size() << "\n";
+    for (auto &nodePointer: branch)
+    {
+      double x = nodePointer->get_x() - node.get_x();
+      double y = nodePointer->get_y() - node.get_y();
+      double s = std::sin(degrees * std::numbers::pi / 180);
+      double c = std::cos(degrees * std::numbers::pi / 180);
+      nodePointer->set_x_y(node.get_x() + x * c + y * s, node.get_y() + y * c - x * s);
+    }
+  }
 }
 void kynedraw::VisibleBond::set_rtree_coordinates(kynedraw::VisibleNode &changingNode, double initialX, double initialY, double finalX, double finalY) {
-  for (auto& nodePointer : linkedNodes)
+  for (auto& currentPair : linkedNodes)
   {
+    auto nodePointer = currentPair.second;
     if (*nodePointer != changingNode)
     {
       // nodePointer is the other node, preserve its coordinates
@@ -597,9 +641,9 @@ void kynedraw::VisibleBond::set_rtree_coordinates(kynedraw::VisibleNode &changin
 }
 void kynedraw::VisibleBond::remove()
 {
-  for (auto& nodePointer : linkedNodes)
+  for (auto& [bondIndexInNode, nodePointer] : linkedNodes)
   {
-    nodePointer->remove_bond_info(*this);
+    nodePointer->remove_bond_info(bondIndexInNode, *this);
   }
   kynedraw::VisibleNode& node0 = get_node(0);
   kynedraw::VisibleNode& node1 = get_node(1);
@@ -641,23 +685,27 @@ kynedraw::Bond &kynedraw::Graph::create_bond_between(boost::uuids::uuid uuid,
                                                      int numBonds,
                                                      kynedraw::Node &node0,
                                                      kynedraw::Node &node1) {
-  kynedraw::Bond newBond(uuid, numBonds, node0, node1, *this);
+  kynedraw::Bond newBond(uuid, numBonds, *this);
   kynedraw::Bond &insertedBond = bonds.try_emplace(uuid, newBond).first->second;
-  node0.add_bond_info(0, insertedBond);
-  node1.add_bond_info(1, insertedBond);
+  int bondIndexInNode0 = node0.add_bond_info(0, insertedBond);
+  int bondIndexInNode1 = node1.add_bond_info(1, insertedBond);
+  insertedBond.set_linked_node(0, bondIndexInNode0, node0);
+  insertedBond.set_linked_node(1, bondIndexInNode1, node1);
   return insertedBond;
 }
 kynedraw::VisibleBond &kynedraw::Graph::create_visible_bond_between(boost::uuids::uuid uuid,
                                                                     int numBonds,
                                                                     kynedraw::VisibleNode &node0,
                                                                     kynedraw::VisibleNode &node1) {
-  kynedraw::VisibleBond newBond(uuid, numBonds, node0, node1, segments, *this);
+  kynedraw::VisibleBond newBond(uuid, numBonds, segments, *this);
   VisibleBond &insertedBond = visibleBonds.try_emplace(uuid, newBond).first->second;
-  node0.add_bond_info(0, insertedBond);
-  node1.add_bond_info(1, insertedBond);
+  int bondIndexInNode0 = node0.add_bond_info(0, insertedBond);
+  int bondIndexInNode1 = node1.add_bond_info(1, insertedBond);
   node0.refresh_predicted_next_bond_angle_list();
   node1.refresh_predicted_next_bond_angle_list();
-  segments.insert(std::make_pair(segment(point(node0.get_x(), node0.get_y()), point(node1.get_x(), node1.get_y())),
+  insertedBond.set_linked_node(0, bondIndexInNode0, node0);
+  insertedBond.set_linked_node(1, bondIndexInNode1, node1);
+                       segments.insert(std::make_pair(segment(point(node0.get_x(), node0.get_y()), point(node1.get_x(), node1.get_y())),
                                  uuid));
   return insertedBond;
 }

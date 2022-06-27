@@ -182,6 +182,7 @@ std::string bondSnapSetting;
 
 kynedraw::Graph network;
 kynedraw::Preview preview;
+
 void Render(kynedraw::Graph& graph, emscripten::val canvas)
 {
   const static std::string subscript[10] = {"₀","₁","₂","₃","₄","₅","₆","₇","₈","₉"};
@@ -441,7 +442,6 @@ std::string RetrieveAndTickSetting(std::string settingType, std::string defaultN
   // checks if there is such a stored value: .as<bool>() will be false when the emscripten::val is null
   if (storedValue.as<bool>())
   {
-    std::cout << storedValue.as<std::string>() << "\n";
     value = storedValue.as<std::string>();
   }
   else
@@ -509,7 +509,9 @@ void UpdateNetworkPosition(double pageX, double pageY, bool mouseIsPressed, doub
                            closestVisibleNode.get_y() - previewMouseNode.get_y());
         if (preview.get_mouse_bond().has_value())
         {
+          kynedraw::VisibleBond& previewMouseBond = *(preview.get_mouse_bond().value());
           std::cout << closestVisibleNode.get_predicted_next_bond_angle(preview.get_mouse_bond().value()->get_num_bonds()-1) << "\n";
+          previewMouseBond.rotate_branch_about(previewMouseNode, 30);
         }
       }
     } else {
