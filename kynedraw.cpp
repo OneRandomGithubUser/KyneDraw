@@ -335,17 +335,6 @@ void kynedraw::VisibleNode::set_x_y(double x, double y) {
     currentPair.second->refresh_bond_angle();
   }
 }
-void kynedraw::VisibleNode::change_predicted_next_bond_angle_list(double changeDegrees)
-{
-  for (auto& angle : predictedNextBondAngleList)
-  {
-    angle = std::fmod((angle + changeDegrees), 360);
-    if (angle < 0)
-    {
-      angle += 360;
-    }
-  }
-}
 void kynedraw::VisibleNode::refresh_predicted_next_bond_angle_list() {
   static std::vector<std::vector<int>> defaultSectorOrdering = {
           {11, 7, 3, 8},
@@ -556,6 +545,7 @@ kynedraw::VisibleBond::VisibleBond(boost::uuids::uuid uuid,
                                    segment_rtree &rtree,
                                    kynedraw::Graph& linkedGraph) : GenericBond(uuid, numBonds, linkedGraph)
 {
+  offsetXY.resize(numBonds, std::make_pair(0.0, 0.0));
   this->rtree = &rtree;
   refresh_bond_angle();
 }

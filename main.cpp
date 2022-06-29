@@ -515,8 +515,9 @@ void UpdateNetworkPosition(double pageX, double pageY, bool mouseIsPressed, doub
                                        [&previewMouseNode](auto& currentNodePair) {return currentNodePair.second == &previewMouseNode;});
           double currentRotation = previewMouseBond.get_bond_angle(nodePair->first);
           double newRotation = closestVisibleNode.get_predicted_next_bond_angle(preview.get_mouse_bond().value()->get_num_bonds()-1);
-          previousRotate = newRotation - currentRotation;
-          previewMouseBond.rotate_branch_about(previewMouseNode, previousRotate);
+          previousRotate = std::fmod(previousRotate + newRotation - currentRotation, 360);
+          std::cout << "in" << previousRotate << "\n";
+          previewMouseBond.rotate_branch_about(previewMouseNode, newRotation - currentRotation);
         }
       }
     } else {
@@ -532,6 +533,7 @@ void UpdateNetworkPosition(double pageX, double pageY, bool mouseIsPressed, doub
         {
           kynedraw::VisibleBond& previewMouseBond = *(preview.get_mouse_bond().value());
           previewMouseBond.rotate_branch_about(previewMouseNode, -previousRotate);
+          previousRotate = 0.0;
         }
       }
     }

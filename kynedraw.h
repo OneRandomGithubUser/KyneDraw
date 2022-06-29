@@ -125,7 +125,6 @@ namespace kynedraw
     void set_y(double y);
     void change_x_y(double change_x, double change_y, bool updateBondAngle);
     void set_x_y(double x, double y);
-    void change_predicted_next_bond_angle_list(double changeDegrees);
     void refresh_predicted_next_bond_angle_list();
     double get_predicted_next_bond_angle(int newNumBonds);
     int add_bond_info(int bondIndexInNode, kynedraw::VisibleBond& bond);
@@ -166,6 +165,7 @@ namespace kynedraw
    protected:
     double bondAngle;
     std::array<std::pair<int, kynedraw::VisibleNode*>, 2> linkedNodes;
+    std::vector<std::pair<double, double>> offsetXY;
     segment_rtree* rtree;
    public:
     VisibleBond(boost::uuids::uuid uuid, int numBonds, segment_rtree& rtree, kynedraw::Graph& linkedGraph);
