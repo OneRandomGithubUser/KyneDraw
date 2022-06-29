@@ -479,7 +479,7 @@ void ClickButton(emscripten::val event)
 
 void UpdateNetworkPosition(double pageX, double pageY, bool mouseIsPressed, double mouseDownPageX, double mouseDownPageY)
 {
-  static double previousPageX, previousPageY, previousRotate = 0.0;
+  static double previousPageX, previousPageY, previousMouseBondAngle = 0.0;
   static bool snappedToNode = false;
 
   if (mouseIsPressed)
@@ -503,7 +503,6 @@ void UpdateNetworkPosition(double pageX, double pageY, bool mouseIsPressed, doub
       // the mouse node is withing snapping distance of a visible node
       if (previewMouseNode.get_uuid() != closestVisibleNode.get_uuid()) {
         // The preview mouse node does not have the same UUID as the closestVisibleNode, so snap the mouse node to the closestVisibleNode
-        snappedToNode = true;
         previewMouseNode.set_uuid(closestVisibleNode.get_uuid());
         preview.change_x_y(closestVisibleNode.get_x() - previewMouseNode.get_x(),
                            closestVisibleNode.get_y() - previewMouseNode.get_y());
@@ -515,10 +514,15 @@ void UpdateNetworkPosition(double pageX, double pageY, bool mouseIsPressed, doub
                                        [&previewMouseNode](auto& currentNodePair) {return currentNodePair.second == &previewMouseNode;});
           double currentRotation = previewMouseBond.get_bond_angle(nodePair->first);
           double newRotation = closestVisibleNode.get_predicted_next_bond_angle(preview.get_mouse_bond().value()->get_num_bonds()-1);
-          previousRotate = std::fmod(previousRotate + newRotation - currentRotation, 360);
-          std::cout << "in" << previousRotate << "\n";
+          std::cout << "in" << currentRotation << "\n";
           previewMouseBond.rotate_branch_about(previewMouseNode, newRotation - currentRotation);
+          if (!snappedToNode)
+          {
+            // NOTE: this assumes that any ResetPreview does not change the angle of the mouse bond
+            previousMouseBondAngle = currentRotation;
+          }
         }
+        snappedToNode = true;
       }
     } else {
       // the mouse node is not within snapping distance of any visible node
@@ -532,8 +536,13 @@ void UpdateNetworkPosition(double pageX, double pageY, bool mouseIsPressed, doub
         if (preview.get_mouse_bond().has_value())
         {
           kynedraw::VisibleBond& previewMouseBond = *(preview.get_mouse_bond().value());
-          previewMouseBond.rotate_branch_about(previewMouseNode, -previousRotate);
-          previousRotate = 0.0;
+          auto linkedNodes = previewMouseBond.get_linked_nodes();
+          auto nodePair = std::find_if(linkedNodes.begin(), linkedNodes.end(),
+                                       [&previewMouseNode](auto& currentNodePair) {return currentNodePair.second == &previewMouseNode;});
+          double currentRotation = previewMouseBond.get_bond_angle(nodePair->first);
+          previewMouseBond.rotate_branch_about(previewMouseNode, previousMouseBondAngle - currentRotation);
+          previousMouseBondAngle = 0.0;
+          std::cout << "out\n";
         }
       }
     }
@@ -577,7 +586,8 @@ void InteractWithCanvas(emscripten::val event)
     network.merge(preview);
     mouseIsPressed = false;
     ResetPreview(selectedTool, pageX, pageY);
-    // move the resetted preview to the appropriate snapping location
+    // move the resetted preview to the appropriate snapping location twice so that it correctly determines that the preview has been reset, then moves it to the correct location
+    UpdateNetworkPosition(pageX, pageY, mouseIsPressed, mouseDownPageX, mouseDownPageY);
     UpdateNetworkPosition(pageX, pageY, mouseIsPressed, mouseDownPageX, mouseDownPageY);
     window.call<void>("requestAnimationFrame", emscripten::val::module_property("RenderBackground"));
   }
