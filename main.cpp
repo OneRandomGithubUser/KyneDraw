@@ -39,8 +39,11 @@ namespace kynedraw
     double DEADZONE_RADIUS = 5;
     double BOND_LENGTH = 50;
     double MOUSE_SNAP_RADIUS = 15;
-    double AUTO_SNAP_RADIUS = 5;
+    double DESTINATION_SNAP_RADIUS = 5;
     bool SHOW_CARBONS = false;
+    bool SNAP_ANGLES;
+    bool SNAP_BOND_LENGTHS;
+    std::string SELECTED_TOOL;
     double NODE_LABEL_MARGIN = 2;
   }
 }
@@ -177,8 +180,6 @@ const std::unordered_map<std::string, int> buttonIDs = {
 };
 const double pi = std::numbers::pi;
 boost::uuids::random_generator uuidGenerator;
-std::string selectedTool;
-std::string bondSnapSetting;
 
 kynedraw::Graph network;
 kynedraw::Preview preview;
@@ -288,15 +289,20 @@ void StoreSelectedTool(emscripten::val event)
 
 void AddBondSnapButtonEventListener(emscripten::val element, emscripten::val index, emscripten::val array)
 {
-  element.call<void>("addEventListener", emscripten::val("mouseup"), emscripten::val::module_property("StoreBondSnapSetting"));
+  element.call<void>("addEventListener", emscripten::val("mouseup"), emscripten::val::module_property("StoreAngleSnapSetting"));
+  element.call<void>("addEventListener", emscripten::val("mouseup"), emscripten::val::module_property("StoreBondLengthSnapSetting"));
 }
 
-void StoreBondSnapSetting(emscripten::val event)
+void StoreAngleSnapSetting(emscripten::val event)
 {
   emscripten::val localStorage = emscripten::val::global("localStorage");
-  localStorage.call<void>("setItem", emscripten::val("bondSnapSetting"), event["target"]["id"]);
+  localStorage.call<void>("setItem", emscripten::val("snapAngles"), event["target"]["id"]);
 }
-
+void StoreBondLengthSnapSetting(emscripten::val event)
+{
+  emscripten::val localStorage = emscripten::val::global("localStorage");
+  localStorage.call<void>("setItem", emscripten::val("snapBondLengths"), event["target"]["id"]);
+}
 void ResetPreview(std::string tool, double pageX, double pageY)
 {
   switch (buttonIDs.at(tool)) {
@@ -461,91 +467,151 @@ std::string RetrieveAndTickSetting(std::string settingType, std::string defaultN
 
 void InitializeAllSettings()
 {
-  selectedTool = RetrieveAndTickSetting("selectedTool", "single");
-  bondSnapSetting = RetrieveAndTickSetting("bondSnapSetting", "freeform");
+  kynedraw::settings::SELECTED_TOOL = RetrieveAndTickSetting("selectedTool", "single");
+  std::string angleSnapSetting = RetrieveAndTickSetting("snapAngles", "snap");
+  angleSnapSetting == "snap" ? kynedraw::settings::SNAP_ANGLES = true : kynedraw::settings::SNAP_ANGLES = false;
+  std::string bondLengthSnapSetting = RetrieveAndTickSetting("snapBondLengths", "snap");
+  bondLengthSnapSetting == "snap" ? kynedraw::settings::SNAP_BOND_LENGTHS = true : kynedraw::settings::SNAP_BOND_LENGTHS = false;
 
   // initialize the selectedTool to (0,0) because that is what static double previousPageX, previousPageY in UpdateNetworkPosition is initialized to
-  ResetPreview(selectedTool, 0, 0);
+  ResetPreview(kynedraw::settings::SELECTED_TOOL, 0, 0);
 }
 
 void ClickButton(emscripten::val event)
 {
   emscripten::val window = emscripten::val::global("window");
-  selectedTool = event["target"]["id"].as<std::string>();
-  ResetPreview(selectedTool, event["pageX"].as<double>(), event["pageY"].as<double>());
+  kynedraw::settings::SELECTED_TOOL = event["target"]["id"].as<std::string>();
+  ResetPreview(kynedraw::settings::SELECTED_TOOL, event["pageX"].as<double>(), event["pageY"].as<double>());
   window.call<void>("requestAnimationFrame", emscripten::val::module_property("RenderForeground"));
   event.call<void>("stopPropagation");
 }
 
 void UpdateNetworkPosition(double pageX, double pageY, bool mouseIsPressed, double mouseDownPageX, double mouseDownPageY)
 {
-  static double previousPageX, previousPageY, previousMouseBondAngle = 0.0;
-  static bool snappedToNode = false;
-
-  if (mouseIsPressed)
-  {
-    if (sqrt(pow(mouseDownPageX-pageX, 2) + pow(mouseDownPageY-pageY, 2)) < kynedraw::settings::DEADZONE_RADIUS)
-    {
-      // TODO: rotate the preview when the mouse is dragged outside of the deadzone
-    }
-  } else if (!snappedToNode) {
-    preview.change_x_y(pageX - previousPageX, pageY - previousPageY);
-  }
+  static double previousPageX, previousPageY, previousMouseBondAngle, previousMouseBondLength = 0.0;
+  static kynedraw::VisibleNode* previousSnappedNode = nullptr;
 
   // NOTE: this assumes that previewMouseNode exists. If for some reason, preview is allowed to be empty, the next line will probably throw errors
   kynedraw::VisibleNode& previewMouseNode = preview.get_mouse_node();
   if (network.get_visible_nodes().size() != 0)
   {
-    // a node to snap to exists
-    kynedraw::VisibleNode& closestVisibleNode = network.find_closest_visible_node_to(pageX, pageY);
-    if (sqrt(pow(closestVisibleNode.get_x()-pageX,2) + pow(closestVisibleNode.get_y()-pageY,2)) < kynedraw::settings::MOUSE_SNAP_RADIUS)
-    {
-      // the mouse node is withing snapping distance of a visible node
-      if (previewMouseNode.get_uuid() != closestVisibleNode.get_uuid()) {
-        // The preview mouse node does not have the same UUID as the closestVisibleNode, so snap the mouse node to the closestVisibleNode
-        previewMouseNode.set_uuid(closestVisibleNode.get_uuid());
-        preview.change_x_y(closestVisibleNode.get_x() - previewMouseNode.get_x(),
-                           closestVisibleNode.get_y() - previewMouseNode.get_y());
-        if (preview.get_mouse_bond().has_value())
-        {
-          kynedraw::VisibleBond& previewMouseBond = *(preview.get_mouse_bond().value());
-          auto linkedNodes = previewMouseBond.get_linked_nodes();
-          auto nodePair = std::find_if(linkedNodes.begin(), linkedNodes.end(),
-                                       [&previewMouseNode](auto& currentNodePair) {return currentNodePair.second == &previewMouseNode;});
-          double currentRotation = previewMouseBond.get_bond_angle(nodePair->first);
-          double newRotation = closestVisibleNode.get_predicted_next_bond_angle(preview.get_mouse_bond().value()->get_num_bonds()-1);
-          std::cout << "in" << currentRotation << "\n";
-          previewMouseBond.rotate_branch_about(previewMouseNode, newRotation - currentRotation);
-          if (!snappedToNode)
-          {
-            // NOTE: this assumes that any ResetPreview does not change the angle of the mouse bond
-            previousMouseBondAngle = currentRotation;
+    kynedraw::VisibleNode &closestVisibleNode = network.find_closest_visible_node_to(pageX, pageY);
+    if (mouseIsPressed) {
+      if (previousSnappedNode && preview.get_mouse_bond().has_value() && sqrt(pow(mouseDownPageX-pageX, 2) + pow(mouseDownPageY-pageY, 2)) >= kynedraw::settings::DEADZONE_RADIUS)
+      {
+        kynedraw::VisibleBond &previewMouseBond = *(preview.get_mouse_bond().value());
+        auto linkedNodes = previewMouseBond.get_linked_nodes();
+        auto nodePair = std::find_if(linkedNodes.begin(), linkedNodes.end(),
+                                     [&previewMouseNode](auto &currentNodePair) {
+                                       return currentNodePair.second == &previewMouseNode;
+                                     });
+        double currentRotation = previewMouseBond.get_bond_angle(nodePair->first);
+        double newRotation;
+        double currentLength = previewMouseBond.get_bond_length();
+        double newLength;
+        if (kynedraw::settings::SNAP_BOND_LENGTHS && kynedraw::settings::SNAP_ANGLES &&
+            &closestVisibleNode != previousSnappedNode && sqrt(pow(closestVisibleNode.get_x() - pageX, 2) +
+            pow(closestVisibleNode.get_y() - pageY, 2)) < kynedraw::settings::MOUSE_SNAP_RADIUS) {
+          // there is a node within snapping distance of the mouse that is not the previousSnappedNode, so snap to that node
+          newRotation = std::atan2(previousSnappedNode->get_y() - closestVisibleNode.get_y(),
+                                   closestVisibleNode.get_x() - previousSnappedNode->get_x())
+                                           * std::numbers::inv_pi * 180;
+          newLength = sqrt(pow(closestVisibleNode.get_x() - previousSnappedNode->get_x(), 2) + pow(closestVisibleNode.get_y() - previousSnappedNode->get_y(), 2));
+        } else {
+          newRotation = std::atan2(previousSnappedNode->get_y() - pageY, pageX - previousSnappedNode->get_x()) *
+                               std::numbers::inv_pi * 180;
+          if (kynedraw::settings::SNAP_ANGLES) {
+            newRotation = std::round(newRotation / 30) * 30;
           }
+          newLength = kynedraw::settings::BOND_LENGTH;
         }
-        snappedToNode = true;
+        double changeRotation = newRotation - currentRotation;
+        if (changeRotation != 0.0)
+        {
+          previewMouseBond.rotate_branch_about(previewMouseNode, changeRotation);
+        }
+
+        std::cout << newLength << " " << currentLength << "\n";
+        double changeLength = newLength - currentLength;
+        if (changeLength != 0.0)
+        {
+          previewMouseBond.extend_branch_from(previewMouseNode, changeLength);
+        }
+        // TODO: add SNAP_BOND_LENGTHS functionality
       }
     } else {
-      // the mouse node is not within snapping distance of any visible node
-      if (snappedToNode)
-      {
-        snappedToNode = false;
-        // the mouse node still has the same uuid as the node it was snapped to in the previous frame, so change its position and its uuid
-        // no need to check this if network size is 0 since there's no way to exit a node if there aren't any nodes in the first place
-        previewMouseNode.set_uuid(uuidGenerator());
-        preview.change_x_y(pageX-previewMouseNode.get_x(), pageY-previewMouseNode.get_y());
-        if (preview.get_mouse_bond().has_value())
-        {
-          kynedraw::VisibleBond& previewMouseBond = *(preview.get_mouse_bond().value());
-          auto linkedNodes = previewMouseBond.get_linked_nodes();
-          auto nodePair = std::find_if(linkedNodes.begin(), linkedNodes.end(),
-                                       [&previewMouseNode](auto& currentNodePair) {return currentNodePair.second == &previewMouseNode;});
-          double currentRotation = previewMouseBond.get_bond_angle(nodePair->first);
-          previewMouseBond.rotate_branch_about(previewMouseNode, previousMouseBondAngle - currentRotation);
-          previousMouseBondAngle = 0.0;
-          std::cout << "out\n";
+      // a node to snap to exists
+      if (sqrt(pow(closestVisibleNode.get_x() - pageX, 2) + pow(closestVisibleNode.get_y() - pageY, 2)) <
+          kynedraw::settings::MOUSE_SNAP_RADIUS) {
+        // the mouse node is withing snapping distance of a visible node
+        if (previewMouseNode.get_uuid() != closestVisibleNode.get_uuid()) {
+          // The preview mouse node does not have the same UUID as the closestVisibleNode, so snap the mouse node to the closestVisibleNode
+          previewMouseNode.set_uuid(closestVisibleNode.get_uuid());
+          preview.change_x_y(closestVisibleNode.get_x() - previewMouseNode.get_x(),
+                             closestVisibleNode.get_y() - previewMouseNode.get_y());
+          if (preview.get_mouse_bond().has_value()) {
+            kynedraw::VisibleBond &previewMouseBond = *(preview.get_mouse_bond().value());
+            auto linkedNodes = previewMouseBond.get_linked_nodes();
+            auto nodePair = std::find_if(linkedNodes.begin(), linkedNodes.end(),
+                                         [&previewMouseNode](auto &currentNodePair) {
+                                           return currentNodePair.second == &previewMouseNode;
+                                         });
+            double currentRotation = previewMouseBond.get_bond_angle(nodePair->first);
+            double newRotation = closestVisibleNode.get_predicted_next_bond_angle(
+                    preview.get_mouse_bond().value()->get_num_bonds() - 1);
+            double changeRotation = newRotation - currentRotation;
+            if (changeRotation != 0.0)
+            {
+              previewMouseBond.rotate_branch_about(previewMouseNode, changeRotation);
+            }
+            previousMouseBondLength = previewMouseBond.get_bond_length();
+            if (!previousSnappedNode) {
+              // NOTE: this assumes that any ResetPreview does not change the angle of the mouse bond
+              previousMouseBondAngle = currentRotation;
+            }
+          }
+          previousSnappedNode = &closestVisibleNode;
+        }
+      } else {
+        // the mouse node is not within snapping distance of any visible node
+        if (previousSnappedNode) {
+          previousSnappedNode = nullptr;
+          // the mouse node still has the same uuid as the node it was snapped to in the previous frame, so change its position and its uuid
+          // no need to check this if network size is 0 since there's no way to exit a node if there aren't any nodes in the first place
+          previewMouseNode.set_uuid(uuidGenerator());
+          preview.change_x_y(pageX - previewMouseNode.get_x(), pageY - previewMouseNode.get_y());
+          if (preview.get_mouse_bond().has_value()) {
+            kynedraw::VisibleBond &previewMouseBond = *(preview.get_mouse_bond().value());
+            auto linkedNodes = previewMouseBond.get_linked_nodes();
+            auto nodePair = std::find_if(linkedNodes.begin(), linkedNodes.end(),
+                                         [&previewMouseNode](auto &currentNodePair) {
+                                           return currentNodePair.second == &previewMouseNode;
+                                         });
+
+            double currentRotation = previewMouseBond.get_bond_angle(nodePair->first);
+            double changeRotation = previousMouseBondAngle - currentRotation;
+            if (changeRotation != 0.0)
+            {
+              previewMouseBond.rotate_branch_about(previewMouseNode, changeRotation);
+            }
+            previousMouseBondAngle = 0.0;
+
+
+            double currentLength = previewMouseBond.get_bond_length();
+            double changeLength = previousMouseBondLength - currentLength;
+            if (changeLength != 0.0)
+            {
+              previewMouseBond.extend_branch_from(previewMouseNode, changeLength);
+            }
+            previousMouseBondLength = 0.0;
+          }
+        } else {
+          preview.change_x_y(pageX - previousPageX, pageY - previousPageY);
         }
       }
     }
+  } else {
+    preview.change_x_y(pageX - previousPageX, pageY - previousPageY);
   }
   if (network.get_visible_bonds().size() != 0)
   {
@@ -585,7 +651,7 @@ void InteractWithCanvas(emscripten::val event)
      * have been merged */
     network.merge(preview);
     mouseIsPressed = false;
-    ResetPreview(selectedTool, pageX, pageY);
+    ResetPreview(kynedraw::settings::SELECTED_TOOL, pageX, pageY);
     // move the resetted preview to the appropriate snapping location twice so that it correctly determines that the preview has been reset, then moves it to the correct location
     UpdateNetworkPosition(pageX, pageY, mouseIsPressed, mouseDownPageX, mouseDownPageY);
     UpdateNetworkPosition(pageX, pageY, mouseIsPressed, mouseDownPageX, mouseDownPageY);
@@ -654,5 +720,6 @@ EMSCRIPTEN_BINDINGS(bindings)\
   emscripten::function("AddToolButtonEventListener", AddToolButtonEventListener);\
   emscripten::function("StoreSelectedTool", StoreSelectedTool);\
   emscripten::function("AddBondSnapButtonEventListener", AddBondSnapButtonEventListener);\
-  emscripten::function("StoreBondSnapSetting", StoreBondSnapSetting);\
+  emscripten::function("StoreAngleSnapSetting", StoreAngleSnapSetting);\
+  emscripten::function("StoreBondLengthSnapSetting", StoreBondLengthSnapSetting);\
 };

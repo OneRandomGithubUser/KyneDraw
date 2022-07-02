@@ -574,6 +574,10 @@ void kynedraw::VisibleBond::refresh_bond_angle()
     bondAngle += 360;
   }
 }
+double kynedraw::VisibleBond::get_bond_length() const
+{
+  return sqrt(pow(get_node(0).get_x() - get_node(1).get_x(), 2) + pow(get_node(0).get_y() - get_node(1).get_y(), 2));
+}
 const std::array<std::pair<int, kynedraw::VisibleNode*>, 2>& kynedraw::VisibleBond::get_linked_nodes() {
   // NOTE: linkedNodes should ALWAYS only have two elements
   return linkedNodes;
@@ -624,6 +628,25 @@ void kynedraw::VisibleBond::rotate_branch_about(kynedraw::VisibleNode& node, dou
       nodePointer->refresh_predicted_next_bond_angle_list();
     }
     node.refresh_predicted_next_bond_angle_list();
+  }
+}
+void kynedraw::VisibleBond::extend_branch_from(kynedraw::VisibleNode& node, double length)
+{
+  auto nodePair = std::find_if(linkedNodes.begin(), linkedNodes.end(),
+                               [&node](auto& currentNodePair) {return currentNodePair.second == &node;});
+  if (nodePair == linkedNodes.end())
+  {
+    throw std::invalid_argument("node not in bond");
+  } else {
+    double bondAngle = get_bond_angle(nodePair->first) / 180.0 * std::numbers::pi;
+    auto branch = node.get_branch_including(nodePair->first, *this);
+    double x = std::cos(bondAngle) * length;
+    double y = -std::sin(bondAngle) * length;
+    std::cout << bondAngle << " " << length << " " << x << " " << y << "\n";
+    for (auto &nodePointer: branch)
+    {
+      nodePointer->change_x_y(x, y, false);
+    }
   }
 }
 void kynedraw::VisibleBond::set_rtree_coordinates(kynedraw::VisibleNode &changingNode, double initialX, double initialY, double finalX, double finalY) {

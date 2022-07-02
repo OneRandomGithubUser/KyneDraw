@@ -171,11 +171,13 @@ namespace kynedraw
     VisibleBond(boost::uuids::uuid uuid, int numBonds, segment_rtree& rtree, kynedraw::Graph& linkedGraph);
     double get_bond_angle(int index) const;
     void refresh_bond_angle();
+    double get_bond_length() const;
     const std::array<std::pair<int, kynedraw::VisibleNode*>, 2>& get_linked_nodes();
     void set_linked_node(int nodeIndexInBond, int bondIndexInNode, kynedraw::VisibleNode& newNode);
     kynedraw::VisibleNode& get_node(int index) const;
     kynedraw::VisibleNode& get_node(int index);
     void rotate_branch_about(kynedraw::VisibleNode& node, double degrees);
+    void extend_branch_from(kynedraw::VisibleNode& node, double length);
     void set_rtree_coordinates(kynedraw::VisibleNode &endpointNode, double initialX, double initialY, double finalX, double finalY);
     void remove();
   };
