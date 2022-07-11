@@ -167,6 +167,8 @@ namespace kynedraw
     std::array<std::pair<int, kynedraw::VisibleNode*>, 2> linkedNodes;
     std::vector<std::pair<double, double>> offsetXY;
     segment_rtree* rtree;
+    void rotate_branch_about_helper(std::vector<VisibleNode*> branch, kynedraw::VisibleNode& node, double radians);
+    void extend_branch_from_helper(std::vector<VisibleNode*> branch, std::pair<int, VisibleNode*>& nodePair, double length);
    public:
     VisibleBond(boost::uuids::uuid uuid, int numBonds, segment_rtree& rtree, kynedraw::Graph& linkedGraph);
     double get_bond_angle(int index) const;
@@ -178,6 +180,8 @@ namespace kynedraw
     kynedraw::VisibleNode& get_node(int index);
     void rotate_branch_about(kynedraw::VisibleNode& node, double degrees);
     void extend_branch_from(kynedraw::VisibleNode& node, double length);
+    void set_branch_coordinates_relative_to(kynedraw::VisibleNode& node, double newX, double newY);
+    void snap_branch_to(kynedraw::VisibleNode& pivotNode, kynedraw::VisibleNode& snapNode);
     void set_rtree_coordinates(kynedraw::VisibleNode &endpointNode, double initialX, double initialY, double finalX, double finalY);
     void remove();
   };

@@ -15,10 +15,10 @@
         <div class="warning">JavaScript must be enabled to use KyneDraw. I can't do this all in HTML!</div>
       </noscript>
       <div id="error"><p>An error has occurred. Please send <a href="https://github.com/OneRandomGithubUser/KyneDraw/issues/new">a bug report</a> including a screenshot as well as what had just happened that caused the error. Thank you!</p></div>
-      <div>
         <canvas class="canvas" id="canvas-background"></canvas>
         <canvas class="canvas" id="canvas-foreground"></canvas>
       </div>
+      <div>
       <!-- Radio buttons adapted from https://stackoverflow.com/a/16243163 -->
       <div id="ui">
         <div class="dropdown">
@@ -26,11 +26,11 @@
           <div class="dropdown-content">
             <div class="selectable-button square">
               <input type="radio" name="tool-selection-button" id="single-button" />
-                <label for="single-button" id="single">SINGLE BOND</label>
+                <label data-button-type="tool-selection-button" for="single-button" id="single">SINGLE BOND</label>
               <input type="radio" name="tool-selection-button" id="double-button" />
-                <label for="double-button" id="double">DOUBLE BOND</label>
+                <label data-button-type="tool-selection-button" for="double-button" id="double">DOUBLE BOND</label>
               <input type="radio" name="tool-selection-button" id="triple-button" />
-                <label for="triple-button" id="triple">TRIPLE BOND</label>
+                <label data-button-type="tool-selection-button" for="triple-button" id="triple">TRIPLE BOND</label>
             </div>
           </div>
         </div>
@@ -39,17 +39,17 @@
           <div class="dropdown-content">
             <div class="selectable-button square">
               <input type="radio" name="tool-selection-button" id="carbon-button" />
-                <label for="carbon-button" id="carbon" class="atomLabel">C</label>
+                <label data-button-type="tool-selection-button" for="carbon-button" id="carbon" class="atomLabel">C</label>
               <input type="radio" name="tool-selection-button" id="oxygen-button" />
-                <label for="oxygen-button" id="oxygen" class="atomLabel">O</label>
+                <label data-button-type="tool-selection-button" for="oxygen-button" id="oxygen" class="atomLabel">O</label>
               <input type="radio" name="tool-selection-button" id="nitrogen-button" />
-                <label for="nitrogen-button" id="nitrogen" class="atomLabel">N</label>
+                <label data-button-type="tool-selection-button" for="nitrogen-button" id="nitrogen" class="atomLabel">N</label>
               <input type="radio" name="tool-selection-button" id="bromine-button" />
-                <label for="bromine-button" id="bromine" class="atomLabel">Br</label>
+                <label data-button-type="tool-selection-button" for="bromine-button" id="bromine" class="atomLabel">Br</label>
               <input type="radio" name="tool-selection-button" id="chlorine-button" />
-                <label for="chlorine-button" id="chlorine" class="atomLabel">Cl</label>
+                <label data-button-type="tool-selection-button" for="chlorine-button" id="chlorine" class="atomLabel">Cl</label>
               <input type="radio" name="tool-selection-button" id="sulfur-button" />
-                <label for="sulfur-button" id="sulfur" class="atomLabel">S</label>
+                <label data-button-type="tool-selection-button" for="sulfur-button" id="sulfur" class="atomLabel">S</label>
             </div>
           </div>
         </div>
@@ -58,13 +58,13 @@
           <div class="dropdown-content">
             <div class="selectable-button square">
               <input type="radio" name="tool-selection-button" id="atom-bond-drag-button" />
-                <label for="atom-bond-drag-button" id="atom-bond-drag">Node/ Bond Drag</label>
+                <label data-button-type="tool-selection-button" for="atom-bond-drag-button" id="atom-bond-drag">Node/ Bond Drag</label>
               <input type="radio" name="tool-selection-button" id="molecule-drag-button" />
-                <label for="molecule-drag-button" id="molecule-drag">Molecule Drag</label>
+                <label data-button-type="tool-selection-button" for="molecule-drag-button" id="molecule-drag">Molecule Drag</label>
               <input type="radio" name="tool-selection-button" id="atom-bond-delete-button" />
-                <label for="atom-bond-delete-button" id="atom-bond-delete">Node/ Bond Delete</label>
+                <label data-button-type="tool-selection-button" for="atom-bond-delete-button" id="atom-bond-delete">Node/ Bond Delete</label>
               <input type="radio" name="tool-selection-button" id="molecule-delete-button" />
-                <label for="molecule-delete-button" id="molecule-delete">Molecule Delete</label>
+                <label data-button-type="tool-selection-button" for="molecule-delete-button" id="molecule-delete">Molecule Delete</label>
             </div>
           </div>
         </div>
@@ -73,21 +73,30 @@
           <div class="dropdown-content">
             <div class="selectable-button square">
               <input type="radio" name="tool-selection-button" id="add-charge-button" />
-                <label for="add-charge-button" id="add-charge">-1 Electron Pair</label>
+                <label data-button-type="tool-selection-button" for="add-charge-button" id="add-charge">-1 Electron Pair</label>
               <input type="radio" name="tool-selection-button" id="subtract-charge-button" />
-                <label for="subtract-charge-button" id="subtract-charge">+1 Electron Pair</label>
+                <label data-button-type="tool-selection-button" for="subtract-charge-button" id="subtract-charge">+1 Electron Pair</label>
               <input type="radio" name="tool-selection-button" id="add-h-button" />
-                <label for="add-h-button" id="add-h">+H</label>
+                <label data-button-type="tool-selection-button" for="add-h-button" id="add-h">+H</label>
               <input type="radio" name="tool-selection-button" id="subtract-h-button" />
-                <label for="subtract-h-button" id="subtract-h">-H</label>
+                <label data-button-type="tool-selection-button" for="subtract-h-button" id="subtract-h">-H</label>
+            </div>
+          </div>
+        </div>
+        <div class="dropdown">
+          <button class="button square-button dropdown-header" id="functional-group-tools">Functional<br>Group Tools</button>
+          <div class="dropdown-content">
+            <div class="selectable-button square">
+              <input type="radio" name="tool-selection-button" id="aldehyde-button" />
+                <label data-button-type="tool-selection-button" for="aldehyde-button" id="aldehyde">Aldehyde</label>
             </div>
           </div>
         </div>
         <div class="selectable-button thin">
           <input type="radio" name="bond-snap-selection-button" id="snap-button" />
-            <label for="snap-button" id="snap">SNAP BONDS</label>
+            <label data-button-type="bond-snap-selection-button" for="snap-button" id="snap">SNAP BONDS</label>
           <input type="radio" name="bond-snap-selection-button" id="freeform-button" />
-            <label for="freeform-button" id="freeform">FREEFORM BONDS</label>
+            <label data-button-type="bond-snap-selection-button" for="freeform-button" id="freeform">FREEFORM BONDS</label>
         </div>
         <button class="button thin-button" id="clear">CLEAR</button>
         <button class="button thin-button" id="random">RANDOM MOLECULE</button>
