@@ -96,7 +96,8 @@ int kynedraw::GenericNode::get_valency() const {
       {"N", 3},
       {"Br", 1},
       {"Cl", 1},
-      {"S", 2}
+      {"S", 2},
+      {"R", 100}
   };
   return valenceMap.at(name);
 }

@@ -20,7 +20,7 @@ body {
 
 #ui {
   position: fixed;
-  min-width: 1000px;
+  min-width: 1095px;
   width: 100%;
   min-height: 720px;
   height: 100%;
@@ -219,6 +219,15 @@ body {
 #subtract-h {
   top: 320px;
   left: 305px;
+}
+
+#functional-group-tools {
+  top: 20px;
+  left: 400px;
+}
+#aldehyde {
+  top: 95px;
+  left: 400px;
 }
 
 #freeform {

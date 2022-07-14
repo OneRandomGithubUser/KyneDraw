@@ -208,41 +208,43 @@ void Render(kynedraw::Graph& graph, emscripten::val canvas)
     if (name != "C" || kynedraw::settings::SHOW_CARBONS || currentVisibleNode.get_num_bonds() == 0)
     {
       std::string label = name;
-      int numH = currentVisibleNode.get_num_h();
-      if (numH > 0) {
-        if (numH > 1) {
-          std::string temp = "";
-          int tens = numH;
-          while (tens != 0)
+      if (name != "R") {
+        int numH = currentVisibleNode.get_num_h();
+        if (numH > 0) {
+          if (numH > 1) {
+            std::string temp = "";
+            int tens = numH;
+            while (tens != 0)
+            {
+              temp = subscript[tens%10] + temp;
+              tens = floor(tens/10);
+            }
+            if (name == "O" || name == "S")
+            {
+              label = "H" + temp + label;
+            } else {
+              label += ("H" + temp);
+            }
+          } else if (name == "Br" || name == "Cl" || name == "I" || name == "F")
           {
-            temp = subscript[tens%10] + temp;
+            label = "H" + label;
+          } else {
+            label += "H";
+          }
+        }
+        int charge = currentVisibleNode.get_charge();
+        if (abs(charge) > 1) {
+          std::string temp = "";
+          int tens = abs(charge);
+          while (tens != 0) {
+            temp = superscript[tens%10] + temp;
             tens = floor(tens/10);
           }
-          if (name == "O" || name == "S")
-          {
-            label = "H" + temp + label;
-          } else {
-            label += ("H" + temp);
-          }
-        } else if (name == "Br" || name == "Cl" || name == "I" || name == "F")
-        {
-          label = "H" + label;
-        } else {
-          label += "H";
+          label += temp;
         }
+        if (charge > 0) {label += "⁺";}
+        if (charge < 0) {label += "⁻";}
       }
-      int charge = currentVisibleNode.get_charge();
-      if (abs(charge) > 1) {
-        std::string temp = "";
-        int tens = abs(charge);
-        while (tens != 0) {
-          temp = superscript[tens%10] + temp;
-          tens = floor(tens/10);
-        }
-        label += temp;
-      }
-      if (charge > 0) {label += "⁺";}
-      if (charge < 0) {label += "⁻";}
       double x = currentVisibleNode.get_x();
       double y = currentVisibleNode.get_y();
       emscripten::val TextMetrics = ctx.call<emscripten::val>("measureText", emscripten::val(label));
@@ -418,7 +420,41 @@ void ResetPreview(std::string tool, double pageX, double pageY)
       break;
     }
     case 50: {
-      // TODO: addNode to make aldehyde
+      // aldehyde
+      preview.clear();
+      boost::uuids::uuid uuid;
+      uuid = uuidGenerator();
+      kynedraw::Node& node1 = preview.create_node(uuid, "R");
+      kynedraw::VisibleNode& visibleNode1 = preview.create_visible_node(uuid, "R", pageX, pageY);
+      preview.set_mouse_node(visibleNode1);
+      uuid = uuidGenerator();
+      kynedraw::Node& node2 = preview.create_node(uuid, "C");
+      kynedraw::VisibleNode& visibleNode2 = preview.create_visible_node(uuid,
+                                                                        "C",
+                                                                        pageX + kynedraw::settings::BOND_LENGTH * std::cos(pi * 11 / 6),
+                                                                        pageY + kynedraw::settings::BOND_LENGTH * std::sin(pi * 11 / 6));
+      uuid = uuidGenerator();
+      preview.create_bond_between(uuid, 1, node1, node2);
+      auto& visibleBond = preview.create_visible_bond_between(uuid, 1, visibleNode1, visibleNode2);
+      preview.set_mouse_bond(visibleBond);
+      uuid = uuidGenerator();
+      kynedraw::Node& node3 = preview.create_node(uuid, "O");
+      kynedraw::VisibleNode& visibleNode3 = preview.create_visible_node(uuid,
+                                                                        "O",
+                                                                        pageX + kynedraw::settings::BOND_LENGTH * std::cos(pi * 11 / 6),
+                                                                        pageY + kynedraw::settings::BOND_LENGTH * std::sin(pi * 11 / 6) - kynedraw::settings::BOND_LENGTH);
+      uuid = uuidGenerator();
+      preview.create_bond_between(uuid, 2, node2, node3);
+      preview.create_visible_bond_between(uuid, 2, visibleNode2, visibleNode3);
+      kynedraw::Node& node4 = preview.create_node(uuid, "H");
+      kynedraw::VisibleNode& visibleNode4 = preview.create_visible_node(uuid,
+                                                                        "H",
+                                                                        pageX + 2 * kynedraw::settings::BOND_LENGTH * std::cos(pi * 11 / 6),
+                                                                        pageY);
+      uuid = uuidGenerator();
+      preview.create_bond_between(uuid, 1, node2, node4);
+      preview.create_visible_bond_between(uuid, 1, visibleNode2, visibleNode4);
+      break;
     }
   }
 }
