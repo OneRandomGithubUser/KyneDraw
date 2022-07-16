@@ -5,6 +5,7 @@
 #include <cmath>
 #include <numbers>
 #include <unordered_map>
+#include <tuple>
 #include <boost/uuid/uuid.hpp>            // uuid class
 #include <boost/uuid/uuid_generators.hpp> // uuid generators
 /*
@@ -193,6 +194,7 @@ void Render(kynedraw::Graph& graph, emscripten::val canvas)
   // NOTE: this may cause an error if a feature specific to kynedraw::Preview is used
   emscripten::val ctx = canvas.call<emscripten::val>("getContext", emscripten::val("2d"));
   ctx.call<void>("clearRect", 0, 0, canvas["width"], canvas["height"]);
+  ctx.set("fillStyle", emscripten::val("white"));
   ctx.call<void>("beginPath");
   for (const auto& [uuid, currentVisibleBond] : graph.get_visible_bonds())
   {
@@ -202,6 +204,7 @@ void Render(kynedraw::Graph& graph, emscripten::val canvas)
     ctx.call<void>("lineTo", secondNode.get_x(), secondNode.get_y());
   }
   ctx.call<void>("stroke");
+  std::vector<std::tuple<std::string, double, double>> labels;
   for (const auto& [uuid, currentVisibleNode] : graph.get_visible_nodes())
   {
     std::string name = currentVisibleNode.get_name();
@@ -252,12 +255,18 @@ void Render(kynedraw::Graph& graph, emscripten::val canvas)
       double right = TextMetrics["actualBoundingBoxRight"].as<double>() + kynedraw::settings::NODE_LABEL_MARGIN;
       double up = TextMetrics["actualBoundingBoxAscent"].as<double>() + kynedraw::settings::NODE_LABEL_MARGIN;
       double down = TextMetrics["actualBoundingBoxDescent"].as<double>() + kynedraw::settings::NODE_LABEL_MARGIN;
-      ctx.call<void>("clearRect", x-left, y-up, left+right, up+down);
-      ctx.call<void>("fillText", label, x, y);
+      ctx.call<void>("fillRect", x-left, y-up, left+right, up+down);
+      labels.emplace_back(label, x, y);
     }
     ctx.call<void>("beginPath");
     ctx.call<void>("arc", currentVisibleNode.get_x(), currentVisibleNode.get_y(), kynedraw::settings::MOUSE_SNAP_RADIUS, 0, 2 * pi);
     ctx.call<void>("stroke");
+  }
+  // the labels are rendered separately to avoid the slowdown of changing the fillStyle every time
+  ctx.set("fillStyle", emscripten::val("black"));
+  for (auto& [label, x, y] : labels)
+  {
+    ctx.call<void>("fillText", label, x, y);
   }
 }
 void RenderBackground(double DOMHighResTimeStamp)

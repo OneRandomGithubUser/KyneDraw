@@ -144,7 +144,7 @@ void kynedraw::GenericNode::merge
   {
     throw std::invalid_argument("tried to merge nodes with different uuids");
   }
-  if (name != sacrificialNode.get_name() && sacrificialNode.get_name() != "C")
+  if (name != sacrificialNode.get_name() && sacrificialNode.get_name() != "C" && sacrificialNode.get_name() != "R")
   {
     smart_set_name(sacrificialNode.get_name());
   }
